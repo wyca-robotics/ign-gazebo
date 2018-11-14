@@ -13,4 +13,5 @@ set(IGNITION_GAZEBO_PLUGIN_INSTALL_DIR
   ${CMAKE_INSTALL_PREFIX}/${IGN_LIB_INSTALL_DIR}/ign-${IGN_DESIGNATION}-${PROJECT_VERSION_MAJOR}/plugins
 )
 
+add_subdirectory(networking)
 add_subdirectory(physics)

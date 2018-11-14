@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="distributed_secondary">
+    <plugin
+      filename="libignition-gazebo-network-system.so"
+      name="ignition::gazebo::systems::v0::NetworkSecondary">
+    </plugin>
+    <plugin filename="libignition-gazebo-physics-system.so"
+      name="ignition::gazebo::systems::v0::Physics">
+    </plugin>
+  </world>
+</sdf>
+

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package ignition.gazebo.systems.msgs;
+
+import "ignition/msgs/header.proto";
+
+message ConnectionRequest
+{
+  ignition.msgs.Header header = 1;
+  string secondary_uuid = 3;
+};
+
+message ConnectionResponse
+{
+  ignition.msgs.Header header = 1;
+  string primary_uuid = 2;
+};

@@ -1,0 +1,31 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="distributed_primary">
+    <plugin
+      filename="libignition-gazebo-network-system.so"
+      name="ignition::gazebo::systems::v0::NetworkPrimary">
+      <num_clients>2</num_clients>
+    </plugin>
+
+    <model name="box">
+      <pose>1 2 3 0 0 1</pose>
+      <link name="link">
+        <collision name="col">
+          <geometry>
+            <box>
+              <size>3 4 5</size>
+            </box>
+          </geometry>
+        </collision>
+
+        <visual name="vis">
+          <geometry>
+            <box>
+              <size>1 2 3</size>
+            </box>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

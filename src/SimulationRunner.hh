@@ -238,6 +238,9 @@ namespace ignition
       /// server is in the run state.
       private: std::atomic<bool> running{false};
 
+      /// \brief This is used to indicate that the runner is paused.
+      private: std::atomic<bool> paused{true};
+
       /// \brief All the systems.
       private: std::vector<SystemInternal> systems;
 

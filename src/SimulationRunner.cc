@@ -101,6 +101,8 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
   // Create entities and components
   this->CreateEntities(_world);
 
+  // TODO(mjcarroll) There will need to be an explicit onPauseEvent handler
+  // if the SetPaused method emits an event to prevent a loop.
   pauseConn = this->eventMgr.Connect<events::Pause>(
       std::bind(&SimulationRunner::SetPaused, this, std::placeholders::_1));
 
@@ -281,8 +283,6 @@ bool SimulationRunner::Run(const uint64_t _iterations)
   // \todo(nkoenig) We should implement the two-phase update detailed
   // in the design.
 
-  // Keep track of wall clock time. Only start the realTimeWatch if this
-  // runner is not paused.
   if (!this->currentInfo.paused)
     this->realTimeWatch.Start();
 
@@ -298,6 +298,8 @@ bool SimulationRunner::Run(const uint64_t _iterations)
   for (uint64_t startingIterations = this->currentInfo.iterations;
        this->running && (_iterations == 0 ||
          this->currentInfo.iterations < _iterations + startingIterations);)
+
+
   {
     // Compute the time to sleep in order to match, as closely as possible,
     // the update period.
@@ -565,6 +567,8 @@ void SimulationRunner::SetPaused(const bool _paused)
     else
       this->realTimeWatch.Start();
   }
+
+  this->paused = _paused;
 
   // Store the pause state
   this->currentInfo.paused = _paused;
