@@ -39,7 +39,8 @@ namespace systems
   // Inline bracket to help doxygen filtering.
   inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
     /// \brief Structure to hold all relevant Secondary information.
-    struct IGNITION_GAZEBO_VISIBLE ClientInfo {
+    struct IGNITION_GAZEBO_VISIBLE ClientInfo
+    {
       /// \brief Network Secondary Unique Identifier
       std::string uuid;
     };
@@ -58,15 +59,22 @@ namespace systems
       /// \brief Destructor
       public: ~ClientManager();
 
-      /// \brief Ready
+      /// \brief Check if manager has all expected clients.
+      /// \returns True if ready.
       public: bool Ready();
 
-      /// \brief Callback for secondary registration request
-      private: bool registerClient(const msgs::ConnectionRequest &_req,
+      /// \brief Callback for secondary registration request.
+      /// \param[in] _req Registration request.
+      /// \param[in] _resp Response.
+      /// \returns True if successfully handled.
+      private: bool RegisterClient(const msgs::ConnectionRequest &_req,
                                    msgs::ConnectionResponse &_resp);
 
       /// \brief Callback for secondary deregistration request
-      private: bool unregisterClient(const msgs::ConnectionRequest &_req,
+      /// \param[in] _req Unregistration request.
+      /// \param[in] _resp Response.
+      /// \returns True if successfully handled.
+      private: bool UnregisterClient(const msgs::ConnectionRequest &_req,
                                      msgs::ConnectionResponse &_resp);
 
       /// \brief Transport Node.
@@ -76,10 +84,7 @@ namespace systems
       private: size_t expected_num_clients;
 
       /// \breif Clients mutex
-      private: std::mutex client_mutex;
-
-      /// \brief Clients condition variable
-      private: std::condition_variable client_cv;
+      private: std::mutex clientMutex;
 
       /// \brief Registered client information.
       private: std::map<std::string, ClientInfo> clients;

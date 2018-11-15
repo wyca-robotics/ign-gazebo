@@ -30,8 +30,8 @@ ClientManager::ClientManager(const NodePtr &_node,
   node(_node),
   expected_num_clients(_expected_num_clients)
 {
-  node->Advertise("/register", &ClientManager::registerClient, this);
-  node->Advertise("/unregister", &ClientManager::unregisterClient, this);
+  this->node->Advertise("/register", &ClientManager::RegisterClient, this);
+  this->node->Advertise("/unregister", &ClientManager::UnregisterClient, this);
 }
 
 /////////////////////////////////////////////////
@@ -40,20 +40,22 @@ ClientManager::~ClientManager()
 }
 
 /////////////////////////////////////////////////
-bool ClientManager::Ready() {
-  std::unique_lock<std::mutex> lock(client_mutex);
+bool ClientManager::Ready()
+{
+  std::unique_lock<std::mutex> lock(clientMutex);
   return this->clients.size() == this->expected_num_clients;
 }
 
 /////////////////////////////////////////////////
-bool ClientManager::registerClient(const msgs::ConnectionRequest &_req,
+bool ClientManager::RegisterClient(const msgs::ConnectionRequest &_req,
                                    msgs::ConnectionResponse &/*_resp*/)
 {
   ClientInfo info;
   info.uuid = _req.secondary_uuid();
 
-  std::unique_lock<std::mutex> lock(client_mutex);
-  if (clients.find(info.uuid) != clients.end()) {
+  std::unique_lock<std::mutex> lock(clientMutex);
+  if (clients.find(info.uuid) != clients.end())
+  {
     igndbg << "Attempt to register network secondary twice." << std::endl;
     return false;
   }
@@ -64,14 +66,15 @@ bool ClientManager::registerClient(const msgs::ConnectionRequest &_req,
 }
 
 /////////////////////////////////////////////////
-bool ClientManager::unregisterClient(const msgs::ConnectionRequest &_req,
+bool ClientManager::UnregisterClient(const msgs::ConnectionRequest &_req,
                                      msgs::ConnectionResponse &/*_resp*/)
 {
-  std::unique_lock<std::mutex> lock(client_mutex);
+  std::unique_lock<std::mutex> lock(clientMutex);
 
   auto it = clients.find(_req.secondary_uuid());
 
-  if (it == clients.end()) {
+  if (it == clients.end())
+  {
     igndbg << "Attempt to unregister unknown network secondary." << std::endl;
     return false;
   }

@@ -39,25 +39,8 @@ class SystemFixture : public ::testing::Test
 };
 
 /////////////////////////////////////////////////
-// Send a world control message.
-void WorldControl(bool _paused, uint64_t _steps, const std::string& world_name)
-{
-  std::function<void(const ignition::msgs::Boolean &, const bool)> cb =
-      [&](const ignition::msgs::Boolean &/*_rep*/, const bool _result)
-  {
-    EXPECT_TRUE(_result);
-  };
-
-  ignition::msgs::WorldControl req;
-  req.set_pause(_paused);
-  req.set_multi_step(_steps);
-  transport::Node node;
-  node.Request("/world/" + world_name + "/control", req, cb);
-}
-
-/////////////////////////////////////////////////
 // Get the current paused state from the world stats message
-void TestPaused(bool _paused, const std::string& world_name)
+void TestPaused(bool _paused, const std::string &_worldName)
 {
   std::condition_variable condition;
   std::mutex mutex;
@@ -73,13 +56,15 @@ void TestPaused(bool _paused, const std::string& world_name)
   };
 
   std::unique_lock<std::mutex> lock(mutex);
-  node.Subscribe("/world/" + world_name + "/stats", cb);
+  node.Subscribe("/world/" + _worldName + "/stats", cb);
   auto status = condition.wait_for(lock, 1s);
   ASSERT_TRUE(status == std::cv_status::no_timeout);
   EXPECT_EQ(_paused, paused);
 }
 
-TEST_F(SystemFixture, NetworkingHandshake) {
+/////////////////////////////////////////////////
+TEST_F(SystemFixture, NetworkingHandshake)
+{
   // Configure the network primary to expect two clients.
   ServerConfig primaryConfig;
   primaryConfig.SetSdfFile(std::string(PROJECT_SOURCE_PATH) +
@@ -88,7 +73,9 @@ TEST_F(SystemFixture, NetworkingHandshake) {
   Server primary(primaryConfig);
   primary.SetUpdatePeriod(1us);
   EXPECT_FALSE(primary.Running());
-  EXPECT_EQ(1u, *primary.SystemCount());  // Expecting only networking.
+
+  // Expecting only networking.
+  EXPECT_EQ(1u, *primary.SystemCount());
 
   primary.Run(false);
   TestPaused(true, "distributed_primary");
@@ -101,14 +88,17 @@ TEST_F(SystemFixture, NetworkingHandshake) {
   Server secondary1(secondaryConfig);
   secondary1.SetUpdatePeriod(1us);
   EXPECT_FALSE(secondary1.Running());
-  EXPECT_EQ(2u, *secondary1.SystemCount());  // Expecting networking and physics
+  // Expecting networking and physics
+  EXPECT_EQ(2u, *secondary1.SystemCount());
   secondary1.Run(false);
   TestPaused(true, "distributed_primary");
 
   Server secondary2(secondaryConfig);
   secondary2.SetUpdatePeriod(1us);
   EXPECT_FALSE(secondary2.Running());
-  EXPECT_EQ(2u, *secondary2.SystemCount());  // Expecting networking and physics
+
+  // Expecting networking and physics
+  EXPECT_EQ(2u, *secondary2.SystemCount());
   secondary2.Run(false);
   TestPaused(false, "distributed_primary");
 }

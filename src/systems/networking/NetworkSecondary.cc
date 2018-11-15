@@ -38,19 +38,16 @@ NetworkSecondary::~NetworkSecondary()
 }
 
 /////////////////////////////////////////////////
-void NetworkSecondary::Configure(const sdf::ElementPtr &_sdf,
-                                 EntityComponentManager& _ecm,
-                                 EventManager &_eventMgr)
+void NetworkSecondary::Configure(const sdf::ElementPtr &/*_sdf*/,
+                                 EntityComponentManager &/*_ecm*/,
+                                 EventManager &/*_eventMgr*/)
 {
-  (void)_sdf;
-  (void)_ecm;
-  (void)_eventMgr;
-  RegisterWithPrimary();
+  this->RegisterWithPrimary();
 }
 
-
 /////////////////////////////////////////////////
-bool NetworkSecondary::RegisterWithPrimary() {
+bool NetworkSecondary::RegisterWithPrimary()
+{
   msgs::ConnectionRequest req;
 
   req.set_secondary_uuid(this->uuid.String());
@@ -65,21 +62,24 @@ bool NetworkSecondary::RegisterWithPrimary() {
   {
     if (result)
     {
-      igndbg << "Registration success" << std::endl;
-      this->is_registered = true;
+      igndbg << "UUID [" << this->uuid.String() << "]: Registration success"
+             << std::endl;
+      this->isRegistered = true;
       return true;
     }
     else
     {
-      igndbg << "Registration failure" << std::endl;
-      this->is_registered = false;
+      igndbg << "UUID [" << this->uuid.String() << "]: Registration failure"
+             << std::endl;
+      this->isRegistered = false;
       return false;
     }
   }
   else
   {
-    igndbg << "Registration timeout" << std::endl;
-    this->is_registered = false;
+      igndbg << "UUID [" << this->uuid.String() << "]: Registration timeout"
+             << std::endl;
+    this->isRegistered = false;
     return false;
   }
 }

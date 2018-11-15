@@ -297,8 +297,6 @@ bool SimulationRunner::Run(const uint64_t _iterations)
   for (uint64_t startingIterations = this->currentInfo.iterations;
        this->running && (_iterations == 0 ||
          this->currentInfo.iterations < _iterations + startingIterations);)
-
-
   {
     // Compute the time to sleep in order to match, as closely as possible,
     // the update period.

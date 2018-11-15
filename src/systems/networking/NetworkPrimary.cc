@@ -47,15 +47,15 @@ void NetworkPrimary::Configure(const sdf::ElementPtr &_sdf,
                                EntityComponentManager& _ecm,
                                EventManager &_eventMgr)
 {
-  int num_clients = _sdf->Get<int>("num_clients");
-  manager = std::make_unique<ClientManager>(node, num_clients);
+  int numClients = _sdf->Get<int>("num_clients");
+  this->manager = std::make_unique<ClientManager>(node, numClients);
 
-  auto network_entity = _ecm.CreateEntity();
-  NetworkComponent network_component;
-  _ecm.CreateComponent(network_entity, network_component);
+  auto networkEntity = _ecm.CreateEntity();
+  NetworkComponent networkComponent;
+  _ecm.CreateComponent(networkEntity, networkComponent);
 
   // Keep a pointer to the event manager to emit events later.
-  eventMgr = &_eventMgr;
+  this->eventMgr = &_eventMgr;
 
   this->Run();
 }
@@ -63,7 +63,7 @@ void NetworkPrimary::Configure(const sdf::ElementPtr &_sdf,
 /////////////////////////////////////////////////
 void NetworkPrimary::Run()
 {
-  this->client_thread = std::make_unique<std::thread>(
+  this->clientThread = std::make_unique<std::thread>(
       &NetworkPrimary::WaitForClients,
       this);
 }
@@ -72,14 +72,16 @@ void NetworkPrimary::Run()
 void NetworkPrimary::Stop()
 {
   this->running = false;
-  if (this->client_thread) {
-    this->client_thread->join();
-    this->client_thread.release();
+  if (this->clientThread)
+  {
+    this->clientThread->join();
+    this->clientThread.release();
   }
 
-  if (this->worker_thread) {
-    this->worker_thread->join();
-    this->worker_thread.release();
+  if (this->workerThread)
+  {
+    this->workerThread->join();
+    this->workerThread.release();
   }
 }
 
@@ -97,10 +99,10 @@ void NetworkPrimary::WaitForClients()
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     igndbg << "Waiting for all network secondaries to join" << std::endl;
   }
-  igndbg << "All network secondaries to joined" << std::endl;
+  igndbg << "All network secondaries have joined" << std::endl;
 
   // Once all clients are discovered, initiate execution.
-  this->worker_thread = std::make_unique<std::thread>(&NetworkPrimary::WorkLoop,
+  this->workerThread = std::make_unique<std::thread>(&NetworkPrimary::WorkLoop,
                                                 this);
 }
 

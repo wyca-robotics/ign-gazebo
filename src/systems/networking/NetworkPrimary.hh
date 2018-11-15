@@ -46,7 +46,7 @@ namespace systems
       /// \brief Destructor
       public: virtual ~NetworkPrimary();
 
-      /// Documentation inherited.
+      // Documentation inherited.
       public: void Configure(const sdf::ElementPtr &_sdf,
                              EntityComponentManager &_ecm,
                              EventManager &_eventMgr) override;
@@ -68,12 +68,12 @@ namespace systems
       private: void WorkLoop();
 
       /// \brief Thread responsible for managing secondary clients.
-      private: std::unique_ptr<std::thread> client_thread;
+      private: std::unique_ptr<std::thread> clientThread;
 
       /// \brief Thread responsible for main plugin execution loop
-      private: std::unique_ptr<std::thread> worker_thread;
+      private: std::unique_ptr<std::thread> workerThread;
 
-      private: EventManager* eventMgr;
+      private: EventManager *eventMgr;
 
       /// \brief used to indicate that run has been called and that the
       /// background threads are executing.

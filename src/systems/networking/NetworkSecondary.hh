@@ -45,7 +45,7 @@ namespace systems
       /// \brief Destructor
       public: virtual ~NetworkSecondary();
 
-      /// Documentation inherited.
+      // Documentation inherited.
       public: void Configure(const sdf::ElementPtr &_sdf,
                              EntityComponentManager &_ecm,
                              EventManager &_eventMgr) override;
@@ -61,14 +61,15 @@ namespace systems
       public: bool Running() const;
 
       /// \brief Register this secondary with the primary simulation instance.
+      /// \return True if successful.
       private: bool RegisterWithPrimary();
 
       /// \brief Transport Node.
       private: std::shared_ptr<ignition::transport::Node> node;
 
-      /// \brief used to indicate that this instance has been registered with
+      /// \brief Used to indicate that this instance has been registered with
       /// the primary instance.
-      private: bool is_registered{false};
+      private: bool isRegistered{false};
 
       /// \brief Unique identifier of this secondary.
       private: ignition::common::Uuid uuid;
