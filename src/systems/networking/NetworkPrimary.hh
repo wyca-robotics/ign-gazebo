@@ -47,7 +47,7 @@ namespace systems
       public: virtual ~NetworkPrimary();
 
       // Documentation inherited.
-      public: void Configure(const sdf::ElementPtr &_sdf,
+      public: void Configure(const std::shared_ptr<const sdf::Element> &_sdf,
                              EntityComponentManager &_ecm,
                              EventManager &_eventMgr) override;
 

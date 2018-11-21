@@ -43,9 +43,10 @@ NetworkPrimary::~NetworkPrimary()
 }
 
 /////////////////////////////////////////////////
-void NetworkPrimary::Configure(const sdf::ElementPtr &_sdf,
-                               EntityComponentManager& _ecm,
-                               EventManager &_eventMgr)
+void NetworkPrimary::Configure(
+    const std::shared_ptr<const sdf::Element> &_sdf,
+    EntityComponentManager& _ecm,
+    EventManager &_eventMgr)
 {
   int numClients = _sdf->Get<int>("num_clients");
   this->manager = std::make_unique<ClientManager>(node, numClients);

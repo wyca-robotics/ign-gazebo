@@ -38,9 +38,10 @@ NetworkSecondary::~NetworkSecondary()
 }
 
 /////////////////////////////////////////////////
-void NetworkSecondary::Configure(const sdf::ElementPtr &/*_sdf*/,
-                                 EntityComponentManager &/*_ecm*/,
-                                 EventManager &/*_eventMgr*/)
+void NetworkSecondary::Configure(
+    const std::shared_ptr<const sdf::Element> &/*_sdf*/,
+    EntityComponentManager &/*_ecm*/,
+    EventManager &/*_eventMgr*/)
 {
   this->RegisterWithPrimary();
 }
