@@ -350,8 +350,11 @@ void PhysicsPrivate::Step(const std::chrono::steady_clock::duration &_dt)
 void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
 {
   _ecm.Each<components::Link, components::Pose, components::ParentEntity>(
-      [&](const EntityId &_entity, components::Link * /*_link*/,
-          components::Pose *_pose, components::ParentEntity *_parent)->bool
+      [&](const EntityId &_entity,
+          const components::Link * /*_link*/,
+          const components::Pose *_pose,
+          const components::ParentEntity 
+          *_parent)->bool
       {
         auto linkIt = this->entityLinkMap.find(_entity);
         if (linkIt != this->entityLinkMap.end())
@@ -382,15 +385,18 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
             // this link relative to world so to set the model's pose, we have
             // to premultiply it by the inverse of the initial transform of
             // the link w.r.t to its model.
-            *parentPose = components::Pose(_pose->Data().Inverse() +
-                                           math::eigen3::convert(worldPose));
+            _ecm.WriteComponent(
+                _parent->Data(),
+                components::Pose(_pose->Data().Inverse() +
+                                 math::eigen3::convert(worldPose)));
           }
           else
           {
             auto worldPose = linkIt->second->FrameDataRelativeToWorld().pose;
             // Compute the relative pose of this link from the model
-            *_pose = components::Pose(math::eigen3::convert(worldPose) +
-                                      parentPose->Data().Inverse());
+            _ecm.WriteComponent(
+                _entity, components::Pose(math::eigen3::convert(worldPose) +
+                                          parentPose->Data().Inverse()));
           }
         }
         else

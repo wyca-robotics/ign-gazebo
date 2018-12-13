@@ -53,12 +53,11 @@ void SystemUpdate(EntityComponentManager& _ecm)
 void SystemEach(EntityComponentManager& _ecm)
 {
   _ecm.Each<components::World, components::Name>(
-      [&](const EntityId,
-          components::World *,
-          components::Name * /*_name*/) -> bool
+      [&](const EntityId _entity,
+          const components::World *,
+          const components::Name * /* _name */) -> bool
       {
-        // TODO(addisu) component access is not thread safe.
-        // *_name = components::Name("new_name");
+        _ecm.WriteComponent(_entity, components::Name("new_name"));
         return true;
       });
 }
@@ -67,7 +66,7 @@ void SystemEach(EntityComponentManager& _ecm)
 /// A proxy class for calling protected methods in EntityComponentManager
 class EntityCompMgrTest : public gazebo::EntityComponentManager
 {
-  public: void ProcessEntityErasures()
+  public: void ProcessAllRequests()
   {
     this->ProcessEraseEntityRequests();
   }
@@ -92,7 +91,7 @@ int main()
     {
       thread.join();
     }
-    ecm.ProcessEntityErasures();
+    ecm.ProcessAllRequests();
     threads.clear();
   }
 }
