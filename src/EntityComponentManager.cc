@@ -499,7 +499,6 @@ void EntityComponentManager::RebuildViews()
 {
   std::lock_guard<std::mutex> lock(this->entityMutex);
   this->RebuildViewsImpl();
-
 }
 
 //////////////////////////////////////////////////

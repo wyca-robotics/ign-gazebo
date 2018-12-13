@@ -26,6 +26,7 @@
 using namespace ignition;
 using namespace gazebo;
 
+//////////////////////////////////////////////////
 // Function that simulates the *update phase of systems where they can mutate 
 // entities and their components
 void SystemUpdate(EntityComponentManager& _ecm)
@@ -48,6 +49,7 @@ void SystemUpdate(EntityComponentManager& _ecm)
   }
 }
 
+//////////////////////////////////////////////////
 void SystemEach(EntityComponentManager& _ecm)
 {
   _ecm.Each<components::World, components::Name>(
@@ -61,6 +63,8 @@ void SystemEach(EntityComponentManager& _ecm)
       });
 }
 
+//////////////////////////////////////////////////
+/// A proxy class for calling protected methods in EntityComponentManager
 class EntityCompMgrTest : public gazebo::EntityComponentManager
 {
   public: void ProcessEntityErasures()
