@@ -394,12 +394,13 @@ namespace ignition
               ComponentKey CreateComponent(const EntityId _entityId,
                   const ComponentTypeT &_data)
       {
+        std::lock_guard<std::mutex> lock(this->entityMutex);
         // Get a unique identifier to the component type
         const ComponentTypeId typeId = ComponentType<ComponentTypeT>();
 
         // Create the component storage if one does not exist for
         // the component type.
-        if (!this->HasComponentType(typeId))
+        if (!this->HasComponentTypeImpl(typeId))
         {
           this->RegisterComponentType(typeId,
                 new ComponentStorage<ComponentTypeT>());
@@ -416,11 +417,9 @@ namespace ignition
       public: template<typename ComponentTypeT>
               const ComponentTypeT *Component(const EntityId _id) const
       {
-        // Get a unique identifier to the component type
-        const ComponentTypeId typeId = ComponentType<ComponentTypeT>();
-
+        std::lock_guard<std::mutex> lock(this->entityMutex);
         return static_cast<const ComponentTypeT *>(
-            this->ComponentImplementation(_id, typeId));
+            this->ComponentImplementation<ComponentTypeT>(_id));
       }
 
       /// \brief Get a mutable component assigned to an entity based on a
@@ -431,11 +430,9 @@ namespace ignition
       public: template<typename ComponentTypeT>
               ComponentTypeT *Component(const EntityId _id)
       {
-        // Get a unique identifier to the component type
-        const ComponentTypeId typeId = ComponentType<ComponentTypeT>();
-
+        std::lock_guard<std::mutex> lock(this->entityMutex);
         return static_cast<ComponentTypeT *>(
-            this->ComponentImplementation(_id, typeId));
+            this->ComponentImplementation<ComponentTypeT>(_id));
       }
 
       /// \brief Get a component based on a key.
@@ -445,6 +442,7 @@ namespace ignition
       public: template<typename ComponentTypeT>
               const ComponentTypeT *Component(const ComponentKey &_key) const
       {
+        std::lock_guard<std::mutex> lock(this->entityMutex);
         return static_cast<const ComponentTypeT *>(
             this->ComponentImplementation(_key));
       }
@@ -456,6 +454,7 @@ namespace ignition
       public: template<typename ComponentTypeT>
               ComponentTypeT *Component(const ComponentKey &_key)
       {
+        std::lock_guard<std::mutex> lock(this->entityMutex);
         return static_cast<ComponentTypeT *>(
             this->ComponentImplementation(_key));
       }
@@ -466,6 +465,7 @@ namespace ignition
       public: template<typename ComponentTypeT>
               const ComponentTypeT *First() const
       {
+        std::lock_guard<std::mutex> lock(this->entityMutex);
         return static_cast<const ComponentTypeT *>(
             this->First(this->ComponentType<ComponentTypeT>()));
       }
@@ -476,6 +476,7 @@ namespace ignition
       public: template<typename ComponentTypeT>
               ComponentTypeT *First()
       {
+        std::lock_guard<std::mutex> lock(this->entityMutex);
         return static_cast<ComponentTypeT *>(
             this->First(this->ComponentType<ComponentTypeT>()));
       }
@@ -504,18 +505,26 @@ namespace ignition
                   bool(const EntityId &_entity,
                        const ComponentTypeTs *...)>>::type _f) const
       {
+        // Need a unique_lock instead of a lock_guard because we want to unlock
+        // the mutex before calling _f
+        std::unique_lock<std::mutex> uniqLock(this->entityMutex);
         for (const Entity &entity : this->Entities())
         {
           auto types = std::set<ComponentTypeId>{
               this->ComponentType<ComponentTypeTs>()...};
 
-          if (this->EntityMatches(entity.Id(), types))
+          if (this->EntityMatchesImpl(entity.Id(), types))
           {
+            // unlock before calling _f
+            uniqLock.unlock();
             if (!_f(entity.Id(),
-                    this->Component<ComponentTypeTs>(entity.Id())...))
+                    static_cast<const ComponentTypeTs *>(
+                        this->ComponentImplementation<ComponentTypeTs>(
+                            entity.Id()))...))
             {
               break;
             }
+            uniqLock.lock();
           }
         }
       }
@@ -537,18 +546,26 @@ namespace ignition
                   bool(const EntityId &_entity,
                        ComponentTypeTs *...)>>::type _f)
       {
+        // Need a unique_lock instead of a lock_guard because we want to unlock
+        // the mutex before calling _f
+        std::unique_lock<std::mutex> uniqLock(this->entityMutex);
         for (const Entity &entity : this->Entities())
         {
           auto types = std::set<ComponentTypeId>{
               this->ComponentType<ComponentTypeTs>()...};
 
-          if (this->EntityMatches(entity.Id(), types))
+          if (this->EntityMatchesImpl(entity.Id(), types))
           {
+            // unlock before calling _f
+            uniqLock.unlock();
             if (!_f(entity.Id(),
-                    this->Component<ComponentTypeTs>(entity.Id())...))
+                    static_cast<ComponentTypeTs *>(
+                        this->ComponentImplementation<ComponentTypeTs>(
+                            entity.Id()))...))
             {
               break;
             }
+            uniqLock.lock();
           }
         }
       }
@@ -570,7 +587,11 @@ namespace ignition
       {
         // Get the view. This will create a new view if one does not already
         // exist.
-        View &view = this->FindView<ComponentTypeTs...>();
+        View &view = [this]() -> View&
+        {
+          std::lock_guard<std::mutex> lock(this->entityMutex);
+          return this->FindView<ComponentTypeTs...>();
+        }();
 
         // Iterate over the entities in the view, and invoke the callback
         // function.
@@ -600,7 +621,11 @@ namespace ignition
       {
         // Get the view. This will create a new view if one does not already
         // exist.
-        View &view = this->FindView<ComponentTypeTs...>();
+        View &view = [this]() -> View&
+        {
+          std::lock_guard<std::mutex> lock(this->entityMutex);
+          return this->FindView<ComponentTypeTs...>();
+        }();
 
         // Iterate over the entities in the view, and invoke the callback
         // function.
@@ -638,6 +663,33 @@ namespace ignition
                    const EntityId _entityId,
                    const ComponentTypeId _componentTypeId,
                    const void *_data);
+
+
+      /// \brief Get a component assigned to an entity based on a
+      /// component type.
+      /// \param[in] _id Id of the entity.
+      /// \return The component of the specified type assigned to specified
+      /// Entity, or nullptr if the component could not be found.
+      private: template<typename ComponentTypeT>
+              const void *ComponentImplementation(const EntityId _id) const
+      {
+        // Get a unique identifier to the component type
+        const ComponentTypeId typeId = ComponentType<ComponentTypeT>();
+        return this->ComponentImplementation(_id, typeId);
+      }
+
+      /// \brief Get a mutable component assigned to an entity based on a
+      /// component type.
+      /// \param[in] _id Id of the entity.
+      /// \return The component of the specified type assigned to specified
+      /// Entity, or nullptr if the component could not be found.
+      private: template<typename ComponentTypeT>
+              void *ComponentImplementation(const EntityId _id)
+      {
+        // Get a unique identifier to the component type
+        const ComponentTypeId typeId = ComponentType<ComponentTypeT>();
+        return this->ComponentImplementation(_id, typeId);
+      }
 
       /// \brief Get a component based on a component type.
       /// \param[in] _id Id of the entity.
@@ -692,7 +744,8 @@ namespace ignition
                void AddComponentsToView(View &_view, const EntityId _id) const
       {
         const ComponentTypeId typeId = ComponentType<FirstComponent>();
-        const ComponentId compId = this->EntityComponentIdFromType(_id, typeId);
+        const ComponentId compId = this->EntityComponentIdFromTypeImpl(_id,
+                                                                       typeId);
         if (compId >= 0)
         {
           // Add the component to the view.
@@ -717,7 +770,8 @@ namespace ignition
               void AddComponentsToView(View &_view, const EntityId _id) const
       {
         const ComponentTypeId typeId = ComponentType<FirstComponent>();
-        const ComponentId compId = this->EntityComponentIdFromType(_id, typeId);
+        const ComponentId compId = this->EntityComponentIdFromTypeImpl(_id,
+                                                                       typeId);
         if (compId >= 0)
         {
           // Add the component to the view.
@@ -752,7 +806,7 @@ namespace ignition
           // view.
           for (const Entity &entity : this->Entities())
           {
-            if (this->EntityMatches(entity.Id(), types))
+            if (this->EntityMatchesImpl(entity.Id(), types))
             {
               view.AddEntity(entity.Id());
 
@@ -793,8 +847,36 @@ namespace ignition
       private: ComponentId EntityComponentIdFromType(
                    const EntityId _id, const ComponentTypeId _type) const;
 
+      /// \brief Private implementation of HasComponentType
+      private: bool HasComponentTypeImpl(const ComponentTypeId _typeId) const;
+
+      /// \brief Private implementation for HasEntity.
+      private: bool HasEntityImpl(EntityId _id) const;
+
+      /// \brief Private implementation of EntityMatches.
+      private: bool EntityMatchesImpl(EntityId _id,
+                   const std::set<ComponentTypeId> &_types) const;
+
+      /// \brief Private implementation for EntityHasComponent.
+      private: bool EntityHasComponentImpl(const EntityId _id,
+                                           const ComponentKey &_key) const;
+
+      /// \brief Private implementation of EntityHasComponentType
+      private: bool EntityHasComponentTypeImpl(const EntityId _id,
+                  const ComponentTypeId &_typeId) const;
+
+      /// \brief Private implementation of EntityComponentIdFromType
+      private: ComponentId EntityComponentIdFromTypeImpl(const EntityId _id,
+                   const ComponentTypeId _type) const;
+
+      /// \brief Private implementation of RebuildViews
+      private: void RebuildViewsImpl();
+
       /// \brief Private data pointer.
       private: std::unique_ptr<EntityComponentManagerPrivate> dataPtr;
+
+      /// \brief A mutex to protect accesc to the entity and component database.
+      private: mutable std::mutex entityMutex;
 
       /// Make simulation runner a friend so that it can trigger entity
       /// erasures. This should be safe since SimulationRunner is internal

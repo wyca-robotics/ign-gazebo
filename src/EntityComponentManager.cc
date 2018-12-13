@@ -45,9 +45,6 @@ class ignition::gazebo::EntityComponentManagerPrivate
   /// \brief The set of components that each entity has
   public: std::map<EntityId, std::vector<ComponentKey>> entityComponents;
 
-  /// \brief A mutex to protect entity erase.
-  public: std::mutex entityEraseMutex;
-
   /// \brief The set of all views.
   public: mutable std::map<ComponentTypeKey, View> views;
 };
@@ -66,13 +63,15 @@ EntityComponentManager::~EntityComponentManager()
 //////////////////////////////////////////////////
 size_t EntityComponentManager::EntityCount() const
 {
+  std::lock_guard<std::mutex> lock(this->entityMutex);
   return this->dataPtr->entities.size() -
     this->dataPtr->availableEntityIds.size();
 }
 
-/////////////////////////////////////////////////
+//////////////////////////////////////////////////
 EntityId EntityComponentManager::CreateEntity()
 {
+  std::lock_guard<std::mutex> lock(this->entityMutex);
   EntityId id = kNullEntity;
 
   if (!this->dataPtr->availableEntityIds.empty())
@@ -96,21 +95,21 @@ EntityId EntityComponentManager::CreateEntity()
 /////////////////////////////////////////////////
 void EntityComponentManager::RequestEraseEntity(EntityId _id)
 {
-  std::lock_guard<std::mutex> lock(this->dataPtr->entityEraseMutex);
+  std::lock_guard<std::mutex> lock(this->entityMutex);
   this->dataPtr->toEraseEntityIds.insert(_id);
 }
 
 /////////////////////////////////////////////////
 void EntityComponentManager::RequestEraseEntities()
 {
-  std::lock_guard<std::mutex> lock(this->dataPtr->entityEraseMutex);
+  std::lock_guard<std::mutex> lock(this->entityMutex);
   this->dataPtr->eraseAllEntities = true;
 }
 
 /////////////////////////////////////////////////
 void EntityComponentManager::ProcessEraseEntityRequests()
 {
-  std::lock_guard<std::mutex> lock(this->dataPtr->entityEraseMutex);
+  std::lock_guard<std::mutex> lock(this->entityMutex);
   // Short-cut if erasing all entities
   if (this->dataPtr->eraseAllEntities)
   {
@@ -135,7 +134,7 @@ void EntityComponentManager::ProcessEraseEntityRequests()
     for (const EntityId _id : this->dataPtr->toEraseEntityIds)
     {
       // Make sure the entity exists and is not erased.
-      if (!this->HasEntity(_id))
+      if (!this->HasEntityImpl(_id))
         continue;
 
       // Insert the entity into the set of available ids.
@@ -167,8 +166,9 @@ void EntityComponentManager::ProcessEraseEntityRequests()
 bool EntityComponentManager::RemoveComponent(
     const EntityId _id, const ComponentKey &_key)
 {
+  std::lock_guard<std::mutex> lock(this->entityMutex);
   // Make sure the entity exists and has the component.
-  if (!this->EntityHasComponent(_id, _key))
+  if (!this->EntityHasComponentImpl(_id, _key))
     return false;
 
   auto entityComponentIter = std::find(
@@ -186,17 +186,39 @@ bool EntityComponentManager::RemoveComponent(
 bool EntityComponentManager::EntityHasComponent(const EntityId _id,
     const ComponentKey &_key) const
 {
-  return this->HasEntity(_id) &&
-    std::find(this->dataPtr->entityComponents[_id].begin(),
-        this->dataPtr->entityComponents[_id].end(), _key) !=
-    this->dataPtr->entityComponents[_id].end();
+  std::lock_guard<std::mutex> lock(this->entityMutex);
+  return this->EntityHasComponentImpl(_id, _key);
+}
+
+//////////////////////////////////////////////////
+bool EntityComponentManager::EntityHasComponentImpl(const EntityId _id,
+    const ComponentKey &_key) const
+{
+  if (this->HasEntityImpl(_id))
+  {
+    auto compIter = this->dataPtr->entityComponents.find(_id);
+    if (compIter != this->dataPtr->entityComponents.end())
+    {
+      return std::find(compIter->second.begin(), compIter->second.end(),
+                       _key) != compIter->second.end();
+    }
+  }
+  return false;
 }
 
 /////////////////////////////////////////////////
 bool EntityComponentManager::EntityHasComponentType(const EntityId _id,
     const ComponentTypeId &_typeId) const
 {
-  if (!this->HasEntity(_id))
+  std::lock_guard<std::mutex> lock(this->entityMutex);
+  return this->EntityHasComponentTypeImpl(_id, _typeId);
+}
+
+/////////////////////////////////////////////////
+bool EntityComponentManager::EntityHasComponentTypeImpl(const EntityId _id,
+    const ComponentTypeId &_typeId) const
+{
+  if (!this->HasEntityImpl(_id))
     return false;
 
   std::map<EntityId, std::vector<ComponentKey>>::const_iterator iter =
@@ -214,6 +236,13 @@ bool EntityComponentManager::EntityHasComponentType(const EntityId _id,
 
 /////////////////////////////////////////////////
 bool EntityComponentManager::HasEntity(const EntityId _id) const
+{
+  std::lock_guard<std::mutex> lock(this->entityMutex);
+  return this->HasEntityImpl(_id);
+}
+
+//////////////////////////////////////////////////
+bool EntityComponentManager::HasEntityImpl(EntityId _id) const
 {
   return
     // Check that the _id is in range
@@ -237,7 +266,7 @@ ComponentKey EntityComponentManager::CreateComponentImplementation(
   this->dataPtr->entityComponents[_entityId].push_back(componentKey);
 
   if (componentIdPair.second)
-    this->RebuildViews();
+    this->RebuildViewsImpl();
   else
     this->UpdateViews(_entityId);
 
@@ -247,6 +276,14 @@ ComponentKey EntityComponentManager::CreateComponentImplementation(
 
 /////////////////////////////////////////////////
 bool EntityComponentManager::EntityMatches(EntityId _id,
+    const std::set<ComponentTypeId> &_types) const
+{
+  std::lock_guard<std::mutex> lock(this->entityMutex);
+  return this->EntityMatchesImpl(_id, _types);
+}
+
+/////////////////////////////////////////////////
+bool EntityComponentManager::EntityMatchesImpl(EntityId _id,
     const std::set<ComponentTypeId> &_types) const
 {
   std::map<EntityId, std::vector<ComponentKey>>::const_iterator iter =
@@ -279,6 +316,13 @@ bool EntityComponentManager::EntityMatches(EntityId _id,
 
 /////////////////////////////////////////////////
 ComponentId EntityComponentManager::EntityComponentIdFromType(
+    const EntityId _id, const ComponentTypeId _type) const
+{
+  return this->EntityComponentIdFromTypeImpl(_id, _type);
+}
+
+/////////////////////////////////////////////////
+ComponentId EntityComponentManager::EntityComponentIdFromTypeImpl(
     const EntityId _id, const ComponentTypeId _type) const
 {
   std::map<EntityId, std::vector<ComponentKey>>::const_iterator ecIter =
@@ -364,6 +408,14 @@ void *EntityComponentManager::ComponentImplementation(const ComponentKey &_key)
 bool EntityComponentManager::HasComponentType(
     const ComponentTypeId _typeId) const
 {
+  std::lock_guard<std::mutex> lock(this->entityMutex);
+  return this->HasComponentTypeImpl(_typeId);
+}
+
+/////////////////////////////////////////////////
+bool EntityComponentManager::HasComponentTypeImpl(
+    const ComponentTypeId _typeId) const
+{
   return this->dataPtr->components.find(_typeId) !=
     this->dataPtr->components.end();
 }
@@ -420,13 +472,13 @@ void EntityComponentManager::UpdateViews(const EntityId _id)
   for (std::pair<const ComponentTypeKey, View> &view : this->dataPtr->views)
   {
     // Add/update the entity if it matches the view.
-    if (this->EntityMatches(_id, view.first))
+    if (this->EntityMatchesImpl(_id, view.first))
     {
       view.second.AddEntity(_id);
       for (const ComponentTypeId &compTypeId : view.first)
       {
         view.second.AddComponent(_id, compTypeId,
-            this->EntityComponentIdFromType(_id, compTypeId));
+            this->EntityComponentIdFromTypeImpl(_id, compTypeId));
       }
     }
     else if (view.second.entities.find(_id) != view.second.entities.end())
@@ -445,6 +497,14 @@ void EntityComponentManager::UpdateViews(const EntityId _id)
 //////////////////////////////////////////////////
 void EntityComponentManager::RebuildViews()
 {
+  std::lock_guard<std::mutex> lock(this->entityMutex);
+  this->RebuildViewsImpl();
+
+}
+
+//////////////////////////////////////////////////
+void EntityComponentManager::RebuildViewsImpl()
+{
   for (std::pair<const ComponentTypeKey, View> &view : this->dataPtr->views)
   {
     view.second.entities.clear();
@@ -453,7 +513,7 @@ void EntityComponentManager::RebuildViews()
     // view.
     for (const Entity &entity : this->dataPtr->entities)
     {
-      if (this->EntityMatches(entity.Id(), view.first))
+      if (this->EntityMatchesImpl(entity.Id(), view.first))
       {
         view.second.AddEntity(entity.Id());
         // Store pointers to all the components. This recursively adds
@@ -461,7 +521,7 @@ void EntityComponentManager::RebuildViews()
         for (const ComponentTypeId &compTypeId : view.first)
         {
           view.second.AddComponent(entity.Id(), compTypeId,
-              this->EntityComponentIdFromType(
+              this->EntityComponentIdFromTypeImpl(
                 entity.Id(), compTypeId));
         }
       }
