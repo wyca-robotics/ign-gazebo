@@ -21,7 +21,6 @@
 #include <ignition/transport/Node.hh>
 
 #include "ignition/gazebo/Server.hh"
-#include "ignition/gazebo/SystemManager.hh"
 #include "ignition/gazebo/test_config.hh"  // NOLINT(build/include)
 
 using namespace ignition;

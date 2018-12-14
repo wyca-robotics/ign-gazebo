@@ -43,7 +43,7 @@ NetworkPrimary::~NetworkPrimary()
 }
 
 /////////////////////////////////////////////////
-void NetworkPrimary::Configure(
+void NetworkPrimary::Configure(const EntityId &/*_id*/,
     const std::shared_ptr<const sdf::Element> &_sdf,
     EntityComponentManager& _ecm,
     EventManager &_eventMgr)

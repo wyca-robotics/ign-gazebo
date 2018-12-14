@@ -38,7 +38,7 @@ NetworkSecondary::~NetworkSecondary()
 }
 
 /////////////////////////////////////////////////
-void NetworkSecondary::Configure(
+void NetworkSecondary::Configure(const EntityId &/*_id*/,
     const std::shared_ptr<const sdf::Element> &/*_sdf*/,
     EntityComponentManager &/*_ecm*/,
     EventManager &/*_eventMgr*/)
