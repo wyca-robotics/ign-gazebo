@@ -576,30 +576,7 @@ namespace ignition
         }
       }
 
-      /// \brief Set the value of an existing component.
-      /// \param[in] _id Id of the Entity to which the component belongs.
-      /// \param[in] _value Value of the component.
-      /// \tparam ComponentTypeT Type of the component
-      /// \returns True if the component that belongs to the entity was found
-      /// and its value was scheduled to be set
-      public: template <typename ComponentTypeT>
-              bool SetComponent(EntityId _id, ComponentTypeT _value)
-      {
-        std::lock_guard<std::mutex> lock(this->entityMutex);
-        ComponentTypeT *comp = static_cast<ComponentTypeT *>(
-            this->ComponentImplementation<ComponentTypeT>(_id));
-        // comp is null if the component doesn't exist
-        if (comp != nullptr)
-        {
-          *comp = std::move(_value);
-          return true;
-        }
-
-        return false;
-      }
-
-      /// \brief Request to set the value of an existing component. This is
-      /// the preferred method of updating components
+      /// \brief Request to set the value of an existing component.
       /// \param[in] _id Id of the Entity to which the component belongs.
       /// \param[in] _value Value of the component.
       /// \tparam ComponentTypeT Type of the component
@@ -612,8 +589,7 @@ namespace ignition
         return RequestSetComponent(_id, 0, _value);
       }
 
-      /// \brief Request to update the value of an existing component. This is
-      /// the preferred method of updating components
+      /// \brief Request to set the value of an existing component.
       /// \param[in] _id Id of the Entity to which the component belongs.
       /// \param[in] _priority Priority of the request. Currently ignored.
       /// \param[in] _value Value of the component.

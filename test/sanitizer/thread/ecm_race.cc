@@ -84,8 +84,7 @@ void SystemEach(EntityComponentManager& _ecm)
           const components::World *,
           const components::Name * /* _name */) -> bool
       {
-        _ecm.SetComponent(_entity, components::Name("new_name"));
-        _ecm.RequestSetComponent(_entity, components::Name("another_name"));
+        _ecm.RequestSetComponent(_entity, components::Name("new_name"));
         return true;
       });
 }
