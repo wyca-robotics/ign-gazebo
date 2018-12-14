@@ -36,7 +36,7 @@ class ignition::gazebo::EntityComponentManagerPrivate
   /// and the value of the component.
   /// TODO(anyone) replace with a lock free data structure
   public: std::map<std::pair<EntityId, ComponentKey>,
-                   std::pair<size_t, std::any>> componentUpdateRequests;
+                   std::pair<size_t, std::any>> componentSetRequests;
 
   /// \brief Instances of entities
   public: std::vector<Entity> entities;
@@ -537,19 +537,19 @@ void EntityComponentManager::RebuildViewsImpl()
 }
 
 //////////////////////////////////////////////////
-void EntityComponentManager::RequestUpdateComponentImpl(
+void EntityComponentManager::RequestSetComponentImpl(
     const EntityId _id, const ComponentKey &_compKey, const size_t _prioirty,
     const std::any &_value)
 {
-  this->dataPtr->componentUpdateRequests[std::make_pair(_id, _compKey)] =
+  this->dataPtr->componentSetRequests[std::make_pair(_id, _compKey)] =
       std::make_pair(_prioirty, _value);
 }
 
 //////////////////////////////////////////////////
-void EntityComponentManager::ProcessUpdateComponentRequests()
+void EntityComponentManager::ProcessSetComponentRequests()
 {
   std::lock_guard<std::mutex> lock(this->entityMutex);
-  for (const auto &[key, val] : this->dataPtr->componentUpdateRequests)
+  for (const auto &[key, val] : this->dataPtr->componentSetRequests)
   {
     if (this->EntityHasComponentImpl(key.first, key.second))
     {
@@ -560,5 +560,5 @@ void EntityComponentManager::ProcessUpdateComponentRequests()
   }
 
   // Clear the update requets
-  this->dataPtr->componentUpdateRequests.clear();
+  this->dataPtr->componentSetRequests.clear();
 }

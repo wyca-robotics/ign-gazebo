@@ -576,14 +576,14 @@ namespace ignition
         }
       }
 
-      /// \brief Update the value of an existing component.
+      /// \brief Set the value of an existing component.
       /// \param[in] _id Id of the Entity to which the component belongs.
       /// \param[in] _value Value of the component.
       /// \tparam ComponentTypeT Type of the component
       /// \returns True if the component that belongs to the entity was found
-      /// and its value was updated
-      public: template<typename ComponentTypeT>
-              bool UpdateComponent(EntityId _id, ComponentTypeT _value)
+      /// and its value was scheduled to be set
+      public: template <typename ComponentTypeT>
+              bool SetComponent(EntityId _id, ComponentTypeT _value)
       {
         std::lock_guard<std::mutex> lock(this->entityMutex);
         ComponentTypeT *comp = static_cast<ComponentTypeT *>(
@@ -598,32 +598,32 @@ namespace ignition
         return false;
       }
 
-      /// \brief Request to update the value of an existing component. This is
+      /// \brief Request to set the value of an existing component. This is
       /// the preferred method of updating components
       /// \param[in] _id Id of the Entity to which the component belongs.
       /// \param[in] _value Value of the component.
       /// \tparam ComponentTypeT Type of the component
       /// \returns True if the component that belongs to the entity was found
-      /// and its value was scheduled to be updated
+      /// and its value was scheduled to be set
       public: template <typename ComponentTypeT>
-              bool RequestUpdateComponent(const EntityId _id,
-                                         const ComponentTypeT &_value)
+              bool RequestSetComponent(const EntityId _id,
+                                       const ComponentTypeT &_value)
       {
-        return RequestUpdateComponent(_id, 0, _value);
+        return RequestSetComponent(_id, 0, _value);
       }
 
       /// \brief Request to update the value of an existing component. This is
       /// the preferred method of updating components
       /// \param[in] _id Id of the Entity to which the component belongs.
-      /// \param[in] _priority Priority of the update. Currently ignored.
+      /// \param[in] _priority Priority of the request. Currently ignored.
       /// \param[in] _value Value of the component.
       /// \tparam ComponentTypeT Type of the component
       /// \returns True if the component that belongs to the entity was found
-      /// and its value was scheduled to be updated
+      /// and its value was scheduled to be set
       public: template <typename ComponentTypeT>
-              bool RequestUpdateComponent(const EntityId _id,
-                                          const size_t _priority,
-                                          const ComponentTypeT &_value)
+              bool RequestSetComponent(const EntityId _id,
+                                       const size_t _priority,
+                                       const ComponentTypeT &_value)
       {
         std::lock_guard<std::mutex> lock(this->entityMutex);
         const ComponentTypeId typeId = ComponentType<ComponentTypeT>();
@@ -631,7 +631,7 @@ namespace ignition
                                                                        typeId);
         if (compId != -1)
         {
-          this->RequestUpdateComponentImpl(_id, std::make_pair(typeId, compId),
+          this->RequestSetComponentImpl(_id, std::make_pair(typeId, compId),
                                            _priority, std::any(_value));
           return true;
         }
@@ -640,7 +640,7 @@ namespace ignition
 
       /// \brief Process all component update requests. This function is
       /// protected to facilitate testing.
-      protected: void ProcessUpdateComponentRequests();
+      protected: void ProcessSetComponentRequests();
 
       /// \brief Process all entity erase requests. This will remove
       /// entities and their components. This function is protected to
@@ -876,13 +876,13 @@ namespace ignition
       /// \brief Private implementation of RebuildViews
       private: void RebuildViewsImpl();
 
-      /// \brief Private implementation of RequestUpdateComponent
+      /// \brief Private implementation of RequestSetComponent
       /// \param[in] _id Id of the Entity to which the component belongs.
       /// \param[in] _compKey Component type and component id of the component
-      /// to update
-      /// \param[in] _priority Priority of the update. Currently ignored.
+      /// to set
+      /// \param[in] _priority Priority of the request. Currently ignored.
       /// \param[in] _value Value of the component.
-      private: void RequestUpdateComponentImpl(const EntityId _id,
+      private: void RequestSetComponentImpl(const EntityId _id,
                    const ComponentKey &_compKey, const size_t _priority,
                    const std::any &_value);
 
