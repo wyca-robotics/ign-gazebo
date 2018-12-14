@@ -124,7 +124,7 @@ namespace components
   SimpleWrapper<DataType, Identifier> &SimpleWrapper<DataType, Identifier>::
   operator=(const SimpleWrapper<DataType, Identifier> &_simpleWrapper)
   {
-    this->dataPtr->simplewrapper = _simpleWrapper.Data();
+    this->dataPtr->data = _simpleWrapper.Data();
     return *this;
   }
 }

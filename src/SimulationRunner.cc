@@ -266,8 +266,14 @@ void SimulationRunner::UpdateSystems()
   for (auto& system : this->systemsPreupdate)
     system->PreUpdate(this->currentInfo, this->entityCompMgr);
 
+  // Process component updates
+  this->entityCompMgr.ProcessUpdateComponentRequests();
+
   for (auto& system : this->systemsUpdate)
     system->Update(this->currentInfo, this->entityCompMgr);
+
+  // Process component updates
+  this->entityCompMgr.ProcessUpdateComponentRequests();
 
   for (auto& system : this->systemsPostupdate)
     system->PostUpdate(this->currentInfo, this->entityCompMgr);

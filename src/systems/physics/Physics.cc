@@ -353,7 +353,7 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
       [&](const EntityId &_entity,
           const components::Link * /*_link*/,
           const components::Pose *_pose,
-          const components::ParentEntity 
+          const components::ParentEntity
           *_parent)->bool
       {
         auto linkIt = this->entityLinkMap.find(_entity);
@@ -385,7 +385,7 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
             // this link relative to world so to set the model's pose, we have
             // to premultiply it by the inverse of the initial transform of
             // the link w.r.t to its model.
-            _ecm.WriteComponent(
+            _ecm.RequestUpdateComponent(
                 _parent->Data(),
                 components::Pose(_pose->Data().Inverse() +
                                  math::eigen3::convert(worldPose)));
@@ -394,7 +394,7 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
           {
             auto worldPose = linkIt->second->FrameDataRelativeToWorld().pose;
             // Compute the relative pose of this link from the model
-            _ecm.WriteComponent(
+            _ecm.RequestUpdateComponent(
                 _entity, components::Pose(math::eigen3::convert(worldPose) +
                                           parentPose->Data().Inverse()));
           }

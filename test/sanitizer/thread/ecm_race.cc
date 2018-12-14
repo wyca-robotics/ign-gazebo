@@ -15,6 +15,7 @@
  *
  */
 
+#include <random>
 #include <chrono>
 #include <gtest/gtest.h>
 
@@ -27,22 +28,48 @@ using namespace ignition;
 using namespace gazebo;
 
 //////////////////////////////////////////////////
-// Function that simulates the *update phase of systems where they can mutate 
+/// \breif Helper function to sleep a random amount of time
+/// \param[in] _max Maximum number of seconds to sleep
+void SleepRandom(double _max)
+{
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<> dis(0, _max);
+  const double toSleep = dis(gen);
+  std::this_thread::sleep_for(std::chrono::duration<double>(toSleep));
+}
+
+//////////////////////////////////////////////////
+// Function that simulates the *update phase of systems where they can mutate
 // entities and their components
 void SystemUpdate(EntityComponentManager& _ecm)
 {
   using namespace std::chrono_literals;
   std::vector<EntityId> entities;
+  std::vector<std::pair<EntityId, ComponentKey>> components;
+
+  // sleep a random amount before starting
+  SleepRandom(0.2);
+
   // Create entities
   for (int i = 0; i < 100; ++i)
   {
     EntityId entity = _ecm.CreateEntity();
     _ecm.CreateComponent(entity, components::World());
-    _ecm.CreateComponent(entity, components::Name("world_name"));
+    auto compKey = _ecm.CreateComponent(entity, components::Name("world_name"));
     entities.push_back(entity);
-    std::this_thread::sleep_for(50ms);
+    components.push_back(std::make_pair(entity,compKey));
+    // sleep a small random amount
+    SleepRandom(0.05);
   }
-  std::this_thread::sleep_for(200ms);
+
+  SleepRandom(0.1);
+  for (const auto [entity, compKey] : components)
+  {
+    _ecm.RemoveComponent(entity, compKey);
+  }
+  // sleep a random amount before erasing
+  SleepRandom(0.1);
   for (const auto entity : entities)
   {
     _ecm.RequestEraseEntity(entity);
@@ -57,7 +84,8 @@ void SystemEach(EntityComponentManager& _ecm)
           const components::World *,
           const components::Name * /* _name */) -> bool
       {
-        _ecm.WriteComponent(_entity, components::Name("new_name"));
+        _ecm.UpdateComponent(_entity, components::Name("new_name"));
+        _ecm.RequestUpdateComponent(_entity, components::Name("another_name"));
         return true;
       });
 }
@@ -74,8 +102,8 @@ class EntityCompMgrTest : public gazebo::EntityComponentManager
 
 int main()
 {
-  const int iters = 1;
-  const int nThreads = 5;
+  const int iters = 2;
+  const int nThreads = 20;
 
   EntityCompMgrTest  ecm;
   std::vector<std::thread> threads;

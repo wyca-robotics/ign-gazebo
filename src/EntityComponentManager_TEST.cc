@@ -32,6 +32,7 @@ class EntityCompMgrTest : public gazebo::EntityComponentManager
 {
   public: void ProcessAllRequests()
   {
+    this->ProcessUpdateComponentRequests();
     this->ProcessEraseEntityRequests();
   }
 };
@@ -390,7 +391,54 @@ TEST_P(EntityComponentManagerFixture, ComponentValues)
 }
 
 //////////////////////////////////////////////////
-TEST_P(EntityComponentManagerFixture, ComponentValueWrite)
+TEST_P(EntityComponentManagerFixture, UpdateComponent)
+{
+  ignition::common::Console::SetVerbosity(4);
+  EntityCompMgrTest manager;
+
+  // Create some entities
+  gazebo::EntityId e1 = manager.CreateEntity();
+  gazebo::EntityId e2 = manager.CreateEntity();
+  EXPECT_EQ(2u, manager.EntityCount());
+
+  // Try writing before any components are added
+  EXPECT_FALSE(manager.UpdateComponent<int>(e1, 123));
+  EXPECT_FALSE(manager.UpdateComponent<double>(e2, 0.123));
+
+  // Add components of different types to each entity
+  manager.CreateComponent<int>(e1, 123);
+  manager.CreateComponent<double>(e1, 0.123);
+
+  // Try writing a component that doesn't exist
+  EXPECT_FALSE(manager.UpdateComponent<double>(e2, 0.123));
+
+  // Check int component update
+  {
+    const auto *value = manager.Component<int>(e1);
+    ASSERT_NE(nullptr, value);
+    EXPECT_EQ(123, *value);
+    // now change the value
+    const bool result = manager.UpdateComponent<int>(e1, 246);
+    EXPECT_TRUE(result);
+    const auto *newValue = manager.Component<int>(e1);
+    EXPECT_EQ(246, *newValue);
+  }
+
+  // Check double component update
+  {
+    const auto *value = manager.Component<double>(e1);
+    ASSERT_NE(nullptr, value);
+    EXPECT_DOUBLE_EQ(0.123, *value);
+    // now change the value
+    const bool result = manager.UpdateComponent<double>(e1, 1.23);
+    EXPECT_TRUE(result);
+    const auto *newValue = manager.Component<double>(e1);
+    EXPECT_DOUBLE_EQ(1.23, *newValue);
+  }
+}
+
+//////////////////////////////////////////////////
+TEST_P(EntityComponentManagerFixture, RequestUpdateComponent)
 {
   ignition::common::Console::SetVerbosity(4);
   EntityCompMgrTest manager;
@@ -403,21 +451,34 @@ TEST_P(EntityComponentManagerFixture, ComponentValueWrite)
   manager.CreateComponent<int>(e1, 123);
   manager.CreateComponent<double>(e1, 0.123);
 
-  // Check component writes
+  // Check deferred component updates
   {
     const auto *value = manager.Component<int>(e1);
     ASSERT_NE(nullptr, value);
     EXPECT_EQ(123, *value);
     // now change the value
-    const bool result = manager.WriteComponent<int>(e1, 246);
+    const bool result = manager.RequestUpdateComponent<int>(e1, 246);
     EXPECT_TRUE(result);
     const auto *newValue = manager.Component<int>(e1);
-    EXPECT_EQ(246, *newValue);
+    // value shouldn't change
+    EXPECT_EQ(123, *newValue);
+
+    manager.ProcessAllRequests();
+    const auto *finalValue = manager.Component<int>(e1);
+    EXPECT_EQ(246, *finalValue);
+  }
+
+  // make sure that the request is only valid for one cycle
+  {
+    manager.UpdateComponent<int>(e1, 123);
+    manager.ProcessAllRequests();
+    const auto *value = manager.Component<int>(e1);
+    EXPECT_EQ(123, *value);
   }
 }
 
 //////////////////////////////////////////////////
-TEST_P(EntityComponentManagerFixture, ComponentValueWriteNonExistent)
+TEST_P(EntityComponentManagerFixture, UpdateComponentRemoved)
 {
   ignition::common::Console::SetVerbosity(4);
   EntityCompMgrTest manager;
@@ -426,12 +487,18 @@ TEST_P(EntityComponentManagerFixture, ComponentValueWriteNonExistent)
   gazebo::EntityId e1 = manager.CreateEntity();
   EXPECT_EQ(1u, manager.EntityCount());
 
-  // Try writing before any components are added
-  EXPECT_FALSE(manager.WriteComponent<int>(e1, 123));
+  // Add component
+  auto e1comp = manager.CreateComponent<int>(e1, 123);
+  manager.RemoveComponent(e1, e1comp);
+  EXPECT_EQ(nullptr, manager.Component<int>(e1));
 
-  manager.CreateComponent<int>(e1, 123);
-  // Try writing a component that doesn't exist
-  EXPECT_FALSE(manager.WriteComponent<double>(e1, 0.123));
+  // None of the update functions should succeed
+  EXPECT_FALSE(manager.UpdateComponent<int>(e1, 200));
+  EXPECT_FALSE(manager.RequestUpdateComponent<int>(e1, 200));
+
+  // Processing update requests should not recreate the component
+  manager.ProcessAllRequests();
+  EXPECT_EQ(nullptr, manager.Component<int>(e1));
 }
 
 //////////////////////////////////////////////////
