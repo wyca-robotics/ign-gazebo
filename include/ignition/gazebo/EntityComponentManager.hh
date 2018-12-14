@@ -343,6 +343,23 @@ namespace ignition
       /// \brief Constructor
       public: EntityComponentManager();
 
+      /// \brief Destructor
+      public: ~EntityComponentManager();
+
+      /// \brief Copy constructor
+      public: EntityComponentManager(const EntityComponentManager&) = delete;
+
+      /// \brief Move constructor
+      public: EntityComponentManager(EntityComponentManager&&) = delete;
+
+      /// \brief Copy assignment operator
+      public: EntityComponentManager &operator=(
+                  const EntityComponentManager&) = delete;
+
+      /// \brief Move assignment operator
+      public: EntityComponentManager &operator=(
+                  EntityComponentManager&&) = delete;
+
       /// \brief Creates a new Entity.
       /// \return An id for the Entity, or kNullEntity on failure.
       public: EntityId CreateEntity();
