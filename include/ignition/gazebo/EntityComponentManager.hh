@@ -128,8 +128,22 @@ namespace ignition
       /// \brief Constructor
       public: ComponentStorageBase() = default;
 
+      /// \brief Copy constructor
+      public: ComponentStorageBase(const ComponentStorageBase &) = default;
+
+      /// \brief Move constructor
+      public: ComponentStorageBase(ComponentStorageBase &&) = default;
+
       /// \brief Destructor
       public: virtual ~ComponentStorageBase() = default;
+
+      /// \brief Copy assignment operator
+      public: ComponentStorageBase &operator=(
+                  const ComponentStorageBase &) = default;
+
+      /// \brief Move assignment operator
+      public: ComponentStorageBase &operator=(
+                  ComponentStorageBase &&) = default;
 
       /// \brief Create a new component using the provided data.
       /// \param[in] _data Data used to construct the component.
@@ -289,7 +303,8 @@ namespace ignition
       }
 
       // Documentation inherited.
-      public: bool Update(const ComponentId _id, const std::any &_value)
+      public: bool Update(const ComponentId _id,
+                          const std::any &_value) final
       {
         std::map<ComponentId, int>::const_iterator iter = this->idMap.find(_id);
 
@@ -327,9 +342,6 @@ namespace ignition
     {
       /// \brief Constructor
       public: EntityComponentManager();
-
-      /// \brief Destructor
-      public: ~EntityComponentManager();
 
       /// \brief Creates a new Entity.
       /// \return An id for the Entity, or kNullEntity on failure.

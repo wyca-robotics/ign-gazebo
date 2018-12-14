@@ -64,11 +64,6 @@ EntityComponentManager::EntityComponentManager()
 }
 
 //////////////////////////////////////////////////
-EntityComponentManager::~EntityComponentManager()
-{
-}
-
-//////////////////////////////////////////////////
 size_t EntityComponentManager::EntityCount() const
 {
   std::lock_guard<std::mutex> lock(this->entityMutex);
