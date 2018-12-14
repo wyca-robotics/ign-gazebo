@@ -35,7 +35,7 @@ class ignition::gazebo::EntityComponentManagerPrivate
   /// and component type id, and the value is a pair of update priority (size_t)
   /// and the value of the component.
   /// TODO(anyone) replace with a lock free data structure
-  public: std::map<std::pair<EntityId, ComponentTypeId>,
+  public: std::map<std::pair<EntityId, ComponentKey>,
                    std::pair<size_t, std::any>> componentUpdateRequests;
 
   /// \brief Instances of entities
@@ -538,10 +538,10 @@ void EntityComponentManager::RebuildViewsImpl()
 
 //////////////////////////////////////////////////
 void EntityComponentManager::RequestUpdateComponentImpl(
-    const EntityId _id, const ComponentTypeId _typeId, const size_t _prioirty,
+    const EntityId _id, const ComponentKey &_compKey, const size_t _prioirty,
     const std::any &_value)
 {
-  this->dataPtr->componentUpdateRequests[std::make_pair(_id, _typeId)] =
+  this->dataPtr->componentUpdateRequests[std::make_pair(_id, _compKey)] =
       std::make_pair(_prioirty, _value);
 }
 
@@ -551,10 +551,11 @@ void EntityComponentManager::ProcessUpdateComponentRequests()
   std::lock_guard<std::mutex> lock(this->entityMutex);
   for (const auto &[key, val] : this->dataPtr->componentUpdateRequests)
   {
-    auto compId = this->EntityComponentIdFromTypeImpl(key.first, key.second);
-    if (compId != -1)
+    if (this->EntityHasComponentImpl(key.first, key.second))
     {
-      this->dataPtr->components.at(key.second) ->Update(compId, val.second);
+      // key.second is a ComponentKey: a pair (ComponentTypeId, ComponentId)
+      this->dataPtr->components.at(key.second.first)
+          ->Update(key.second.second, val.second);
     }
   }
 

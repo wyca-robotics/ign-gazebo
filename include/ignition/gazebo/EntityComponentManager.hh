@@ -627,10 +627,12 @@ namespace ignition
       {
         std::lock_guard<std::mutex> lock(this->entityMutex);
         const ComponentTypeId typeId = ComponentType<ComponentTypeT>();
-        if (this->EntityHasComponentTypeImpl(_id, typeId))
+        const ComponentId compId = this->EntityComponentIdFromTypeImpl(_id,
+                                                                       typeId);
+        if (compId != -1)
         {
-          this->RequestUpdateComponentImpl(_id, typeId, _priority,
-                                          std::any(_value));
+          this->RequestUpdateComponentImpl(_id, std::make_pair(typeId, compId),
+                                           _priority, std::any(_value));
           return true;
         }
         return false;
@@ -876,11 +878,12 @@ namespace ignition
 
       /// \brief Private implementation of RequestUpdateComponent
       /// \param[in] _id Id of the Entity to which the component belongs.
-      /// \param[in] _type Id Type id of the component to update
+      /// \param[in] _compKey Component type and component id of the component
+      /// to update
       /// \param[in] _priority Priority of the update. Currently ignored.
       /// \param[in] _value Value of the component.
       private: void RequestUpdateComponentImpl(const EntityId _id,
-                   const ComponentTypeId _typeId, const size_t _priority,
+                   const ComponentKey &_compKey, const size_t _priority,
                    const std::any &_value);
 
       /// \brief Private data pointer.
