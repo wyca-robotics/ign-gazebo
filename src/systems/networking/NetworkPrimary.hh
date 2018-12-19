@@ -35,7 +35,19 @@ namespace systems
 {
   // Inline bracket to help doxygen filtering.
   inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
+
     /// \brief System Plugin for primary distributed simulation instance.
+    /// The NetworkPrimary is the central broker of a distributed simulation
+    /// environment. It is responsible for managing the authoritative instance
+    /// of the entity-component database, as well as distributing simulation
+    /// state to the connected NetworkSecondary instances.
+    ///
+    /// In a given distributed simulation run, there will be only one instance
+    /// with the NetworkPrimary system loaded, all other instances will use the
+    /// NetworkSecondary system.
+    ///
+    /// The NetworkPrimary system relies on the ClientManager to keep track of
+    /// the state of connected (or disconnected) NetworkSecondaries.
     class IGNITION_GAZEBO_VISIBLE NetworkPrimary:
       public System,
       public ISystemConfigure

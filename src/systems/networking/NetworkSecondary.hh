@@ -35,6 +35,13 @@ namespace systems
   // Inline bracket to help doxygen filtering.
   inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
     /// \brief System Plugin for secondary distributed simulation instance.
+    /// The NetworkSeocndary system is responsible for receiving/transmitting
+    /// simulation state to the corresponding NetworkPrimary in a distributed
+    /// simulation environment.
+    ///
+    /// In a given distributed simulation run, there will be only one instance
+    /// with the NetworkPrimary system loaded, all other instances will use the
+    /// NetworkSecondary system.
     class IGNITION_GAZEBO_VISIBLE NetworkSecondary:
       public System,
       public ISystemConfigure

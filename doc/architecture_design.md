@@ -428,6 +428,16 @@ level and performer is only simulated at one runner at a time.
 
 > **TODO**: Explain how the primary does this
 
+#### Initial Network Handshake and Registration
+
+At the beginning of a distributed simulation, multiple instances of Gazebo are started. Once instance, known as the Primary,
+is started with the `NetworkPrimary` system plugin installed. The remaining instances are started with a `NetworkSecondary`
+system plugin installed. All instances start with their simulation execution paused, and all secondaries attempt to register
+with the primary via ignition-transport.
+
+The Primary starts with the knowledge of the number of Secondaries that will eventually connect. Once all expected secondaries
+are connected, then simulation begins on all instances.
+
 ## ![](https://66.media.tumblr.com/c95e2b7e9bd698f0ef7b968faaed23f7/tumblr_inline_mkn8tqM06r1roozkr.gif) Component serialization
 
 > **TODO**: Describe how components will be serialized to be sent across runners

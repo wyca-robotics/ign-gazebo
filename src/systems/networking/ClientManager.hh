@@ -46,6 +46,9 @@ namespace systems
     };
 
     /// \brief Class to manage network secondary registration/deregistration
+    /// The ClientManager is used by the NetworkPrimary to track the connection
+    /// state and simulation status of connected instances running with the
+    /// NetworkSecondary plugin.
     class IGNITION_GAZEBO_VISIBLE ClientManager
     {
       using NodePtr = std::shared_ptr<ignition::transport::Node>;
