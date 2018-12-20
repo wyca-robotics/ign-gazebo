@@ -22,6 +22,7 @@
 #include <sdf/World.hh>
 
 #include <ignition/common/Console.hh>
+#include <ignition/common/Profiler.hh>
 
 #include <ignition/gui/Application.hh>
 
