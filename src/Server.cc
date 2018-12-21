@@ -155,7 +155,7 @@ bool Server::Run(const bool _blocking, const uint64_t _iterations,
     // Do not allow running more than once.
     if (this->dataPtr->running)
     {
-      ignwarn << "The server is already runnnng.\n";
+      ignwarn << "The server is already running.\n";
       return false;
     }
   }

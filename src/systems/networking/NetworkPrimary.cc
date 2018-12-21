@@ -64,6 +64,8 @@ void NetworkPrimary::Configure(const EntityId &/*_id*/,
 /////////////////////////////////////////////////
 void NetworkPrimary::Run()
 {
+  // Pause the simulation while waiting for clients.
+  this->eventMgr->Emit<events::Pause>(true);
   this->clientThread = std::make_unique<std::thread>(
       &NetworkPrimary::WaitForClients,
       this);
