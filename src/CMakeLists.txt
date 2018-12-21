@@ -57,6 +57,9 @@ target_link_libraries(${SYSTEMS_TARGET}
   ignition-plugin${IGN_PLUGIN_VER}::register
 )
 
+target_compile_definitions(${PROJECT_LIBRARY_TARGET_NAME} PRIVATE "IGN_ENABLE_PROFILER=1")
+target_compile_definitions(${SYSTEMS_TARGET} PRIVATE "IGN_ENABLE_PROFILER=1")
+
 set(IGNITION_GAZEBO_PLUGIN_INSTALL_DIR
   ${CMAKE_INSTALL_PREFIX}/${IGN_LIB_INSTALL_DIR}/ign-${IGN_DESIGNATION}-${PROJECT_VERSION_MAJOR}/plugins
 )

@@ -16,6 +16,8 @@ target_link_libraries(${physics_system_target}
   ignition-plugin${IGN_PLUGIN_VER}::register
 )
 
+target_compile_definitions(${physics_system_target} PRIVATE "IGN_ENABLE_PROFILER=1")
+
 target_compile_definitions(${physics_system_target} PRIVATE
   "dartsim_plugin_LIB=\"$<TARGET_FILE:ignition-physics${IGN_PHYSICS_VER}::ignition-physics${IGN_PHYSICS_VER}-dartsim-plugin>\"")
 

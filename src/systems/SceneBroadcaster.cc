@@ -15,6 +15,7 @@
  *
 */
 
+#include <ignition/common/Profiler.hh>
 #include <ignition/msgs/scene.pb.h>
 #include <ignition/math/graph/Graph.hh>
 #include <ignition/plugin/RegisterMore.hh>
@@ -179,6 +180,7 @@ SceneBroadcaster::~SceneBroadcaster()
 void SceneBroadcaster::PostUpdate(const UpdateInfo &/*_info*/,
     const EntityComponentManager &_manager)
 {
+  IGN_PROFILE("SceneBroadcaster::PostUpdate");
   // Populate pose message
   msgs::Pose_V poseMsg;
 
