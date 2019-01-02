@@ -430,7 +430,7 @@ level and performer is only simulated at one runner at a time.
 
 #### Initial Network Handshake and Registration
 
-At the beginning of a distributed simulation, multiple instances of Gazebo are started. Once instance, known as the Primary,
+At the beginning of a distributed simulation, multiple instances of Gazebo are started. One instance, known as the Primary,
 is started with the `NetworkPrimary` system plugin installed. The remaining instances are started with a `NetworkSecondary`
 system plugin installed. All instances start with their simulation execution paused, and all secondaries attempt to register
 with the primary via ignition-transport.
