@@ -1,0 +1,45 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="default">
+    <plugin
+      filename="libignition-gazebo-physics-system.so"
+      name="ignition::gazebo::systems::v0::Physics">
+    </plugin>
+
+    <model name="sphere">
+      <pose>0 0 2 0 0 0</pose>
+      <link name="sphere_link">
+        <pose>0.0 0.0 5.0 0 0 0</pose>
+        <inertial>
+          <inertia>
+            <ixx>0.4</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.4</iyy>
+            <iyz>0</iyz>
+            <izz>0.4</izz>
+          </inertia>
+          <mass>1.0</mass>
+        </inertial>
+        <visual name="sphere_visual">
+          <geometry>
+            <sphere>
+              <radius>1</radius>
+            </sphere>
+          </geometry>
+        </visual>
+        <collision name="sphere_collision">
+          <geometry>
+            <sphere>
+              <radius>1</radius>
+            </sphere>
+          </geometry>
+        </collision>
+      </link>
+      <plugin
+        filename="libignition-gazebo-systems.so"
+        name="ignition::gazebo::systems::v0::Move3d">
+      </plugin>
+    </model>
+  </world>
+</sdf>

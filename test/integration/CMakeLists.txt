@@ -8,6 +8,7 @@ set(tests
   events.cc
   examples_build.cc
   model.cc
+  move3d_system.cc
   physics_system.cc
   play_pause.cc
 )
