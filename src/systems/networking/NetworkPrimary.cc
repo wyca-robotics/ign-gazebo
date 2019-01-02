@@ -45,7 +45,7 @@ NetworkPrimary::~NetworkPrimary()
 /////////////////////////////////////////////////
 void NetworkPrimary::Configure(const EntityId &/*_id*/,
     const std::shared_ptr<const sdf::Element> &_sdf,
-    EntityComponentManager& _ecm,
+    EntityComponentManager &_ecm,
     EventManager &_eventMgr)
 {
   int numClients = _sdf->Get<int>("num_clients");
