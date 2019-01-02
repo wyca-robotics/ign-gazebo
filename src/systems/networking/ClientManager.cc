@@ -26,9 +26,9 @@ using namespace ignition::gazebo::systems;
 
 /////////////////////////////////////////////////
 ClientManager::ClientManager(const NodePtr &_node,
-                             size_t _expected_num_clients):
+                             size_t _expectedClientCount):
   node(_node),
-  expected_num_clients(_expected_num_clients)
+  expectedClientCount(_expectedClientCount)
 {
   this->node->Advertise("/register", &ClientManager::RegisterClient, this);
   this->node->Advertise("/unregister", &ClientManager::UnregisterClient, this);
@@ -43,7 +43,7 @@ ClientManager::~ClientManager()
 bool ClientManager::Ready()
 {
   std::unique_lock<std::mutex> lock(clientMutex);
-  return this->clients.size() == this->expected_num_clients;
+  return this->clients.size() == this->expectedClientCount;
 }
 
 /////////////////////////////////////////////////
@@ -83,4 +83,3 @@ bool ClientManager::UnregisterClient(const msgs::ConnectionRequest &_req,
 
   return true;
 }
-

@@ -55,9 +55,9 @@ namespace systems
 
       /// \brief Constructor
       /// \param[in] _node Instance of an ignition transport Node to use.
-      /// \param[in] _expected_num_clients Expected number of clients.
+      /// \param[in] _expectedClientCount Expected number of clients.
       public: ClientManager(const NodePtr &_node,
-                            size_t _expected_num_clients);
+                            size_t _expectedClientCount);
 
       /// \brief Destructor
       public: ~ClientManager();
@@ -84,7 +84,7 @@ namespace systems
       private: NodePtr node;
 
       /// \brief Expected number of network secondaries to join
-      private: size_t expected_num_clients;
+      private: size_t expectedClientCount;
 
       /// \breif Clients mutex
       private: std::mutex clientMutex;
