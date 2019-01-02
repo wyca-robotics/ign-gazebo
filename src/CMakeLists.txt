@@ -7,9 +7,11 @@ set(gui_sources
 )
 
 set (sources
+  Conversions.cc
   Entity.cc
   EntityComponentManager.cc
   EventManager.cc
+  Model.cc
   Server.cc
   ServerConfig.cc
   ServerPrivate.cc
@@ -25,6 +27,7 @@ set (gtest_sources
   EntityComponentManager_TEST.cc
   Entity_TEST.cc
   EventManager_TEST.cc
+  Model_TEST.cc
   Server_TEST.cc
   SimulationRunner_TEST.cc
   System_TEST.cc
@@ -35,6 +38,7 @@ set (gtest_sources
 ign_create_core_library(SOURCES ${sources} CXX_STANDARD 17)
 target_link_libraries(${PROJECT_LIBRARY_TARGET_NAME}
   PUBLIC
+  ignition-math${IGN_MATH_VER}
   ignition-plugin${IGN_PLUGIN_VER}::core
   ignition-common${IGN_COMMON_VER}::ignition-common${IGN_COMMON_VER}
   ignition-gui${IGN_GUI_VER}::ignition-gui${IGN_GUI_VER}
