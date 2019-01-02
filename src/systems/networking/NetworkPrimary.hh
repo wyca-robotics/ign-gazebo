@@ -35,7 +35,6 @@ namespace systems
 {
   // Inline bracket to help doxygen filtering.
   inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
-
     /// \brief System Plugin for primary distributed simulation instance.
     /// The NetworkPrimary is the central broker of a distributed simulation
     /// environment. It is responsible for managing the authoritative instance
