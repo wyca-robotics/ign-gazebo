@@ -49,10 +49,12 @@ class ignition::gazebo::systems::Move3dPrivate
   public: EntityId modelId = kNullEntity;
 };
 
+//////////////////////////////////////////////////
 Move3d::Move3d() : dataPtr(std::make_unique<Move3dPrivate>())
 {
 }
 
+//////////////////////////////////////////////////
 void Move3d::Configure(
     const EntityId &_id, const std::shared_ptr<const sdf::Element> &,
     EntityComponentManager &_ecm, EventManager &)
@@ -69,6 +71,7 @@ void Move3d::Configure(
   }
 }
 
+//////////////////////////////////////////////////
 void Move3d::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
     ignition::gazebo::EntityComponentManager &_ecm)
 {
@@ -103,6 +106,7 @@ void Move3d::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
   }
 }
 
+//////////////////////////////////////////////////
 void Move3dPrivate::OnLinearVel(const msgs::Vector3d &_msg)
 {
   igndbg << "Command: " << _msg.x() << " " << _msg.y() << " " << _msg.z()

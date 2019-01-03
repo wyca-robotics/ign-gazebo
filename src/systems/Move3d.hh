@@ -14,8 +14,8 @@
  * limitations under the License.
  *
  */
-#ifndef MOVE3D_MOVE3D_HH_
-#define MOVE3D_MOVE3D_HH_
+#ifndef IGNITION_GAZEBO_MOVE3D_SYSTEM_HH_
+#define IGNITION_GAZEBO_MOVE3D_SYSTEM_HH_
 
 #include <ignition/gazebo/System.hh>
 #include <memory>
@@ -35,6 +35,7 @@ class IGNITION_GAZEBO_VISIBLE Move3d
       public ignition::gazebo::ISystemConfigure,
       public ignition::gazebo::ISystemPreUpdate
 {
+  /// \brief Constructor
   public: Move3d();
 
   /// Documentation inherited
@@ -42,9 +43,12 @@ class IGNITION_GAZEBO_VISIBLE Move3d
                          const std::shared_ptr<const sdf::Element> &_sdf,
                          EntityComponentManager &_ecm,
                          EventManager &_eventMgr) final;
+
+  /// Documentation inherited
   public: void PreUpdate(const ignition::gazebo::UpdateInfo &_info,
                          ignition::gazebo::EntityComponentManager &_ecm) final;
 
+  /// \brief Private data pointer
   private: std::unique_ptr<Move3dPrivate> dataPtr;
 };
 }  // namespace IGNITION_GAZEBO_VERSION_NAMESPACE
