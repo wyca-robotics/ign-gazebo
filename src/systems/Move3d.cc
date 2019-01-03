@@ -82,28 +82,28 @@ void Move3d::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
   if (_info.paused)
     return;
 
-  if ((this->dataPtr->modelId != kNullEntity) &&
-      (this->dataPtr->linearVelCmd.has_value()))
+  // No new command
+  if (!this->dataPtr->linearVelCmd.has_value())
+    return;
+
+  // update the next position of the model based on the commanded velocity
+  auto linVelocity =
+      _ecm.Component<components::LinearVelocity>(this->dataPtr->modelId);
+
+
+  if (linVelocity != nullptr)
   {
-    // update the next position of the model based on the commanded velocity
-    auto linVelocity =
-        _ecm.Component<components::LinearVelocity>(this->dataPtr->modelId);
-
-
-    if (linVelocity != nullptr)
-    {
-      *linVelocity = components::LinearVelocity(*this->dataPtr->linearVelCmd);
-    }
-    else
-    {
-      _ecm.CreateComponent(
-          this->dataPtr->modelId,
-          components::LinearVelocity(*this->dataPtr->linearVelCmd));
-    }
-    // clear the command so that we only update the component when there's a new
-    // command.
-    this->dataPtr->linearVelCmd.reset();
+    *linVelocity = components::LinearVelocity(*this->dataPtr->linearVelCmd);
   }
+  else
+  {
+    _ecm.CreateComponent(
+        this->dataPtr->modelId,
+        components::LinearVelocity(*this->dataPtr->linearVelCmd));
+  }
+  // clear the command so that we only update the component when there's a new
+  // command.
+  this->dataPtr->linearVelCmd.reset();
 }
 
 //////////////////////////////////////////////////
