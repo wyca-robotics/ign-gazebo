@@ -25,6 +25,7 @@
 #include "ignition/gazebo/components/Name.hh"
 #include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/Model.hh"
 
 #include "Move3d.hh"
 
@@ -47,6 +48,9 @@ class ignition::gazebo::systems::Move3dPrivate
 
   /// \brief EntityId of the model to which this plugin is attached
   public: EntityId modelId = kNullEntity;
+
+  /// \brief Model interface
+  public: Model model{kNullEntity};
 };
 
 //////////////////////////////////////////////////
@@ -59,16 +63,22 @@ void Move3d::Configure(
     const EntityId &_id, const std::shared_ptr<const sdf::Element> &,
     EntityComponentManager &_ecm, EventManager &)
 {
-  this->dataPtr->modelId = _id;
-  igndbg << "Move3d attached to: " << this->dataPtr->modelId  << "\n";
+  this->dataPtr->model = Model(_id);
 
-  auto name = _ecm.Component<components::Name>(_id);
-  if (name != nullptr)
+  if (!this->dataPtr->model.Valid(_ecm))
   {
-    this->dataPtr->node.Subscribe(name->Data() + "/move3d/linear_vel",
-                                  &Move3dPrivate::OnLinearVel,
-                                  this->dataPtr.get());
+    ignerr << "Move3d plugin should be attached to a model entity. "
+           << "Failed to initialize." << std::endl;
+    return;
   }
+
+  std::string topic{"/model/" + this->dataPtr->model.Name(_ecm) +
+                    "/linear_vel"};
+  this->dataPtr->node.Subscribe(topic, &Move3dPrivate::OnLinearVel,
+                                this->dataPtr.get());
+
+  ignmsg << "DiffDrive subscribing to linear velocity messages on [" << topic
+         << "]" << std::endl;
 }
 
 //////////////////////////////////////////////////
