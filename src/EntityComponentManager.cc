@@ -33,6 +33,9 @@ class ignition::gazebo::EntityComponentManagerPrivate
   /// \brief Instances of entities
   public: std::vector<Entity> entities;
 
+  /// \brief Entities that have just been created
+  public: std::set<EntityId> newlyCreatedEntityIds;
+
   /// \brief Deleted entity ids that can be reused
   public: std::set<EntityId> availableEntityIds;
 
@@ -80,30 +83,50 @@ EntityId EntityComponentManager::CreateEntity()
     id = *(this->dataPtr->availableEntityIds.begin());
     this->dataPtr->availableEntityIds.erase(
         this->dataPtr->availableEntityIds.begin());
-    this->dataPtr->entities[id] = std::move(Entity(id));
+    this->dataPtr->entities[id] = Entity(id);
   }
   else
   {
     // Create a brand new Id
     id = this->dataPtr->entities.size();
-    this->dataPtr->entities.push_back(std::move(Entity(id)));
+    this->dataPtr->entities.push_back(Entity(id));
   }
+
+  // Add entity to the list of newly created entities
+  this->dataPtr->newlyCreatedEntityIds.insert(id);
 
   return id;
 }
 
 /////////////////////////////////////////////////
-void EntityComponentManager::RequestEraseEntity(EntityId _id)
+void EntityComponentManager::ClearNewlyCreatedEntities()
 {
   std::lock_guard<std::mutex> lock(this->entityMutex);
-  this->dataPtr->toEraseEntityIds.insert(_id);
+  this->dataPtr->newlyCreatedEntityIds.clear();
+  for (std::pair<const ComponentTypeKey, View> &view : this->dataPtr->views)
+  {
+    view.second.ClearNewEntities();
+  }
+}
+
+/////////////////////////////////////////////////
+void EntityComponentManager::RequestEraseEntity(EntityId _id)
+{
+  {
+    std::lock_guard<std::mutex> lock(this->entityMutex);
+    this->dataPtr->toEraseEntityIds.insert(_id);
+  }
+  this->UpdateViews(_id);
 }
 
 /////////////////////////////////////////////////
 void EntityComponentManager::RequestEraseEntities()
 {
-  std::lock_guard<std::mutex> lock(this->entityMutex);
-  this->dataPtr->eraseAllEntities = true;
+  {
+    std::lock_guard<std::mutex> lock(this->entityMutex);
+    this->dataPtr->eraseAllEntities = true;
+  }
+  this->RebuildViews();
 }
 
 /////////////////////////////////////////////////
@@ -232,6 +255,24 @@ bool EntityComponentManager::EntityHasComponentTypeImpl(const EntityId _id,
       {
         return _key.first == _typeId;
       }) != iter->second.end();
+}
+
+/////////////////////////////////////////////////
+bool EntityComponentManager::IsNewEntity(const EntityId _id) const
+{
+  return this->dataPtr->newlyCreatedEntityIds.find(_id) !=
+         this->dataPtr->newlyCreatedEntityIds.end();
+}
+
+/////////////////////////////////////////////////
+bool EntityComponentManager::IsMarkedForErasure(const EntityId _id) const
+{
+  if (this->dataPtr->eraseAllEntities)
+  {
+    return true;
+  }
+  return this->dataPtr->toEraseEntityIds.find(_id) !=
+         this->dataPtr->toEraseEntityIds.end();
 }
 
 /////////////////////////////////////////////////
@@ -474,22 +515,22 @@ void EntityComponentManager::UpdateViews(const EntityId _id)
     // Add/update the entity if it matches the view.
     if (this->EntityMatchesImpl(_id, view.first))
     {
-      view.second.AddEntity(_id);
+      view.second.AddEntity(_id, this->IsNewEntity(_id));
+      // If there is a request to delete this entity, update the view as
+      // well
+      if (this->IsMarkedForErasure(_id))
+      {
+        view.second.AddEntityToErased(_id);
+      }
       for (const ComponentTypeId &compTypeId : view.first)
       {
         view.second.AddComponent(_id, compTypeId,
             this->EntityComponentIdFromTypeImpl(_id, compTypeId));
       }
     }
-    else if (view.second.entities.find(_id) != view.second.entities.end())
+    else
     {
-      // Otherwise, remove the entity from the view
-      view.second.entities.erase(_id);
-      // Remove the entity from the components map
-      for (const ComponentTypeId &compTypeId : view.first)
-      {
-        view.second.components.erase(std::make_pair(_id, compTypeId));
-      }
+      view.second.EraseEntity(_id, view.first);
     }
   }
 }
@@ -514,7 +555,13 @@ void EntityComponentManager::RebuildViewsImpl()
     {
       if (this->EntityMatchesImpl(entity.Id(), view.first))
       {
-        view.second.AddEntity(entity.Id());
+        view.second.AddEntity(entity.Id(), this->IsNewEntity(entity.Id()));
+        // If there is a request to delete this entity, update the view as
+        // well
+        if (this->IsMarkedForErasure(entity.Id()))
+        {
+          view.second.AddEntityToErased(entity.Id());
+        }
         // Store pointers to all the components. This recursively adds
         // all the ComponentTypeTs that belong to the entity to the view.
         for (const ComponentTypeId &compTypeId : view.first)
@@ -527,3 +574,4 @@ void EntityComponentManager::RebuildViewsImpl()
     }
   }
 }
+
