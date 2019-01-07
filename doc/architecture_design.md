@@ -433,3 +433,61 @@ level and performer is only simulated at one runner at a time.
 > **TODO**: Describe how components will be serialized to be sent across runners
 > so their state is synced.
 
+### Component Serialization
+
+When possible, components shall be stored as corresponding `ign-msgs` types. This keeps components as relatively POD structures,
+but also allows for easy serialization and deserialization.
+
+For some types, the corresponding `ign-msgs` structure may be inconvenient or inefficient to use.  A motivating example is that
+of some of the common `ign::math` types that are used as components (e.g. `Vector3`, `Matrix3`, `Pose`, `Quaternion`). In these
+cases, the component can be registered with a `ComponentRegistrar` which defines the corresponding `ign-msgs` type that should
+be serialized to/deserialized from, as well as the methods that should be used to do the serialization/deserialization.
+
+The `ComponentRegistrar` exposes macros `REGISTER_COMPONENT` and `REGISTER_CUSTOM_COMPONENT` that allows users to define
+components that will be serializable, as well as registering custom types with their corresponding serialization format.
+
+For the actual transmission, an ign-msg based component can either be used directly with an ign-transport publisher, subscriber,
+or service, or serialized to a larger buffer to be sent with the `raw` variant of an ign-transport publisher.
+
+### Entity Syncronization
+
+Each entity to be syncronized over the network shall have an additional `NetworkComponent` attached to the `Entity`.
+
+The `NetworkComponent` defines metadata about the entity, as well as a list of corresponding components attached to the entity
+that are to be serialized.
+
+The Network subsystem iterates this list of entities and serializes the listed components to be sent in a packet.
+
+#### Multiple Component Serialization
+
+A limitation of the protobuf format is it is not self-describing or self-delimiting in the serialized format. This means that
+additional metadata is required to serialize a series of components attached to an Entity.
+
+To work around this limitation, we can write a specialized message:
+
+```
+message SerializedComponent
+{
+  Header header = 1;
+  string component_type = 2;
+  string message_format = 3;
+  google.protobuf.Any component = 4;
+};
+
+message SerializedEntity
+{
+  Header header = 1;
+  sfixed32 entity_id = 2;
+  repeated SerializedComponent components = 3;
+};
+```
+
+The advantage of using a specialized protobuf message is that we can still take advantage
+of the zero-copy communications in ign-transport when it is available (intraprocess).
+
+##### Considered alternative: protobuf oneof
+
+Also considered was the protobuf feature `oneof`.  This allows a tagged union in the Protobuf format, where exactly one
+of an list of types will be populated on serialization/deserialization. This will not work in the case of `ign-gazebo` as
+all components are not known at the time that the proto files are compiled (users can add custom components as part of their
+libraries).
