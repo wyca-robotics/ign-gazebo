@@ -437,8 +437,7 @@ namespace ignition
               const ComponentTypeT *Component(const EntityId _id) const
       {
         std::lock_guard<std::mutex> lock(this->entityMutex);
-        return static_cast<const ComponentTypeT *>(
-            this->ComponentImplementation<ComponentTypeT>(_id));
+        return this->ComponentImplementation<ComponentTypeT>(_id);
       }
 
       /// \brief Get a mutable component assigned to an entity based on a
@@ -450,8 +449,7 @@ namespace ignition
               ComponentTypeT *Component(const EntityId _id)
       {
         std::lock_guard<std::mutex> lock(this->entityMutex);
-        return static_cast<ComponentTypeT *>(
-            this->ComponentImplementation<ComponentTypeT>(_id));
+        return this->ComponentImplementation<ComponentTypeT>(_id);
       }
 
       /// \brief Get a component based on a key.
@@ -536,8 +534,8 @@ namespace ignition
             using ComponentTypeT = std::remove_cv_t<
               std::remove_reference_t<decltype(_desiredComponent)>>;
 
-            auto entityComponent = static_cast<const ComponentTypeT *>(
-                this->ComponentImplementation<ComponentTypeT>(entity));
+            const auto entityComponent =
+                this->ComponentImplementation<ComponentTypeT>(entity);
 
             if (*entityComponent != _desiredComponent)
             {
@@ -591,10 +589,8 @@ namespace ignition
           {
             // unlock before calling _f
             uniqLock.unlock();
-            if (!_f(entity.Id(),
-                    static_cast<const ComponentTypeTs *>(
-                        this->ComponentImplementation<ComponentTypeTs>(
-                            entity.Id()))...))
+            if (!_f(entity.Id(), this->ComponentImplementation<ComponentTypeTs>(
+                                     entity.Id())...))
             {
               break;
             }
@@ -632,10 +628,8 @@ namespace ignition
           {
             // unlock before calling _f
             uniqLock.unlock();
-            if (!_f(entity.Id(),
-                    static_cast<ComponentTypeTs *>(
-                        this->ComponentImplementation<ComponentTypeTs>(
-                            entity.Id()))...))
+            if (!_f(entity.Id(), this->ComponentImplementation<ComponentTypeTs>(
+                                     entity.Id())...))
             {
               break;
             }
@@ -883,12 +877,14 @@ namespace ignition
       /// \param[in] _id Id of the entity.
       /// \return The component of the specified type assigned to specified
       /// Entity, or nullptr if the component could not be found.
-      private: template<typename ComponentTypeT>
-              const void *ComponentImplementation(const EntityId _id) const
+      private: template <typename ComponentTypeT>
+               const ComponentTypeT *ComponentImplementation(
+                   const EntityId _id) const
       {
         // Get a unique identifier to the component type
         const ComponentTypeId typeId = ComponentType<ComponentTypeT>();
-        return this->ComponentImplementation(_id, typeId);
+        return static_cast<const ComponentTypeT *>(
+            this->ComponentImplementation(_id, typeId));
       }
 
       /// \brief Get a mutable component assigned to an entity based on a
@@ -897,11 +893,12 @@ namespace ignition
       /// \return The component of the specified type assigned to specified
       /// Entity, or nullptr if the component could not be found.
       private: template<typename ComponentTypeT>
-              void *ComponentImplementation(const EntityId _id)
+              ComponentTypeT *ComponentImplementation(const EntityId _id)
       {
         // Get a unique identifier to the component type
         const ComponentTypeId typeId = ComponentType<ComponentTypeT>();
-        return this->ComponentImplementation(_id, typeId);
+        return static_cast<ComponentTypeT *>(
+            this->ComponentImplementation(_id, typeId));
       }
 
       /// \brief Get a component based on a component type.
