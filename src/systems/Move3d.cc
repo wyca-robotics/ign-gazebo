@@ -46,9 +46,6 @@ class ignition::gazebo::systems::Move3dPrivate
   /// \brief Current velocity command
   public: std::optional<math::Vector3d> linearVelCmd;
 
-  /// \brief EntityId of the model to which this plugin is attached
-  public: EntityId modelId = kNullEntity;
-
   /// \brief Model interface
   public: Model model{kNullEntity};
 };
@@ -77,7 +74,7 @@ void Move3d::Configure(
   this->dataPtr->node.Subscribe(topic, &Move3dPrivate::OnLinearVel,
                                 this->dataPtr.get());
 
-  ignmsg << "DiffDrive subscribing to linear velocity messages on [" << topic
+  ignmsg << "Move3D subscribing to linear velocity messages on [" << topic
          << "]" << std::endl;
 }
 
@@ -85,7 +82,7 @@ void Move3d::Configure(
 void Move3d::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
     ignition::gazebo::EntityComponentManager &_ecm)
 {
-  if (this->dataPtr->modelId == kNullEntity)
+  if (this->dataPtr->model.Id() == kNullEntity)
     return;
 
   // Nothing left to do if paused.
@@ -98,8 +95,7 @@ void Move3d::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
 
   // update the next position of the model based on the commanded velocity
   auto linVelocity =
-      _ecm.Component<components::LinearVelocity>(this->dataPtr->modelId);
-
+      _ecm.Component<components::LinearVelocity>(this->dataPtr->model.Id());
 
   if (linVelocity != nullptr)
   {
@@ -108,7 +104,7 @@ void Move3d::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
   else
   {
     _ecm.CreateComponent(
-        this->dataPtr->modelId,
+        this->dataPtr->model.Id(),
         components::LinearVelocity(*this->dataPtr->linearVelCmd));
   }
   // clear the command so that we only update the component when there's a new

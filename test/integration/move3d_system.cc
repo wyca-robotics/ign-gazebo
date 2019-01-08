@@ -132,7 +132,7 @@ TEST_F(Move3dTest, PublishCmd)
 
   // Publish command and check that the sphere moved in the commanded direction.
   transport::Node node;
-  auto pub = node.Advertise<msgs::Vector3d>("/sphere/move3d/linear_vel");
+  auto pub = node.Advertise<msgs::Vector3d>("/model/sphere/linear_vel");
 
   msgs::Vector3d msg = msgs::Convert(sphereVelocity);
   pub.Publish(msg);
