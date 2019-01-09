@@ -57,10 +57,10 @@ Move3d::Move3d() : dataPtr(std::make_unique<Move3dPrivate>())
 
 //////////////////////////////////////////////////
 void Move3d::Configure(
-    const EntityId &_id, const std::shared_ptr<const sdf::Element> &,
+    const Entity &_entity, const std::shared_ptr<const sdf::Element> &,
     EntityComponentManager &_ecm, EventManager &)
 {
-  this->dataPtr->model = Model(_id);
+  this->dataPtr->model = Model(_entity);
 
   if (!this->dataPtr->model.Valid(_ecm))
   {
@@ -82,7 +82,7 @@ void Move3d::Configure(
 void Move3d::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
     ignition::gazebo::EntityComponentManager &_ecm)
 {
-  if (this->dataPtr->model.Id() == kNullEntity)
+  if (this->dataPtr->model.Entity() == kNullEntity)
     return;
 
   // Nothing left to do if paused.
@@ -95,7 +95,7 @@ void Move3d::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
 
   // update the next position of the model based on the commanded velocity
   auto linVelocity =
-      _ecm.Component<components::LinearVelocity>(this->dataPtr->model.Id());
+      _ecm.Component<components::LinearVelocity>(this->dataPtr->model.Entity());
 
   if (linVelocity != nullptr)
   {
@@ -104,7 +104,7 @@ void Move3d::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
   else
   {
     _ecm.CreateComponent(
-        this->dataPtr->model.Id(),
+        this->dataPtr->model.Entity(),
         components::LinearVelocity(*this->dataPtr->linearVelCmd));
   }
   // clear the command so that we only update the component when there's a new

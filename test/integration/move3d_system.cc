@@ -108,7 +108,7 @@ TEST_F(Move3dTest, PublishCmd)
                               const gazebo::EntityComponentManager &_ecm)
       {
         _ecm.Each<components::Model, components::Name, components::Pose>(
-            [&](const ignition::gazebo::EntityId &,
+            [&](const ignition::gazebo::Entity &,
                 const components::Model *,
                 const components::Name *_name,
                 const components::Pose *_pose) -> bool

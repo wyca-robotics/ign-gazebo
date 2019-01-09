@@ -406,7 +406,7 @@ void PhysicsPrivate::UpdatePhysics(const EntityComponentManager &_ecm)
 
   // Handle models by applying the velocity on all child links
   _ecm.Each<components::Model, components::LinearVelocity>(
-      [&](const EntityId &_entity, const components::Model *, const
+      [&](const Entity &_entity, const components::Model *, const
           components::LinearVelocity *_linVel)->bool
       {
         auto modelIt = this->entityModelMap.find(_entity);
