@@ -106,8 +106,24 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
       std::bind(&SimulationRunner::SetPaused, this, std::placeholders::_1));
 
   // World control
-  this->node.Advertise("/world/" + this->worldName + "/control",
-        &SimulationRunner::OnWorldControl, this);
+  transport::NodeOptions opts;
+  opts.SetNameSpace("/world/" + this->worldName);
+  this->node = std::make_unique<transport::Node>(opts);
+
+  this->node->Advertise("control", &SimulationRunner::OnWorldControl, this);
+
+  // Publish empty GUI messages for worlds that have no GUI in the beginning.
+  // In the future, support modifying GUI from the server at runtime.
+  if (_world->Gui())
+  {
+    this->guiMsg = Convert<msgs::GUI>(*_world->Gui());
+  }
+
+  std::string infoService{"gui/info"};
+  this->node->Advertise(infoService, &SimulationRunner::GuiInfoService, this);
+
+  ignmsg << "Serving GUI information on [" << opts.NameSpace() << "/"
+         << infoService << "]" << std::endl;
 
   ignmsg << "World [" << _world->Name() << "] initialized with ["
          << physics->Name() << "] physics profile." << std::endl;
@@ -179,8 +195,8 @@ void SimulationRunner::PublishStats()
   {
     transport::AdvertiseMessageOptions advertOpts;
     advertOpts.SetMsgsPerSec(5);
-    this->statsPub = this->node.Advertise<ignition::msgs::WorldStatistics>(
-          "/world/" + this->worldName + "/stats", advertOpts);
+    this->statsPub = this->node->Advertise<ignition::msgs::WorldStatistics>(
+        "stats", advertOpts);
   }
 
   // Create the world statistics message.
@@ -338,10 +354,10 @@ bool SimulationRunner::Run(const uint64_t _iterations)
 }
 
 //////////////////////////////////////////////////
-EntityId SimulationRunner::CreateEntities(const sdf::World *_world)
+Entity SimulationRunner::CreateEntities(const sdf::World *_world)
 {
   // World entity
-  EntityId worldEntity = this->entityCompMgr.CreateEntity();
+  Entity worldEntity = this->entityCompMgr.CreateEntity();
 
   // World components
   this->entityCompMgr.CreateComponent(worldEntity, components::World());
@@ -376,10 +392,10 @@ EntityId SimulationRunner::CreateEntities(const sdf::World *_world)
 }
 
 //////////////////////////////////////////////////
-EntityId SimulationRunner::CreateEntities(const sdf::Model *_model)
+Entity SimulationRunner::CreateEntities(const sdf::Model *_model)
 {
   // Entity
-  EntityId modelEntity = this->entityCompMgr.CreateEntity();
+  Entity modelEntity = this->entityCompMgr.CreateEntity();
 
   // Components
   this->entityCompMgr.CreateComponent(modelEntity, components::Model());
@@ -427,10 +443,10 @@ EntityId SimulationRunner::CreateEntities(const sdf::Model *_model)
 }
 
 //////////////////////////////////////////////////
-EntityId SimulationRunner::CreateEntities(const sdf::Light *_light)
+Entity SimulationRunner::CreateEntities(const sdf::Light *_light)
 {
   // Entity
-  EntityId lightEntity = this->entityCompMgr.CreateEntity();
+  Entity lightEntity = this->entityCompMgr.CreateEntity();
 
   // Components
   this->entityCompMgr.CreateComponent(lightEntity, components::Light(*_light));
@@ -443,10 +459,10 @@ EntityId SimulationRunner::CreateEntities(const sdf::Light *_light)
 }
 
 //////////////////////////////////////////////////
-EntityId SimulationRunner::CreateEntities(const sdf::Link *_link)
+Entity SimulationRunner::CreateEntities(const sdf::Link *_link)
 {
   // Entity
-  EntityId linkEntity = this->entityCompMgr.CreateEntity();
+  Entity linkEntity = this->entityCompMgr.CreateEntity();
 
   // Components
   this->entityCompMgr.CreateComponent(linkEntity, components::Link());
@@ -494,10 +510,10 @@ EntityId SimulationRunner::CreateEntities(const sdf::Link *_link)
 }
 
 //////////////////////////////////////////////////
-EntityId SimulationRunner::CreateEntities(const sdf::Joint *_joint)
+Entity SimulationRunner::CreateEntities(const sdf::Joint *_joint)
 {
   // Entity
-  EntityId jointEntity = this->entityCompMgr.CreateEntity();
+  Entity jointEntity = this->entityCompMgr.CreateEntity();
 
   // Components
   this->entityCompMgr.CreateComponent(jointEntity,
@@ -532,10 +548,10 @@ EntityId SimulationRunner::CreateEntities(const sdf::Joint *_joint)
 }
 
 //////////////////////////////////////////////////
-EntityId SimulationRunner::CreateEntities(const sdf::Visual *_visual)
+Entity SimulationRunner::CreateEntities(const sdf::Visual *_visual)
 {
   // Entity
-  EntityId visualEntity = this->entityCompMgr.CreateEntity();
+  Entity visualEntity = this->entityCompMgr.CreateEntity();
 
   // Components
   this->entityCompMgr.CreateComponent(visualEntity, components::Visual());
@@ -561,10 +577,10 @@ EntityId SimulationRunner::CreateEntities(const sdf::Visual *_visual)
 }
 
 //////////////////////////////////////////////////
-EntityId SimulationRunner::CreateEntities(const sdf::Collision *_collision)
+Entity SimulationRunner::CreateEntities(const sdf::Collision *_collision)
 {
   // Entity
-  EntityId collisionEntity = this->entityCompMgr.CreateEntity();
+  Entity collisionEntity = this->entityCompMgr.CreateEntity();
 
   // Components
   this->entityCompMgr.CreateComponent(collisionEntity,
@@ -585,7 +601,7 @@ EntityId SimulationRunner::CreateEntities(const sdf::Collision *_collision)
 
 //////////////////////////////////////////////////
 void SimulationRunner::LoadPlugins(const sdf::ElementPtr &_sdf,
-    const EntityId _id)
+    const Entity _entity)
 {
   if (!_sdf->HasElement("plugin"))
     return;
@@ -599,7 +615,7 @@ void SimulationRunner::LoadPlugins(const sdf::ElementPtr &_sdf,
       auto systemConfig = system.value()->QueryInterface<ISystemConfigure>();
       if (systemConfig != nullptr)
       {
-        systemConfig->Configure(_id, pluginElem,
+        systemConfig->Configure(_entity, pluginElem,
                                 this->entityCompMgr,
                                 this->eventMgr);
       }
@@ -739,7 +755,7 @@ void SimulationRunner::SetStepSize(const ignition::math::clock::duration &_step)
 bool SimulationRunner::HasEntity(const std::string &_name) const
 {
   bool result = false;
-  this->entityCompMgr.Each<components::Name>([&](const EntityId,
+  this->entityCompMgr.Each<components::Name>([&](const Entity,
         const components::Name *_entityName)->bool
     {
       if (_entityName->Data() == _name)
@@ -757,12 +773,12 @@ bool SimulationRunner::HasEntity(const std::string &_name) const
 bool SimulationRunner::RequestEraseEntity(const std::string &_name)
 {
   bool result = false;
-  this->entityCompMgr.Each<components::Name>([&](const EntityId _id,
+  this->entityCompMgr.Each<components::Name>([&](const Entity _entity,
         const components::Name *_entityName)->bool
     {
       if (_entityName->Data() == _name)
       {
-        this->entityCompMgr.RequestEraseEntity(_id);
+        this->entityCompMgr.RequestEraseEntity(_entity);
         result = true;
         return false;
       }
@@ -773,32 +789,42 @@ bool SimulationRunner::RequestEraseEntity(const std::string &_name)
 }
 
 /////////////////////////////////////////////////
-std::optional<EntityId> SimulationRunner::EntityByName(
+std::optional<Entity> SimulationRunner::EntityByName(
     const std::string &_name) const
 {
-  std::optional<EntityId> id;
-  this->entityCompMgr.Each<components::Name>([&](const EntityId _id,
+  std::optional<Entity> entity;
+  this->entityCompMgr.Each<components::Name>([&](const Entity _entity,
         const components::Name *_entityName)->bool
     {
       if (_entityName->Data() == _name)
       {
-        id = _id;
+        entity = _entity;
         return false;
       }
       return true;
     });
 
-  return id;
+  return entity;
 }
 
 /////////////////////////////////////////////////
-bool SimulationRunner::RequestEraseEntity(const EntityId _id)
+bool SimulationRunner::RequestEraseEntity(const Entity _entity)
 {
-  if (this->entityCompMgr.HasEntity(_id))
+  if (this->entityCompMgr.HasEntity(_entity))
   {
-    this->entityCompMgr.RequestEraseEntity(_id);
+    this->entityCompMgr.RequestEraseEntity(_entity);
     return true;
   }
 
   return false;
+}
+
+//////////////////////////////////////////////////
+bool SimulationRunner::GuiInfoService(ignition::msgs::GUI &_res)
+{
+  _res.Clear();
+
+  _res.CopyFrom(this->guiMsg);
+
+  return true;
 }

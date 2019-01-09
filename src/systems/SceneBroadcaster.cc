@@ -71,46 +71,46 @@ class ignition::gazebo::systems::SceneBroadcasterPrivate
   /// contents of the scene graph
   /// \tparam T Either a msgs::Scene or msgs::Model
   /// \param[in] _msg Pointer to msg object to which the models will be added
-  /// \param[in] _id Id of the parent entity in the graph
+  /// \param[in] _entity Parent entity in the graph
   /// \param[in] _graph Scene graph
   public: template <typename T>
-          static void AddModels(T *_msg, const EntityId _id,
+          static void AddModels(T *_msg, const Entity _entity,
                                 const SceneGraphType &_graph);
 
   /// \brief Adds lights to a msgs::Scene or msgs::Link object based on the
   /// contents of the scene graph
   /// \tparam T Either a msgs::Scene or msgs::Link
   /// \param[in] _msg Pointer to msg object to which the lights will be added
-  /// \param[in] _id Id of the parent entity in the graph
+  /// \param[in] _entity Parent entity in the graph
   /// \param[in] _graph Scene graph
   public: template<typename T>
-          static void AddLights(T *_msg, const EntityId _id,
+          static void AddLights(T *_msg, const Entity _entity,
                                 const SceneGraphType &_graph);
 
   /// \brief Adds links to a msgs::Model object based on the contents of
   /// the scene graph
   /// \param[in] _msg Pointer to msg object to which the links will be added
-  /// \param[in] _id Id of the parent entity in the graph
+  /// \param[in] _entity Parent entity in the graph
   /// \param[in] _graph Scene graph
-  public: static void AddLinks(msgs::Model *_msg, const EntityId _id,
+  public: static void AddLinks(msgs::Model *_msg, const Entity _entity,
                                const SceneGraphType &_graph);
 
   /// \brief Adds visuals to a msgs::Link object based on the contents of
   /// the scene graph
   /// \param[in] _msg Pointer to msg object to which the visuals will be added
-  /// \param[in] _id Id of the parent entity in the graph
+  /// \param[in] _entity Parent entity in the graph
   /// \param[in] _graph Scene graph
-  public: static void AddVisuals(msgs::Link *_msg, const EntityId _id,
+  public: static void AddVisuals(msgs::Link *_msg, const Entity _entity,
                                  const SceneGraphType &_graph);
 
   /// \brief Recursively remove entities from the graph
-  /// \param[in] _id Id of entity
+  /// \param[in] _entity Entity
   /// \param[in/out] _graph Scene graph
-  public: static void RemoveFromGraph(const EntityId _id,
+  public: static void RemoveFromGraph(const Entity _entity,
                                       SceneGraphType &_graph);
 
   /// \brief Transport node.
-  public: transport::Node node;
+  public: std::unique_ptr<transport::Node> node{nullptr};
 
   /// \brief Pose publisher.
   public: transport::Node::Publisher posePub;
@@ -131,7 +131,7 @@ class ignition::gazebo::systems::SceneBroadcasterPrivate
 
   /// \brief Keep the id of the world entity so we know how to traverse the
   /// graph.
-  public: EntityId worldId{kNullEntity};
+  public: Entity worldEntity{kNullEntity};
 
   /// \brief Keep the name of the world entity so it's easy to create temporary
   /// scene graphs
@@ -149,19 +149,19 @@ SceneBroadcaster::SceneBroadcaster()
 
 //////////////////////////////////////////////////
 void SceneBroadcaster::Configure(
-    const EntityId &_id, const std::shared_ptr<const sdf::Element> &,
+    const Entity &_entity, const std::shared_ptr<const sdf::Element> &,
     EntityComponentManager &_ecm, EventManager &)
 {
   // World
-  auto name = _ecm.Component<components::Name>(_id);
+  auto name = _ecm.Component<components::Name>(_entity);
   if (name == nullptr)
   {
-    ignerr << "World with id: " << _id
+    ignerr << "World with id: " << _entity
            << " has no name. SceneBroadcaster cannot create transport topics\n";
     return;
   }
 
-  this->dataPtr->worldId = _id;
+  this->dataPtr->worldEntity = _entity;
   this->dataPtr->worldName = name->Data();
 
   this->dataPtr->SetupTransport(this->dataPtr->worldName);
@@ -170,7 +170,7 @@ void SceneBroadcaster::Configure(
   {
     std::lock_guard<std::mutex> lock(this->dataPtr->graphMutex);
     this->dataPtr->sceneGraph.AddVertex(this->dataPtr->worldName, nullptr,
-                                        this->dataPtr->worldId);
+                                        this->dataPtr->worldEntity);
   }
 }
 
@@ -189,7 +189,7 @@ void SceneBroadcaster::PostUpdate(const UpdateInfo &/*_info*/,
 
     // Models
   _manager.Each<components::Model, components::Name, components::Pose>(
-      [&](const EntityId &_entity, const components::Model *,
+      [&](const Entity &_entity, const components::Model *,
           const components::Name *_nameComp,
           const components::Pose *_poseComp) -> bool
       {
@@ -204,7 +204,7 @@ void SceneBroadcaster::PostUpdate(const UpdateInfo &/*_info*/,
 
   // Links
   _manager.Each<components::Link, components::Name, components::Pose>(
-      [&](const EntityId &_entity, const components::Link *,
+      [&](const Entity &_entity, const components::Link *,
           const components::Name *_nameComp,
           const components::Pose *_poseComp) -> bool
       {
@@ -218,7 +218,7 @@ void SceneBroadcaster::PostUpdate(const UpdateInfo &/*_info*/,
 
   // Visuals
   _manager.Each<components::Visual, components::Name, components::Pose>(
-      [&](const EntityId &_entity, const components::Visual *,
+      [&](const Entity &_entity, const components::Visual *,
           const components::Name *_nameComp,
           const components::Pose *_poseComp) -> bool
       {
@@ -232,7 +232,7 @@ void SceneBroadcaster::PostUpdate(const UpdateInfo &/*_info*/,
 
   // Lights
   _manager.Each<components::Light, components::Name, components::Pose>(
-      [&](const EntityId &_entity, const components::Light *,
+      [&](const Entity &_entity, const components::Light *,
           const components::Name *_nameComp,
           const components::Pose *_poseComp) -> bool
       {
@@ -254,26 +254,32 @@ void SceneBroadcaster::PostUpdate(const UpdateInfo &/*_info*/,
 //////////////////////////////////////////////////
 void SceneBroadcasterPrivate::SetupTransport(const std::string &_worldName)
 {
-  // Scene info service
-  std::string infoService{"/world/" + _worldName + "/scene/info"};
+  transport::NodeOptions opts;
+  opts.SetNameSpace("/world/" + _worldName);
+  this->node = std::make_unique<transport::Node>(opts);
 
-  this->node.Advertise(infoService, &SceneBroadcasterPrivate::SceneInfoService,
+  // Scene info service
+  std::string infoService{"scene/info"};
+
+  this->node->Advertise(infoService, &SceneBroadcasterPrivate::SceneInfoService,
       this);
 
-  ignmsg << "Serving scene information on [" << infoService << "]" << std::endl;
+  ignmsg << "Serving scene information on [" << opts.NameSpace() << "/"
+         << infoService << "]" << std::endl;
 
   // Scene graph service
-  std::string graphService{"/world/" + _worldName + "/scene/graph"};
+  std::string graphService{"scene/graph"};
 
-  this->node.Advertise(graphService,
+  this->node->Advertise(graphService,
       &SceneBroadcasterPrivate::SceneGraphService, this);
 
-  ignmsg << "Serving scene graph on [" << graphService << "]" << std::endl;
+  ignmsg << "Serving graph information on [" << opts.NameSpace() << "/"
+         << graphService << "]" << std::endl;
 
   // Scene info topic
   std::string sceneTopic{"/world/" + _worldName + "/scene/info"};
 
-  this->scenePub = this->node.Advertise<ignition::msgs::Scene>(sceneTopic);
+  this->scenePub = this->node->Advertise<ignition::msgs::Scene>(sceneTopic);
 
   ignmsg << "Serving scene information on [" << sceneTopic << "]" << std::endl;
 
@@ -281,19 +287,20 @@ void SceneBroadcasterPrivate::SetupTransport(const std::string &_worldName)
   std::string deletionTopic{"/world/" + _worldName + "/scene/deletion"};
 
   this->deletionPub =
-      this->node.Advertise<ignition::msgs::UInt32_V>(deletionTopic);
+      this->node->Advertise<ignition::msgs::UInt32_V>(deletionTopic);
 
   ignmsg << "Publishing entity deletions on [" << deletionTopic << "]"
          << std::endl;
 
   // Pose info publisher
-  std::string topic{"/world/" + _worldName + "/pose/info"};
+  std::string topic{"pose/info"};
 
   transport::AdvertiseMessageOptions advertOpts;
   advertOpts.SetMsgsPerSec(60);
-  this->posePub = this->node.Advertise<msgs::Pose_V>(topic, advertOpts);
+  this->posePub = this->node->Advertise<msgs::Pose_V>(topic, advertOpts);
 
-  ignmsg << "Publishing pose messages on [" << topic << "]" << std::endl;
+  ignmsg << "Publishing pose messages on [" << opts.NameSpace() << "/" << topic
+         << "]" << std::endl;
 }
 
 //////////////////////////////////////////////////
@@ -306,10 +313,10 @@ bool SceneBroadcasterPrivate::SceneInfoService(ignition::msgs::Scene &_res)
   // Populate scene message
 
   // Add models
-  AddModels(&_res, this->worldId, this->sceneGraph);
+  AddModels(&_res, this->worldEntity, this->sceneGraph);
 
   // Add lights
-  AddLights(&_res, this->worldId, this->sceneGraph);
+  AddLights(&_res, this->worldEntity, this->sceneGraph);
 
   return true;
 }
@@ -340,13 +347,13 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
   // Scene graph for new entities. This will be used later to create a scene msg
   // to publish.
   SceneGraphType newGraph;
-  auto worldVertex = this->sceneGraph.VertexFromId(this->worldId);
+  auto worldVertex = this->sceneGraph.VertexFromId(this->worldEntity);
   newGraph.AddVertex(worldVertex.Name(), worldVertex.Data(), worldVertex.Id());
 
   // Models
   _manager.EachNew<components::Model, components::Name,
                    components::ParentEntity, components::Pose>(
-      [&](const EntityId &_entity, const components::Model *,
+      [&](const Entity &_entity, const components::Model *,
           const components::Name *_nameComp,
           const components::ParentEntity *_parentComp,
           const components::Pose *_poseComp) -> bool
@@ -367,7 +374,7 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
   // Links
   _manager.EachNew<components::Link, components::Name, components::ParentEntity,
                    components::Pose>(
-      [&](const EntityId &_entity, const components::Link *,
+      [&](const Entity &_entity, const components::Link *,
           const components::Name *_nameComp,
           const components::ParentEntity *_parentComp,
           const components::Pose *_poseComp) -> bool
@@ -388,7 +395,7 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
   // Visuals
   _manager.EachNew<components::Visual, components::Name,
                    components::ParentEntity, components::Pose>(
-      [&](const EntityId &_entity, const components::Visual *,
+      [&](const Entity &_entity, const components::Visual *,
           const components::Name *_nameComp,
           const components::ParentEntity *_parentComp,
           const components::Pose *_poseComp) -> bool
@@ -426,7 +433,7 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
   // Lights
   _manager.EachNew<components::Light, components::Name,
                    components::ParentEntity, components::Pose>(
-      [&](const EntityId &_entity, const components::Light *_lightComp,
+      [&](const Entity &_entity, const components::Light *_lightComp,
           const components::Name *_nameComp,
           const components::ParentEntity *_parentComp,
           const components::Pose *_poseComp) -> bool
@@ -465,10 +472,10 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
   {
     msgs::Scene sceneMsg;
 
-    AddModels(&sceneMsg, this->worldId, newGraph);
+    AddModels(&sceneMsg, this->worldEntity, newGraph);
 
     // Add lights
-    AddLights(&sceneMsg, this->worldId, newGraph);
+    AddLights(&sceneMsg, this->worldEntity, newGraph);
     this->scenePub.Publish(sceneMsg);
   }
 }
@@ -479,7 +486,7 @@ void SceneBroadcasterPrivate::SceneGraphRemoveEntities(
 {
   std::lock_guard<std::mutex> lock(this->graphMutex);
   // Handle Erased Entities
-  std::vector<EntityId> erasedEntities;
+  std::vector<Entity> erasedEntities;
 
   // Scene a deleted model deletes all its child entities, we don't have to
   // handle links. We assume here that links are not deleted by themselves.
@@ -487,7 +494,7 @@ void SceneBroadcasterPrivate::SceneGraphRemoveEntities(
   // parent model being deleted.
   // Models
   _manager.EachErased<components::Model>(
-      [&](const EntityId &_entity, const components::Model *) -> bool
+      [&](const Entity &_entity, const components::Model *) -> bool
       {
         erasedEntities.push_back(_entity);
         // Remove from graph
@@ -497,7 +504,7 @@ void SceneBroadcasterPrivate::SceneGraphRemoveEntities(
 
   // Lights
   _manager.EachErased<components::Light>(
-      [&](const EntityId &_entity, const components::Light *) -> bool
+      [&](const Entity &_entity, const components::Light *) -> bool
       {
         erasedEntities.push_back(_entity);
         // Remove from graph
@@ -521,10 +528,10 @@ void SceneBroadcasterPrivate::SceneGraphRemoveEntities(
 //////////////////////////////////////////////////
 /// \tparam T Either a msgs::Scene or msgs::Model
 template<typename T>
-void SceneBroadcasterPrivate::AddModels(T *_msg, const EntityId _id,
+void SceneBroadcasterPrivate::AddModels(T *_msg, const Entity _entity,
                                         const SceneGraphType &_graph)
 {
-  for (const auto &vertex : _graph.AdjacentsFrom(_id))
+  for (const auto &vertex : _graph.AdjacentsFrom(_entity))
   {
     auto modelMsg = std::dynamic_pointer_cast<msgs::Model>(
         vertex.second.get().Data());
@@ -544,13 +551,13 @@ void SceneBroadcasterPrivate::AddModels(T *_msg, const EntityId _id,
 
 //////////////////////////////////////////////////
 template<typename T>
-void SceneBroadcasterPrivate::AddLights(T *_msg, const EntityId _id,
+void SceneBroadcasterPrivate::AddLights(T *_msg, const Entity _entity,
                                         const SceneGraphType &_graph)
 {
   if (!_msg)
     return;
 
-  for (const auto &vertex : _graph.AdjacentsFrom(_id))
+  for (const auto &vertex : _graph.AdjacentsFrom(_entity))
   {
     auto lightMsg = std::dynamic_pointer_cast<msgs::Light>(
         vertex.second.get().Data());
@@ -562,13 +569,13 @@ void SceneBroadcasterPrivate::AddLights(T *_msg, const EntityId _id,
 }
 
 //////////////////////////////////////////////////
-void SceneBroadcasterPrivate::AddVisuals(msgs::Link *_msg, const EntityId _id,
+void SceneBroadcasterPrivate::AddVisuals(msgs::Link *_msg, const Entity _entity,
                                          const SceneGraphType &_graph)
 {
   if (!_msg)
     return;
 
-  for (const auto &vertex : _graph.AdjacentsFrom(_id))
+  for (const auto &vertex : _graph.AdjacentsFrom(_entity))
   {
     auto visualMsg = std::dynamic_pointer_cast<msgs::Visual>(
         vertex.second.get().Data());
@@ -580,13 +587,13 @@ void SceneBroadcasterPrivate::AddVisuals(msgs::Link *_msg, const EntityId _id,
 }
 
 //////////////////////////////////////////////////
-void SceneBroadcasterPrivate::AddLinks(msgs::Model *_msg, const EntityId _id,
+void SceneBroadcasterPrivate::AddLinks(msgs::Model *_msg, const Entity _entity,
                                        const SceneGraphType &_graph)
 {
   if (!_msg)
     return;
 
-  for (const auto &vertex : _graph.AdjacentsFrom(_id))
+  for (const auto &vertex : _graph.AdjacentsFrom(_entity))
   {
     auto linkMsg = std::dynamic_pointer_cast<msgs::Link>(
         vertex.second.get().Data());
@@ -605,14 +612,14 @@ void SceneBroadcasterPrivate::AddLinks(msgs::Model *_msg, const EntityId _id,
 }
 
 //////////////////////////////////////////////////
-void SceneBroadcasterPrivate::RemoveFromGraph(const EntityId _id,
+void SceneBroadcasterPrivate::RemoveFromGraph(const Entity _entity,
                                               SceneGraphType &_graph)
 {
-  for (const auto &vertex : _graph.AdjacentsFrom(_id))
+  for (const auto &vertex : _graph.AdjacentsFrom(_entity))
   {
     RemoveFromGraph(vertex.first, _graph);
   }
-  _graph.RemoveVertex(_id);
+  _graph.RemoveVertex(_entity);
 }
 
 
