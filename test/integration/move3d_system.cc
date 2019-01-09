@@ -136,6 +136,11 @@ TEST_F(Move3dTest, PublishCmd)
 
   msgs::Vector3d msg = msgs::Convert(sphereVelocity);
   pub.Publish(msg);
+  {
+    // sleep a little bit for data to be published
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(10ms);
+  }
   server.Run(true, iters, false);
 
   EXPECT_EQ(2 * iters, poses.size());
