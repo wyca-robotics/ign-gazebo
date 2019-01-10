@@ -30,6 +30,7 @@
 #include <sdf/Sphere.hh>
 #include <sdf/World.hh>
 
+#include "ignition/gazebo/Entity.hh"
 #include "ignition/gazebo/Server.hh"
 #include "ignition/gazebo/SystemLoader.hh"
 #include "ignition/gazebo/test_config.hh"  // NOLINT(build/include)
@@ -40,7 +41,6 @@
 #include "ignition/gazebo/components/Material.hh"
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/components/Name.hh"
-#include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/Visual.hh"
 #include "ignition/gazebo/components/World.hh"
@@ -226,13 +226,15 @@ TEST_F(PhysicsSystemFixture, CanonicalLink)
     [&modelName, &postUpLinkPoses](const gazebo::UpdateInfo &,
     const gazebo::EntityComponentManager &_ecm)
     {
-      _ecm.Each<components::Link, components::Name, components::Pose,
-                components::ParentEntity>(
-        [&](const ignition::gazebo::Entity &, const components::Link *,
-        const components::Name *_name, const components::Pose *_pose,
-        const components::ParentEntity *_parent)->bool
+      _ecm.Each<components::Link, components::Name, components::Pose>(
+        [&](const ignition::gazebo::Entity &_entity, const components::Link *,
+        const components::Name *_name, const components::Pose *_pose)->bool
         {
-          auto parentModel = _ecm.Component<components::Name>(_parent->Data());
+          auto parentEntity =
+              _ecm.Entities().AdjacentsTo(_entity).begin()->first;
+          EXPECT_NE(gazebo::kNullEntity, parentEntity);
+
+          auto parentModel = _ecm.Component<components::Name>(parentEntity);
           EXPECT_TRUE(nullptr != parentModel);
           if (parentModel->Data() == modelName)
           {

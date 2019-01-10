@@ -65,7 +65,6 @@
 #include "ignition/gazebo/components/Link.hh"
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/components/Name.hh"
-#include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/ParentLinkName.hh"
 #include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/JointVelocity.hh"
@@ -234,52 +233,84 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
       });
 
   _ecm.Each<components::Model, components::Name, components::Pose,
-            components::ParentEntity, components::Static>(
+            components::Static>(
       [&](const Entity &_entity,
         const components::Model * /* _model */,
         const components::Name *_name,
         const components::Pose *_pose,
-        const components::ParentEntity *_parent,
         const components::Static *_static)->bool
       {
-        if (this->entityModelMap.find(_entity) == this->entityModelMap.end())
+        if (this->entityModelMap.find(_entity) != this->entityModelMap.end())
         {
-          sdf::Model model;
-          model.SetName(_name->Data());
-          model.SetPose(_pose->Data());
-          model.SetStatic(_static->Data());
-          auto worldPtrPhys = this->entityWorldMap.at(_parent->Data());
-          auto modelPtrPhys = worldPtrPhys->ConstructModel(model);
-          this->entityModelMap.insert(std::make_pair(_entity, modelPtrPhys));
+          ignwarn << "Trying to create repeated model [" << _name->Data()
+                  << "]" << std::endl;
+          return true;
         }
+
+        // Find parent world
+        Entity parentEntity = _ecm.Entities().AdjacentsTo(_entity).begin()->first;
+        auto worldPtrPhys = this->entityWorldMap.at(parentEntity);
+
+        if (nullptr == worldPtrPhys)
+        {
+          ignwarn << "No world found for entity [" << parentEntity << "]"
+                  << std::endl;
+          return true;
+        }
+
+        // Construct model in physics
+        sdf::Model model;
+        model.SetName(_name->Data());
+        model.SetPose(_pose->Data());
+        model.SetStatic(_static->Data());
+        auto modelPtrPhys = worldPtrPhys->ConstructModel(model);
+
+        // Store in map
+        this->entityModelMap.insert(std::make_pair(_entity, modelPtrPhys));
+
         return true;
       });
 
-  _ecm.Each<components::Link, components::Name, components::Pose,
-            components::ParentEntity>(
+  _ecm.Each<components::Link, components::Name, components::Pose>(
       [&](const Entity &_entity,
         const components::Link * /* _link */,
         const components::Name *_name,
-        const components::Pose *_pose,
-        const components::ParentEntity *_parent)->bool
+        const components::Pose *_pose)->bool
       {
-        if (this->entityLinkMap.find(_entity) == this->entityLinkMap.end())
+        if (this->entityLinkMap.find(_entity) != this->entityLinkMap.end())
         {
-          sdf::Link link;
-          link.SetName(_name->Data());
-          link.SetPose(_pose->Data());
-
-          // get link inertial
-          auto inertial = _ecm.Component<components::Inertial>(_entity);
-          if (inertial)
-          {
-            link.SetInertial(inertial->Data());
-          }
-
-          auto modelPtrPhys = this->entityModelMap.at(_parent->Data());
-          auto linkPtrPhys = modelPtrPhys->ConstructLink(link);
-          this->entityLinkMap.insert(std::make_pair(_entity, linkPtrPhys));
+          ignwarn << "Trying to create repeated link [" << _name->Data()
+                  << "]" << std::endl;
+          return true;
         }
+
+        // Find parent model
+        Entity parentEntity = _ecm.Entities().AdjacentsTo(_entity).begin()->first;
+        auto modelPtrPhys = this->entityModelMap.at(parentEntity);
+
+        if (nullptr == modelPtrPhys)
+        {
+          ignwarn << "No model found for entity [" << parentEntity << "]"
+                  << std::endl;
+          return true;
+        }
+
+        // Construct link in physics
+        sdf::Link link;
+        link.SetName(_name->Data());
+        link.SetPose(_pose->Data());
+
+        auto inertial = _ecm.Component<components::Inertial>(_entity);
+        if (inertial)
+        {
+          link.SetInertial(inertial->Data());
+        }
+
+        auto linkPtrPhys = modelPtrPhys->ConstructLink(link);
+
+        // Store in map
+        this->entityLinkMap.insert(std::make_pair(_entity, linkPtrPhys));
+
         return true;
       });
 
@@ -287,19 +318,29 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
 
   // collisions
   _ecm.Each<components::Collision, components::Name, components::Pose,
-            components::Geometry, components::ParentEntity>(
-      [&](const Entity & /* _entity */,
+            components::Geometry>(
+      [&](const Entity &_entity,
         const components::Collision * /* _collision */,
         const components::Name *_name,
         const components::Pose *_pose,
-        const components::Geometry *_geom,
-        const components::ParentEntity *_parent)->bool
+        const components::Geometry *_geom)->bool
       {
+        // Find parent link
+        Entity parentEntity = _ecm.Entities().AdjacentsTo(_entity).begin()->first;
+        auto linkPtrPhys = this->entityLinkMap.at(parentEntity);
+
+        if (nullptr == linkPtrPhys)
+        {
+          ignwarn << "No link found for entity [" << parentEntity << "]"
+                  << std::endl;
+          return true;
+        }
+
+        // Construct collision in physics
         sdf::Collision collision;
         collision.SetName(_name->Data());
         collision.SetPose(_pose->Data());
         collision.SetGeom(_geom->Data());
-        auto linkPtrPhys = this->entityLinkMap.at(_parent->Data());
 
         if (_geom->Data().Type() == sdf::GeometryType::MESH)
         {
@@ -334,7 +375,7 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
 
   // joints
   _ecm.Each<components::Joint, components::Name, components::JointType,
-            components::Pose, components::ThreadPitch, components::ParentEntity,
+            components::Pose, components::ThreadPitch,
             components::ParentLinkName,
             components::ChildLinkName>(
       [&](const Entity &  _entity,
@@ -343,15 +384,28 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
         const components::JointType *_jointType,
         const components::Pose *_pose,
         const components::ThreadPitch *_threadPitch,
-        const components::ParentEntity *_parentModel,
         const components::ParentLinkName *_parentLinkName,
         const components::ChildLinkName *_childLinkName)->bool
       {
         if (this->entityJointMap.find(_entity) != this->entityJointMap.end())
         {
+          ignwarn << "Trying to create repeated joint [" << _name->Data()
+                  << "]" << std::endl;
           return true;
         }
 
+        // Find parent model
+        Entity parentEntity = _ecm.Entities().AdjacentsTo(_entity).begin()->first;
+        auto modelPtrPhys = this->entityModelMap.at(parentEntity);
+
+        if (nullptr == modelPtrPhys)
+        {
+          ignwarn << "No model found for entity [" << parentEntity << "]"
+                  << std::endl;
+          return true;
+        }
+
+        // Construct joint in physics
         sdf::Joint joint;
         joint.SetName(_name->Data());
         joint.SetType(_jointType->Data());
@@ -370,9 +424,9 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
             joint.SetAxis(1, jointAxis2->Data());
 
         // Use the parent link's parent model as the model of this joint
-        auto modelPtrPhys = this->entityModelMap.at(_parentModel->Data());
         auto jointPtrPhys = modelPtrPhys->ConstructJoint(joint);
 
+        // Store in map
         this->entityJointMap.insert(std::make_pair(_entity, jointPtrPhys));
 
         return true;
@@ -420,54 +474,54 @@ void PhysicsPrivate::Step(const std::chrono::steady_clock::duration &_dt)
 //////////////////////////////////////////////////
 void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
 {
-  _ecm.Each<components::Link, components::Pose, components::ParentEntity>(
+  _ecm.Each<components::Link, components::Pose>(
       [&](const Entity &_entity, components::Link * /*_link*/,
-          components::Pose *_pose, components::ParentEntity *_parent)->bool
+          components::Pose *_pose)->bool
       {
         auto linkIt = this->entityLinkMap.find(_entity);
-        if (linkIt != this->entityLinkMap.end())
+        if (linkIt == this->entityLinkMap.end())
         {
-          auto canonicalLink =
-              _ecm.Component<components::CanonicalLink>(_entity);
+          ignwarn << "Unknown link with id " << _entity << " found\n";
+          return true;
+        }
 
-          // get the pose component of the parent model
-          auto parentPose =
-              _ecm.Component<components::Pose>(_parent->Data());
+        auto canonicalLink = _ecm.Component<components::CanonicalLink>(_entity);
 
-          // if the parentPose is a nullptr, something is wrong with ECS
-          // creation
-          if (!parentPose)
-          {
-            ignerr << "The pose component of " << _parent->Data()
-                   << " could not be found. This should never happen!\n";
-            return true;
-          }
-          if (canonicalLink)
-          {
-            // This is the canonical link, update the model
-            auto worldPose = linkIt->second->FrameDataRelativeToWorld().pose;
-            // the Pose component, _pose, of this link is the initial
-            // transform of the link w.r.t its model. This component never
-            // changes because it's "fixed" to the model. Instead, we change
-            // the model's pose here. The physics engine gives us the pose of
-            // this link relative to world so to set the model's pose, we have
-            // to premultiply it by the inverse of the initial transform of
-            // the link w.r.t to its model.
-            *parentPose = components::Pose(_pose->Data().Inverse() +
-                                           math::eigen3::convert(worldPose));
-          }
-          else
-          {
-            auto worldPose = linkIt->second->FrameDataRelativeToWorld().pose;
-            // Compute the relative pose of this link from the model
-            *_pose = components::Pose(math::eigen3::convert(worldPose) +
-                                      parentPose->Data().Inverse());
-          }
+        // get the pose component of the parent model
+        Entity parentEntity = _ecm.Entities().AdjacentsTo(_entity).begin()->first;
+        auto parentPose = _ecm.Component<components::Pose>(parentEntity);
+
+        // if the parentPose is a nullptr, something is wrong with ECS
+        // creation
+        if (!parentPose)
+        {
+          ignerr << "The pose component of " << parentEntity
+                 << " could not be found. This should never happen!\n";
+          return true;
+        }
+
+        if (canonicalLink)
+        {
+          // This is the canonical link, update the model
+          auto worldPose = linkIt->second->FrameDataRelativeToWorld().pose;
+          // the Pose component, _pose, of this link is the initial
+          // transform of the link w.r.t its model. This component never
+          // changes because it's "fixed" to the model. Instead, we change
+          // the model's pose here. The physics engine gives us the pose of
+          // this link relative to world so to set the model's pose, we have
+          // to premultiply it by the inverse of the initial transform of
+          // the link w.r.t to its model.
+          *parentPose = components::Pose(_pose->Data().Inverse() +
+                                         math::eigen3::convert(worldPose));
         }
         else
         {
-          ignwarn << "Unknown link with id " << _entity << " found\n";
+          auto worldPose = linkIt->second->FrameDataRelativeToWorld().pose;
+          // Compute the relative pose of this link from the model
+          *_pose = components::Pose(math::eigen3::convert(worldPose) +
+                                    parentPose->Data().Inverse());
         }
+
         return true;
       });
 }

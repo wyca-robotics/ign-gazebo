@@ -30,8 +30,9 @@ class ignition::gazebo::EntityComponentManagerPrivate
   public: std::map<ComponentTypeId,
           std::unique_ptr<ComponentStorageBase>> components;
 
-  /// \brief Instances of entities
-  public: std::vector<Entity> entities;
+  /// \brief A graph holding all entities, arranged according to their
+  /// parenting.
+  public: EntityGraph entities;
 
   /// \brief Entities that have just been created
   public: std::set<Entity> newlyCreatedEntities;
@@ -72,12 +73,12 @@ EntityComponentManager::~EntityComponentManager()
 //////////////////////////////////////////////////
 size_t EntityComponentManager::EntityCount() const
 {
-  return this->dataPtr->entities.size() -
+  return this->dataPtr->entities.Vertices().size() -
     this->dataPtr->availableEntities.size();
 }
 
 /////////////////////////////////////////////////
-Entity EntityComponentManager::CreateEntity()
+Entity EntityComponentManager::CreateEntity(const Entity _parent)
 {
   Entity entity = kNullEntity;
 
@@ -87,13 +88,17 @@ Entity EntityComponentManager::CreateEntity()
     entity = *(this->dataPtr->availableEntities.begin());
     this->dataPtr->availableEntities.erase(
         this->dataPtr->availableEntities.begin());
-    this->dataPtr->entities[entity] = entity;
   }
   else
   {
     // Create a brand new entity
-    entity = this->dataPtr->entities.size();
-    this->dataPtr->entities.push_back(entity);
+    entity = this->dataPtr->entities.Vertices().size();
+  }
+  this->dataPtr->entities.AddVertex("", entity, entity);
+
+  if (_parent != kNullEntity)
+  {
+    this->dataPtr->entities.AddEdge({_parent, entity}, true);
   }
 
   // Add entity to the list of newly created entities
@@ -144,7 +149,7 @@ void EntityComponentManager::ProcessEraseEntityRequests()
   if (this->dataPtr->eraseAllEntities)
   {
     this->dataPtr->eraseAllEntities = false;
-    this->dataPtr->entities.clear();
+    this->dataPtr->entities = EntityGraph();
     this->dataPtr->entityComponents.clear();
     this->dataPtr->availableEntities.clear();
     this->dataPtr->toEraseEntities.clear();
@@ -270,7 +275,7 @@ bool EntityComponentManager::HasEntity(const Entity _entity) const
   return
     // Check that the _entity is in range
     _entity >= 0 &&
-    _entity < static_cast<Entity>(this->dataPtr->entities.size())
+    _entity < static_cast<Entity>(this->dataPtr->entities.Vertices().size())
     // Check that the _entity is not deleted (not in the available entity set)
     && this->dataPtr->availableEntities.find(_entity) ==
        this->dataPtr->availableEntities.end();
@@ -444,7 +449,7 @@ void *EntityComponentManager::First(const ComponentTypeId _componentTypeId)
 }
 
 //////////////////////////////////////////////////
-std::vector<Entity> &EntityComponentManager::Entities() const
+const EntityGraph &EntityComponentManager::Entities() const
 {
   return this->dataPtr->entities;
 }
@@ -504,8 +509,9 @@ void EntityComponentManager::RebuildViews()
     view.second.components.clear();
     // Add all the entities that match the component types to the
     // view.
-    for (const Entity &entity : this->dataPtr->entities)
+    for (const auto &vertex : this->dataPtr->entities.Vertices())
     {
+      Entity entity = vertex.first;
       if (this->EntityMatches(entity, view.first))
       {
         view.second.AddEntity(entity, this->IsNewEntity(entity));

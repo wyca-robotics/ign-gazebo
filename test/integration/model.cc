@@ -22,7 +22,6 @@
 #include <ignition/gazebo/components/Link.hh>
 #include <ignition/gazebo/components/Model.hh>
 #include <ignition/gazebo/components/Name.hh>
-#include <ignition/gazebo/components/ParentEntity.hh>
 #include <ignition/gazebo/EntityComponentManager.hh>
 #include <ignition/gazebo/Model.hh>
 
@@ -93,10 +92,8 @@ TEST(ModelIntegrationTest, LinkByName)
   EXPECT_EQ(eModel, model.Entity());
 
   // Link
-  auto eLink = ecm.CreateEntity();
+  auto eLink = ecm.CreateEntity(eModel);
   ecm.CreateComponent<components::Link>(eLink, components::Link());
-  ecm.CreateComponent<components::ParentEntity>(eLink,
-      components::ParentEntity(eModel));
   ecm.CreateComponent<components::Name>(eLink,
       components::Name("link_name"));
 
@@ -115,10 +112,8 @@ TEST(ModelIntegrationTest, JointByName)
   EXPECT_EQ(eModel, model.Entity());
 
   // Joint
-  auto eJoint = ecm.CreateEntity();
+  auto eJoint = ecm.CreateEntity(eModel);
   ecm.CreateComponent<components::Joint>(eJoint, components::Joint());
-  ecm.CreateComponent<components::ParentEntity>(eJoint,
-      components::ParentEntity(eModel));
   ecm.CreateComponent<components::Name>(eJoint,
       components::Name("joint_name"));
 

@@ -19,7 +19,6 @@
 #include "ignition/gazebo/components/Link.hh"
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/components/Name.hh"
-#include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/Model.hh"
 
 class ignition::gazebo::ModelPrivate
@@ -85,8 +84,7 @@ std::string Model::Name(const EntityComponentManager &_ecm) const
 Entity Model::JointByName(const EntityComponentManager &_ecm,
     const std::string &_name)
 {
-  return _ecm.EntityByComponents(
-      components::ParentEntity(this->dataPtr->id),
+  return _ecm.ChildByComponents(this->dataPtr->id,
       components::Name(_name),
       components::Joint());
 }
@@ -95,8 +93,7 @@ Entity Model::JointByName(const EntityComponentManager &_ecm,
 Entity Model::LinkByName(const EntityComponentManager &_ecm,
     const std::string &_name)
 {
-  return _ecm.EntityByComponents(
-      components::ParentEntity(this->dataPtr->id),
+  return _ecm.ChildByComponents(this->dataPtr->id,
       components::Name(_name),
       components::Link());
 }

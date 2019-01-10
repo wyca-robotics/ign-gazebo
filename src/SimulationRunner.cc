@@ -33,7 +33,6 @@
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/components/Name.hh"
 #include "ignition/gazebo/components/ParentLinkName.hh"
-#include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/Static.hh"
 #include "ignition/gazebo/components/ThreadPitch.hh"
@@ -100,7 +99,8 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
       static_cast<int>(this->stepSize.count() / desiredRtf));
 
   // Create entities and components
-  this->CreateEntities(_world);
+  auto worldEntity = this->entityCompMgr.CreateEntity();
+  this->CreateEntities(_world, worldEntity);
 
   this->pauseConn = this->eventMgr.Connect<events::Pause>(
       std::bind(&SimulationRunner::SetPaused, this, std::placeholders::_1));
@@ -354,14 +354,12 @@ bool SimulationRunner::Run(const uint64_t _iterations)
 }
 
 //////////////////////////////////////////////////
-Entity SimulationRunner::CreateEntities(const sdf::World *_world)
+void SimulationRunner::CreateEntities(const sdf::World *_world,
+    const Entity _worldEntity)
 {
-  // World entity
-  Entity worldEntity = this->entityCompMgr.CreateEntity();
-
   // World components
-  this->entityCompMgr.CreateComponent(worldEntity, components::World());
-  this->entityCompMgr.CreateComponent(worldEntity,
+  this->entityCompMgr.CreateComponent(_worldEntity, components::World());
+  this->entityCompMgr.CreateComponent(_worldEntity,
       components::Name(_world->Name()));
 
   // Models
@@ -369,10 +367,8 @@ Entity SimulationRunner::CreateEntities(const sdf::World *_world)
       ++modelIndex)
   {
     auto model = _world->ModelByIndex(modelIndex);
-    auto modelEntity = this->CreateEntities(model);
-
-    this->entityCompMgr.CreateComponent(modelEntity,
-        components::ParentEntity(worldEntity));
+    auto modelEntity = this->entityCompMgr.CreateEntity(_worldEntity);
+    this->CreateEntities(model, modelEntity);
   }
 
   // Lights
@@ -380,30 +376,24 @@ Entity SimulationRunner::CreateEntities(const sdf::World *_world)
       ++lightIndex)
   {
     auto light = _world->LightByIndex(lightIndex);
-    auto lightEntity = this->CreateEntities(light);
-
-    this->entityCompMgr.CreateComponent(lightEntity,
-        components::ParentEntity(worldEntity));
+    auto lightEntity = this->entityCompMgr.CreateEntity(_worldEntity);
+    this->CreateEntities(light, lightEntity);
   }
 
-  this->LoadPlugins(_world->Element(), worldEntity);
-
-  return worldEntity;
+  this->LoadPlugins(_world->Element(), _worldEntity);
 }
 
 //////////////////////////////////////////////////
-Entity SimulationRunner::CreateEntities(const sdf::Model *_model)
+void SimulationRunner::CreateEntities(const sdf::Model *_model,
+    const Entity _modelEntity)
 {
-  // Entity
-  Entity modelEntity = this->entityCompMgr.CreateEntity();
-
   // Components
-  this->entityCompMgr.CreateComponent(modelEntity, components::Model());
-  this->entityCompMgr.CreateComponent(modelEntity,
+  this->entityCompMgr.CreateComponent(_modelEntity, components::Model());
+  this->entityCompMgr.CreateComponent(_modelEntity,
       components::Pose(_model->Pose()));
-  this->entityCompMgr.CreateComponent(modelEntity,
+  this->entityCompMgr.CreateComponent(_modelEntity,
       components::Name(_model->Name()));
-  this->entityCompMgr.CreateComponent(modelEntity,
+  this->entityCompMgr.CreateComponent(_modelEntity,
       components::Static(_model->Static()));
 
   // NOTE: Pose components of links, visuals, and collisions are expressed in
@@ -414,10 +404,9 @@ Entity SimulationRunner::CreateEntities(const sdf::Model *_model)
       ++linkIndex)
   {
     auto link = _model->LinkByIndex(linkIndex);
-    auto linkEntity = this->CreateEntities(link);
+    auto linkEntity = this->entityCompMgr.CreateEntity(_modelEntity);
+    this->CreateEntities(link, linkEntity);
 
-    this->entityCompMgr.CreateComponent(linkEntity,
-        components::ParentEntity(modelEntity));
     if (linkIndex == 0)
     {
       this->entityCompMgr.CreateComponent(linkEntity,
@@ -430,47 +419,37 @@ Entity SimulationRunner::CreateEntities(const sdf::Model *_model)
       ++jointIndex)
   {
     auto joint = _model->JointByIndex(jointIndex);
-    auto linkEntity = this->CreateEntities(joint);
-
-    this->entityCompMgr.CreateComponent(linkEntity,
-        components::ParentEntity(modelEntity));
+    auto jointEntity = this->entityCompMgr.CreateEntity(_modelEntity);
+    this->CreateEntities(joint, jointEntity);
   }
 
   // Model plugins
-  this->LoadPlugins(_model->Element(), modelEntity);
-
-  return modelEntity;
+  this->LoadPlugins(_model->Element(), _modelEntity);
 }
 
 //////////////////////////////////////////////////
-Entity SimulationRunner::CreateEntities(const sdf::Light *_light)
+void SimulationRunner::CreateEntities(const sdf::Light *_light,
+    const Entity _lightEntity)
 {
-  // Entity
-  Entity lightEntity = this->entityCompMgr.CreateEntity();
-
   // Components
-  this->entityCompMgr.CreateComponent(lightEntity, components::Light(*_light));
-  this->entityCompMgr.CreateComponent(lightEntity,
+  this->entityCompMgr.CreateComponent(_lightEntity, components::Light(*_light));
+  this->entityCompMgr.CreateComponent(_lightEntity,
       components::Pose(_light->Pose()));
-  this->entityCompMgr.CreateComponent(lightEntity,
+  this->entityCompMgr.CreateComponent(_lightEntity,
       components::Name(_light->Name()));
-
-  return lightEntity;
 }
 
 //////////////////////////////////////////////////
-Entity SimulationRunner::CreateEntities(const sdf::Link *_link)
+void SimulationRunner::CreateEntities(const sdf::Link *_link,
+    const Entity _linkEntity)
 {
-  // Entity
-  Entity linkEntity = this->entityCompMgr.CreateEntity();
-
   // Components
-  this->entityCompMgr.CreateComponent(linkEntity, components::Link());
-  this->entityCompMgr.CreateComponent(linkEntity,
+  this->entityCompMgr.CreateComponent(_linkEntity, components::Link());
+  this->entityCompMgr.CreateComponent(_linkEntity,
       components::Pose(_link->Pose()));
-  this->entityCompMgr.CreateComponent(linkEntity,
+  this->entityCompMgr.CreateComponent(_linkEntity,
       components::Name(_link->Name()));
-  this->entityCompMgr.CreateComponent(linkEntity,
+  this->entityCompMgr.CreateComponent(_linkEntity,
       components::Inertial(_link->Inertial()));
 
   // Visuals
@@ -478,10 +457,8 @@ Entity SimulationRunner::CreateEntities(const sdf::Link *_link)
       ++visualIndex)
   {
     auto visual = _link->VisualByIndex(visualIndex);
-    auto visualEntity = this->CreateEntities(visual);
-
-    this->entityCompMgr.CreateComponent(visualEntity,
-        components::ParentEntity(linkEntity));
+    auto visualEntity = this->entityCompMgr.CreateEntity(_linkEntity);
+    this->CreateEntities(visual, visualEntity);
   }
 
   // Collisions
@@ -489,10 +466,8 @@ Entity SimulationRunner::CreateEntities(const sdf::Link *_link)
       ++collisionIndex)
   {
     auto collision = _link->CollisionByIndex(collisionIndex);
-    auto collisionEntity = this->CreateEntities(collision);
-
-    this->entityCompMgr.CreateComponent(collisionEntity,
-        components::ParentEntity(linkEntity));
+    auto collisionEntity = this->entityCompMgr.CreateEntity(_linkEntity);
+    this->CreateEntities(collision, collisionEntity);
   }
 
   // Lights
@@ -500,103 +475,87 @@ Entity SimulationRunner::CreateEntities(const sdf::Link *_link)
       ++lightIndex)
   {
     auto light = _link->LightByIndex(lightIndex);
-    auto lightEntity = this->CreateEntities(light);
-
-    this->entityCompMgr.CreateComponent(lightEntity,
-        components::ParentEntity(linkEntity));
+    auto lightEntity = this->entityCompMgr.CreateEntity(_linkEntity);
+    this->CreateEntities(light, lightEntity);
   }
-
-  return linkEntity;
 }
 
 //////////////////////////////////////////////////
-Entity SimulationRunner::CreateEntities(const sdf::Joint *_joint)
+void SimulationRunner::CreateEntities(const sdf::Joint *_joint,
+    const Entity _jointEntity)
 {
-  // Entity
-  Entity jointEntity = this->entityCompMgr.CreateEntity();
-
   // Components
-  this->entityCompMgr.CreateComponent(jointEntity,
+  this->entityCompMgr.CreateComponent(_jointEntity,
       components::Joint());
-  this->entityCompMgr.CreateComponent(jointEntity,
+  this->entityCompMgr.CreateComponent(_jointEntity,
       components::JointType(_joint->Type()));
 
   if (_joint->Axis(0))
   {
-    this->entityCompMgr.CreateComponent(jointEntity,
+    this->entityCompMgr.CreateComponent(_jointEntity,
         components::JointAxis(*_joint->Axis(0)));
   }
 
   if (_joint->Axis(1))
   {
-    this->entityCompMgr.CreateComponent(jointEntity,
+    this->entityCompMgr.CreateComponent(_jointEntity,
         components::JointAxis2(*_joint->Axis(1)));
   }
 
-  this->entityCompMgr.CreateComponent(jointEntity,
+  this->entityCompMgr.CreateComponent(_jointEntity,
       components::Pose(_joint->Pose()));
-  this->entityCompMgr.CreateComponent(jointEntity ,
+  this->entityCompMgr.CreateComponent(_jointEntity ,
       components::Name(_joint->Name()));
-  this->entityCompMgr.CreateComponent(jointEntity ,
+  this->entityCompMgr.CreateComponent(_jointEntity ,
       components::ThreadPitch(_joint->ThreadPitch()));
-  this->entityCompMgr.CreateComponent(jointEntity,
+  this->entityCompMgr.CreateComponent(_jointEntity,
       components::ParentLinkName(_joint->ParentLinkName()));
-  this->entityCompMgr.CreateComponent(jointEntity,
+  this->entityCompMgr.CreateComponent(_jointEntity,
       components::ChildLinkName(_joint->ChildLinkName()));
-
-  return jointEntity;
 }
 
 //////////////////////////////////////////////////
-Entity SimulationRunner::CreateEntities(const sdf::Visual *_visual)
+void SimulationRunner::CreateEntities(const sdf::Visual *_visual,
+    const Entity _visualEntity)
 {
-  // Entity
-  Entity visualEntity = this->entityCompMgr.CreateEntity();
-
   // Components
-  this->entityCompMgr.CreateComponent(visualEntity, components::Visual());
-  this->entityCompMgr.CreateComponent(visualEntity,
+  this->entityCompMgr.CreateComponent(_visualEntity, components::Visual());
+  this->entityCompMgr.CreateComponent(_visualEntity,
       components::Pose(_visual->Pose()));
-  this->entityCompMgr.CreateComponent(visualEntity,
+  this->entityCompMgr.CreateComponent(_visualEntity,
       components::Name(_visual->Name()));
 
   if (_visual->Geom())
   {
-    this->entityCompMgr.CreateComponent(visualEntity,
+    this->entityCompMgr.CreateComponent(_visualEntity,
         components::Geometry(*_visual->Geom()));
   }
 
   // \todo(louise) Populate with default material if undefined
   if (_visual->Material())
   {
-    this->entityCompMgr.CreateComponent(visualEntity,
+    this->entityCompMgr.CreateComponent(_visualEntity,
         components::Material(*_visual->Material()));
   }
-
-  return visualEntity;
 }
 
 //////////////////////////////////////////////////
-Entity SimulationRunner::CreateEntities(const sdf::Collision *_collision)
+void SimulationRunner::CreateEntities(const sdf::Collision *_collision,
+    const Entity _collisionEntity)
 {
-  // Entity
-  Entity collisionEntity = this->entityCompMgr.CreateEntity();
-
   // Components
-  this->entityCompMgr.CreateComponent(collisionEntity,
+  this->entityCompMgr.CreateComponent(_collisionEntity,
       components::Collision());
-  this->entityCompMgr.CreateComponent(collisionEntity,
+  this->entityCompMgr.CreateComponent(_collisionEntity,
       components::Pose(_collision->Pose()));
-  this->entityCompMgr.CreateComponent(collisionEntity,
+  this->entityCompMgr.CreateComponent(_collisionEntity,
       components::Name(_collision->Name()));
 
   if (_collision->Geom())
   {
-    this->entityCompMgr.CreateComponent(collisionEntity,
+    this->entityCompMgr.CreateComponent(_collisionEntity,
         components::Geometry(*_collision->Geom()));
   }
-
-  return collisionEntity;
 }
 
 //////////////////////////////////////////////////

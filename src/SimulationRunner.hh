@@ -134,43 +134,50 @@ namespace ignition
       /// load their plugins.
       /// \param[in] _world SDF world object.
       /// \return World entity.
-      public: Entity CreateEntities(const sdf::World *_world);
+      public: void CreateEntities(const sdf::World *_world,
+          const Entity _worldEntity);
 
       /// \brief Create all entities that exist in the sdf::Model object and
       /// load their plugins.
       /// \param[in] _model SDF model object.
       /// \return Model entity.
-      public: Entity CreateEntities(const sdf::Model *_model);
+      public: void CreateEntities(const sdf::Model *_model,
+          const Entity _worldEntity);
 
       /// \brief Create all entities that exist in the sdf::Light object and
       /// load their plugins.
       /// \param[in] _light SDF light object.
       /// \return Light entity.
-      public: Entity CreateEntities(const sdf::Light *_light);
+      public: void CreateEntities(const sdf::Light *_light,
+          const Entity _worldEntity);
 
       /// \brief Create all entities that exist in the sdf::Link object and
       /// load their plugins.
       /// \param[in] _link SDF link object.
       /// \return Link entity.
-      public: Entity CreateEntities(const sdf::Link *_link);
+      public: void CreateEntities(const sdf::Link *_link,
+          const Entity _worldEntity);
 
       /// \brief Create all entities that exist in the sdf::Joint object and
       /// load their plugins.
       /// \param[in] _joint SDF joint object.
       /// \return Joint entity.
-      public: Entity CreateEntities(const sdf::Joint *_joint);
+      public: void CreateEntities(const sdf::Joint *_joint,
+          const Entity _worldEntity);
 
       /// \brief Create all entities that exist in the sdf::Visual object and
       /// load their plugins.
       /// \param[in] _visual SDF visual object.
       /// \return Visual entity.
-      public: Entity CreateEntities(const sdf::Visual *_visual);
+      public: void CreateEntities(const sdf::Visual *_visual,
+          const Entity _worldEntity);
 
       /// \brief Create all entities that exist in the sdf::Collision object and
       /// load their plugins.
       /// \param[in] _collision SDF collision object.
       /// \return Collision entity.
-      public: Entity CreateEntities(const sdf::Collision *_collision);
+      public: void CreateEntities(const sdf::Collision *_collision,
+          const Entity _worldEntity);
 
       /// \brief Load system plugins for a given entity.
       /// \param[in] _sdf SDF element
