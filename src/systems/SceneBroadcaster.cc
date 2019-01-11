@@ -26,7 +26,6 @@
 #include "ignition/gazebo/components/Material.hh"
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/components/Name.hh"
-#include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/Visual.hh"
 #include "ignition/gazebo/components/World.hh"
@@ -352,10 +351,9 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
 
   // Models
   _manager.EachNew<components::Model, components::Name,
-                   components::ParentEntity, components::Pose>(
+                   components::Pose>(
       [&](const Entity &_entity, const components::Model *,
           const components::Name *_nameComp,
-          const components::ParentEntity *_parentComp,
           const components::Pose *_poseComp) -> bool
       {
         auto modelMsg = std::make_shared<msgs::Model>();
@@ -364,19 +362,19 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
         modelMsg->mutable_pose()->CopyFrom(msgs::Convert(_poseComp->Data()));
 
         // Add to graph
+        auto parentEntity =
+            _manager.Entities().AdjacentsTo(_entity).begin()->first;
         newGraph.AddVertex(_nameComp->Data(), modelMsg, _entity);
-        newGraph.AddEdge({_parentComp->Data(), _entity}, true);
+        newGraph.AddEdge({parentEntity, _entity}, true);
 
         newEntity = true;
         return true;
       });
 
   // Links
-  _manager.EachNew<components::Link, components::Name, components::ParentEntity,
-                   components::Pose>(
+  _manager.EachNew<components::Link, components::Name, components::Pose>(
       [&](const Entity &_entity, const components::Link *,
           const components::Name *_nameComp,
-          const components::ParentEntity *_parentComp,
           const components::Pose *_poseComp) -> bool
       {
         auto linkMsg = std::make_shared<msgs::Link>();
@@ -385,24 +383,27 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
         linkMsg->mutable_pose()->CopyFrom(msgs::Convert(_poseComp->Data()));
 
         // Add to graph
+        auto parentEntity =
+            _manager.Entities().AdjacentsTo(_entity).begin()->first;
         newGraph.AddVertex(_nameComp->Data(), linkMsg, _entity);
-        newGraph.AddEdge({_parentComp->Data(), _entity}, true);
+        newGraph.AddEdge({parentEntity, _entity}, true);
 
         newEntity = true;
         return true;
       });
 
   // Visuals
-  _manager.EachNew<components::Visual, components::Name,
-                   components::ParentEntity, components::Pose>(
+  _manager.EachNew<components::Visual, components::Name, components::Pose>(
       [&](const Entity &_entity, const components::Visual *,
           const components::Name *_nameComp,
-          const components::ParentEntity *_parentComp,
           const components::Pose *_poseComp) -> bool
       {
+        auto parentEntity =
+            _manager.Entities().AdjacentsTo(_entity).begin()->first;
+
         auto visualMsg = std::make_shared<msgs::Visual>();
         visualMsg->set_id(_entity);
-        visualMsg->set_parent_id(_parentComp->Data());
+        visualMsg->set_parent_id(parentEntity);
         visualMsg->set_name(_nameComp->Data());
         visualMsg->mutable_pose()->CopyFrom(msgs::Convert(_poseComp->Data()));
 
@@ -424,30 +425,31 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
 
         // Add to graph
         newGraph.AddVertex(_nameComp->Data(), visualMsg, _entity);
-        newGraph.AddEdge({_parentComp->Data(), _entity}, true);
+        newGraph.AddEdge({parentEntity, _entity}, true);
 
         newEntity = true;
         return true;
       });
 
   // Lights
-  _manager.EachNew<components::Light, components::Name,
-                   components::ParentEntity, components::Pose>(
+  _manager.EachNew<components::Light, components::Name, components::Pose>(
       [&](const Entity &_entity, const components::Light *_lightComp,
           const components::Name *_nameComp,
-          const components::ParentEntity *_parentComp,
           const components::Pose *_poseComp) -> bool
       {
+        auto parentEntity =
+            _manager.Entities().AdjacentsTo(_entity).begin()->first;
+
         auto lightMsg = std::make_shared<msgs::Light>();
         lightMsg->CopyFrom(Convert<msgs::Light>(_lightComp->Data()));
         lightMsg->set_id(_entity);
-        lightMsg->set_parent_id(_parentComp->Data());
+        lightMsg->set_parent_id(parentEntity);
         lightMsg->set_name(_nameComp->Data());
         lightMsg->mutable_pose()->CopyFrom(msgs::Convert(_poseComp->Data()));
 
         // Add to graph
         newGraph.AddVertex(_nameComp->Data(), lightMsg, _entity);
-        newGraph.AddEdge({_parentComp->Data(), _entity}, true);
+        newGraph.AddEdge({parentEntity, _entity}, true);
         newEntity = true;
         return true;
       });

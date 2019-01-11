@@ -24,7 +24,6 @@
 #include "ignition/gazebo/components/Link.hh"
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/components/Name.hh"
-#include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/ParentLinkName.hh"
 #include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/Static.hh"
@@ -155,23 +154,6 @@ TEST_F(ComponentsTest, Name)
   auto comp11 = components::Name("comp1");
   auto comp12 = components::Name("comp1");
   auto comp2 = components::Name("comp2");
-
-  // Equality operators
-  EXPECT_EQ(comp11, comp12);
-  EXPECT_NE(comp11, comp2);
-  EXPECT_TRUE(comp11 == comp12);
-  EXPECT_TRUE(comp11 != comp2);
-  EXPECT_FALSE(comp11 == comp2);
-  EXPECT_FALSE(comp11 != comp12);
-}
-
-/////////////////////////////////////////////////
-TEST_F(ComponentsTest, ParentEntity)
-{
-  // Create components
-  auto comp11 = components::ParentEntity(1);
-  auto comp12 = components::ParentEntity(1);
-  auto comp2 = components::ParentEntity(2);
 
   // Equality operators
   EXPECT_EQ(comp11, comp12);

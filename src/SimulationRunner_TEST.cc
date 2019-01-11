@@ -39,7 +39,6 @@
 #include "ignition/gazebo/components/Material.hh"
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/components/Name.hh"
-#include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/ParentLinkName.hh"
 #include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/Visual.hh"
@@ -93,8 +92,6 @@ TEST_P(SimulationRunnerTest, CreateEntities)
   EXPECT_TRUE(runner.EntityCompMgr().HasComponentType(
       EntityComponentManager::ComponentType<components::Name>()));
   EXPECT_TRUE(runner.EntityCompMgr().HasComponentType(
-      EntityComponentManager::ComponentType<components::ParentEntity>()));
-  EXPECT_TRUE(runner.EntityCompMgr().HasComponentType(
       EntityComponentManager::ComponentType<components::Geometry>()));
   EXPECT_TRUE(runner.EntityCompMgr().HasComponentType(
       EntityComponentManager::ComponentType<components::Material>()));
@@ -136,22 +133,19 @@ TEST_P(SimulationRunnerTest, CreateEntities)
   Entity sphModelEntity = kNullEntity;
   runner.EntityCompMgr().Each<components::Model,
                             components::Pose,
-                            components::ParentEntity,
                             components::Name>(
     [&](const Entity &_entity,
         const components::Model *_model,
         const components::Pose *_pose,
-        const components::ParentEntity *_parent,
         const components::Name *_name)->bool
     {
       EXPECT_NE(nullptr, _model);
       EXPECT_NE(nullptr, _pose);
-      EXPECT_NE(nullptr, _parent);
       EXPECT_NE(nullptr, _name);
 
       modelCount++;
 
-      EXPECT_EQ(worldEntity, _parent->Data());
+//      EXPECT_EQ(worldEntity, _parent->Data());
       if (modelCount == 1)
       {
         EXPECT_EQ(ignition::math::Pose3d(1, 2, 3, 0, 0, 1),
@@ -188,17 +182,14 @@ TEST_P(SimulationRunnerTest, CreateEntities)
   Entity sphLinkEntity = kNullEntity;
   runner.EntityCompMgr().Each<components::Link,
                             components::Pose,
-                            components::ParentEntity,
                             components::Name>(
     [&](const Entity &_entity,
         const components::Link *_link,
         const components::Pose *_pose,
-        const components::ParentEntity *_parent,
         const components::Name *_name)->bool
     {
       EXPECT_NE(nullptr, _link);
       EXPECT_NE(nullptr, _pose);
-      EXPECT_NE(nullptr, _parent);
       EXPECT_NE(nullptr, _name);
 
       linkCount++;
@@ -208,7 +199,7 @@ TEST_P(SimulationRunnerTest, CreateEntities)
         EXPECT_EQ(ignition::math::Pose3d(0.1, 0.1, 0.1, 0, 0, 0),
             _pose->Data());
         EXPECT_EQ("box_link", _name->Data());
-        EXPECT_EQ(boxModelEntity, _parent->Data());
+//        EXPECT_EQ(boxModelEntity, _parent->Data());
         boxLinkEntity = _entity;
       }
       else if (linkCount == 2)
@@ -216,7 +207,7 @@ TEST_P(SimulationRunnerTest, CreateEntities)
         EXPECT_EQ(ignition::math::Pose3d(0.2, 0.2, 0.2, 0, 0, 0),
             _pose->Data());
         EXPECT_EQ("cylinder_link", _name->Data());
-        EXPECT_EQ(cylModelEntity, _parent->Data());
+//        EXPECT_EQ(cylModelEntity, _parent->Data());
         cylLinkEntity = _entity;
       }
       else if (linkCount == 3)
@@ -224,7 +215,7 @@ TEST_P(SimulationRunnerTest, CreateEntities)
         EXPECT_EQ(ignition::math::Pose3d(0.3, 0.3, 0.3, 0, 0, 0),
             _pose->Data());
         EXPECT_EQ("sphere_link", _name->Data());
-        EXPECT_EQ(sphModelEntity, _parent->Data());
+//        EXPECT_EQ(sphModelEntity, _parent->Data());
         sphLinkEntity = _entity;
       }
       return true;
@@ -275,19 +266,16 @@ TEST_P(SimulationRunnerTest, CreateEntities)
   runner.EntityCompMgr().Each<components::Collision,
                             components::Geometry,
                             components::Pose,
-                            components::ParentEntity,
                             components::Name>(
     [&](const Entity &/*_entity*/,
         const components::Collision *_collision,
         const components::Geometry *_geometry,
         const components::Pose *_pose,
-        const components::ParentEntity *_parent,
         const components::Name *_name)->bool
     {
       EXPECT_NE(nullptr, _collision);
       EXPECT_NE(nullptr, _geometry);
       EXPECT_NE(nullptr, _pose);
-      EXPECT_NE(nullptr, _parent);
       EXPECT_NE(nullptr, _name);
 
       collisionCount++;
@@ -299,7 +287,7 @@ TEST_P(SimulationRunnerTest, CreateEntities)
 
         EXPECT_EQ("box_collision", _name->Data());
 
-        EXPECT_EQ(boxLinkEntity, _parent->Data());
+//        EXPECT_EQ(boxLinkEntity, _parent->Data());
 
         EXPECT_EQ(sdf::GeometryType::BOX, _geometry->Data().Type());
         EXPECT_NE(nullptr, _geometry->Data().BoxShape());
@@ -313,7 +301,7 @@ TEST_P(SimulationRunnerTest, CreateEntities)
 
         EXPECT_EQ("cylinder_collision", _name->Data());
 
-        EXPECT_EQ(cylLinkEntity, _parent->Data());
+//        EXPECT_EQ(cylLinkEntity, _parent->Data());
 
         EXPECT_EQ(sdf::GeometryType::CYLINDER, _geometry->Data().Type());
         EXPECT_NE(nullptr, _geometry->Data().CylinderShape());
@@ -327,7 +315,7 @@ TEST_P(SimulationRunnerTest, CreateEntities)
 
         EXPECT_EQ("sphere_collision", _name->Data());
 
-        EXPECT_EQ(sphLinkEntity, _parent->Data());
+//        EXPECT_EQ(sphLinkEntity, _parent->Data());
 
         EXPECT_EQ(sdf::GeometryType::SPHERE, _geometry->Data().Type());
         EXPECT_NE(nullptr, _geometry->Data().SphereShape());
@@ -344,21 +332,18 @@ TEST_P(SimulationRunnerTest, CreateEntities)
                             components::Geometry,
                             components::Material,
                             components::Pose,
-                            components::ParentEntity,
                             components::Name>(
     [&](const Entity &/*_entity*/,
         const components::Visual *_visual,
         const components::Geometry *_geometry,
         const components::Material *_material,
         const components::Pose *_pose,
-        const components::ParentEntity *_parent,
         const components::Name *_name)->bool
     {
       EXPECT_NE(nullptr, _visual);
       EXPECT_NE(nullptr, _geometry);
       EXPECT_NE(nullptr, _material);
       EXPECT_NE(nullptr, _pose);
-      EXPECT_NE(nullptr, _parent);
       EXPECT_NE(nullptr, _name);
 
       visualCount++;
@@ -370,7 +355,7 @@ TEST_P(SimulationRunnerTest, CreateEntities)
 
         EXPECT_EQ("box_visual", _name->Data());
 
-        EXPECT_EQ(boxLinkEntity, _parent->Data());
+//        EXPECT_EQ(boxLinkEntity, _parent->Data());
 
         EXPECT_EQ(sdf::GeometryType::BOX, _geometry->Data().Type());
         EXPECT_NE(nullptr, _geometry->Data().BoxShape());
@@ -389,7 +374,7 @@ TEST_P(SimulationRunnerTest, CreateEntities)
 
         EXPECT_EQ("cylinder_visual", _name->Data());
 
-        EXPECT_EQ(cylLinkEntity, _parent->Data());
+//        EXPECT_EQ(cylLinkEntity, _parent->Data());
 
         EXPECT_EQ(sdf::GeometryType::CYLINDER, _geometry->Data().Type());
         EXPECT_NE(nullptr, _geometry->Data().CylinderShape());
@@ -408,7 +393,7 @@ TEST_P(SimulationRunnerTest, CreateEntities)
 
         EXPECT_EQ("sphere_visual", _name->Data());
 
-        EXPECT_EQ(sphLinkEntity, _parent->Data());
+//        EXPECT_EQ(sphLinkEntity, _parent->Data());
 
         EXPECT_EQ(sdf::GeometryType::SPHERE, _geometry->Data().Type());
         EXPECT_NE(nullptr, _geometry->Data().SphereShape());
@@ -428,17 +413,14 @@ TEST_P(SimulationRunnerTest, CreateEntities)
   unsigned int lightCount{0};
   runner.EntityCompMgr().Each<components::Light,
                             components::Pose,
-                            components::ParentEntity,
                             components::Name>(
     [&](const Entity &/*_entity*/,
         const components::Light *_light,
         const components::Pose *_pose,
-        const components::ParentEntity *_parent,
         const components::Name *_name)->bool
     {
       EXPECT_NE(nullptr, _light);
       EXPECT_NE(nullptr, _pose);
-      EXPECT_NE(nullptr, _parent);
       EXPECT_NE(nullptr, _name);
 
       lightCount++;
@@ -448,7 +430,7 @@ TEST_P(SimulationRunnerTest, CreateEntities)
 
       EXPECT_EQ("sun", _name->Data());
 
-      EXPECT_EQ(worldEntity, _parent->Data());
+//      EXPECT_EQ(worldEntity, _parent->Data());
 
       EXPECT_EQ("sun", _light->Data().Name());
       EXPECT_EQ(sdf::LightType::DIRECTIONAL, _light->Data().Type());
@@ -519,22 +501,19 @@ TEST_P(SimulationRunnerTest, CreateLights)
   Entity sphModelEntity = kNullEntity;
   runner.EntityCompMgr().Each<components::Model,
                             components::Pose,
-                            components::ParentEntity,
                             components::Name>(
     [&](const Entity &_entity,
         const components::Model *_model,
         const components::Pose *_pose,
-        const components::ParentEntity *_parent,
         const components::Name *_name)->bool
     {
       EXPECT_NE(nullptr, _model);
       EXPECT_NE(nullptr, _pose);
-      EXPECT_NE(nullptr, _parent);
       EXPECT_NE(nullptr, _name);
 
       modelCount++;
 
-      EXPECT_EQ(worldEntity, _parent->Data());
+//      EXPECT_EQ(worldEntity, _parent->Data());
       EXPECT_EQ(ignition::math::Pose3d(0, 0, 0, 0, 0, 0),
           _pose->Data());
       EXPECT_EQ("sphere", _name->Data());
@@ -551,17 +530,14 @@ TEST_P(SimulationRunnerTest, CreateLights)
   Entity sphLinkEntity = kNullEntity;
   runner.EntityCompMgr().Each<components::Link,
                             components::Pose,
-                            components::ParentEntity,
                             components::Name>(
     [&](const Entity &_entity,
         const components::Link *_link,
         const components::Pose *_pose,
-        const components::ParentEntity *_parent,
         const components::Name *_name)->bool
     {
       EXPECT_NE(nullptr, _link);
       EXPECT_NE(nullptr, _pose);
-      EXPECT_NE(nullptr, _parent);
       EXPECT_NE(nullptr, _name);
 
       linkCount++;
@@ -569,7 +545,7 @@ TEST_P(SimulationRunnerTest, CreateLights)
       EXPECT_EQ(ignition::math::Pose3d(0.0, 0.0, 0.0, 0, 0, 0),
           _pose->Data());
       EXPECT_EQ("sphere_link", _name->Data());
-      EXPECT_EQ(sphModelEntity, _parent->Data());
+//      EXPECT_EQ(sphModelEntity, _parent->Data());
       sphLinkEntity = _entity;
 
       return true;
@@ -584,21 +560,18 @@ TEST_P(SimulationRunnerTest, CreateLights)
                             components::Geometry,
                             components::Material,
                             components::Pose,
-                            components::ParentEntity,
                             components::Name>(
     [&](const Entity &/*_entity*/,
         const components::Visual *_visual,
         const components::Geometry *_geometry,
         const components::Material *_material,
         const components::Pose *_pose,
-        const components::ParentEntity *_parent,
         const components::Name *_name)->bool
     {
       EXPECT_NE(nullptr, _visual);
       EXPECT_NE(nullptr, _geometry);
       EXPECT_NE(nullptr, _material);
       EXPECT_NE(nullptr, _pose);
-      EXPECT_NE(nullptr, _parent);
       EXPECT_NE(nullptr, _name);
 
       visualCount++;
@@ -608,7 +581,7 @@ TEST_P(SimulationRunnerTest, CreateLights)
 
       EXPECT_EQ("sphere_visual", _name->Data());
 
-      EXPECT_EQ(sphLinkEntity, _parent->Data());
+//      EXPECT_EQ(sphLinkEntity, _parent->Data());
 
       EXPECT_EQ(sdf::GeometryType::SPHERE, _geometry->Data().Type());
       EXPECT_NE(nullptr, _geometry->Data().SphereShape());
@@ -626,17 +599,14 @@ TEST_P(SimulationRunnerTest, CreateLights)
   unsigned int lightCount{0};
   runner.EntityCompMgr().Each<components::Light,
                             components::Pose,
-                            components::ParentEntity,
                             components::Name>(
     [&](const Entity &/*_entity*/,
         const components::Light *_light,
         const components::Pose *_pose,
-        const components::ParentEntity *_parent,
         const components::Name *_name)->bool
     {
       EXPECT_NE(nullptr, _light);
       EXPECT_NE(nullptr, _pose);
-      EXPECT_NE(nullptr, _parent);
       EXPECT_NE(nullptr, _name);
 
       lightCount++;
@@ -647,7 +617,7 @@ TEST_P(SimulationRunnerTest, CreateLights)
         EXPECT_EQ(ignition::math::Pose3d(0.0, 0.0, 1.0, 0, 0, 0),
             _pose->Data());
         EXPECT_EQ("link_light_point", _name->Data());
-        EXPECT_EQ(sphLinkEntity, _parent->Data());
+//        EXPECT_EQ(sphLinkEntity, _parent->Data());
         EXPECT_EQ("link_light_point", _light->Data().Name());
         EXPECT_EQ(sdf::LightType::POINT, _light->Data().Type());
         EXPECT_EQ(ignition::math::Pose3d(0, 0, 1, 0, 0, 0),
@@ -669,7 +639,7 @@ TEST_P(SimulationRunnerTest, CreateLights)
         EXPECT_EQ(ignition::math::Pose3d(0.0, 0.0, 10, 0, 0, 0),
             _pose->Data());
         EXPECT_EQ("directional", _name->Data());
-        EXPECT_EQ(worldEntity, _parent->Data());
+//        EXPECT_EQ(worldEntity, _parent->Data());
         EXPECT_EQ("directional", _light->Data().Name());
         EXPECT_EQ(sdf::LightType::DIRECTIONAL, _light->Data().Type());
         EXPECT_EQ(ignition::math::Pose3d(0, 0, 10, 0, 0, 0),
@@ -693,7 +663,7 @@ TEST_P(SimulationRunnerTest, CreateLights)
         EXPECT_EQ(ignition::math::Pose3d(0.0, -1.5, 3, 0, 0, 0),
             _pose->Data());
         EXPECT_EQ("point", _name->Data());
-        EXPECT_EQ(worldEntity, _parent->Data());
+//        EXPECT_EQ(worldEntity, _parent->Data());
         EXPECT_EQ("point", _light->Data().Name());
         EXPECT_EQ(sdf::LightType::POINT, _light->Data().Type());
         EXPECT_EQ(ignition::math::Pose3d(0, -1.5, 3, 0, 0, 0),
@@ -715,7 +685,7 @@ TEST_P(SimulationRunnerTest, CreateLights)
         EXPECT_EQ(ignition::math::Pose3d(0.0, 1.5, 3, 0, 0, 0),
             _pose->Data());
         EXPECT_EQ("spot", _name->Data());
-        EXPECT_EQ(worldEntity, _parent->Data());
+//        EXPECT_EQ(worldEntity, _parent->Data());
         EXPECT_EQ("spot", _light->Data().Name());
         EXPECT_EQ(sdf::LightType::SPOT, _light->Data().Type());
         EXPECT_EQ(ignition::math::Pose3d(0, 1.5, 3, 0, 0, 0),
@@ -773,8 +743,6 @@ TEST_P(SimulationRunnerTest, CreateJointEntities)
       EntityComponentManager::ComponentType<components::ChildLinkName>()));
   EXPECT_TRUE(runner.EntityCompMgr().HasComponentType(
       EntityComponentManager::ComponentType<components::ParentLinkName>()));
-  EXPECT_TRUE(runner.EntityCompMgr().HasComponentType(
-      EntityComponentManager::ComponentType<components::ParentEntity>()));
   EXPECT_TRUE(runner.EntityCompMgr().HasComponentType(
       EntityComponentManager::ComponentType<components::Pose>()));
   EXPECT_TRUE(runner.EntityCompMgr().HasComponentType(

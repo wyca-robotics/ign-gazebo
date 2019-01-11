@@ -25,7 +25,6 @@
 #include "ignition/gazebo/components/LinearVelocity.hh"
 #include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/Performer.hh"
-#include "ignition/gazebo/components/ParentEntity.hh"
 
 using namespace ignition;
 

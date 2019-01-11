@@ -22,7 +22,6 @@
 
 #include "ignition/gazebo/components/Joint.hh"
 #include "ignition/gazebo/components/Name.hh"
-#include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/JointVelocity.hh"
 #include "ignition/gazebo/systems/DiffDrive.hh"
 #include "ignition/gazebo/Model.hh"
