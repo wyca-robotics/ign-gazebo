@@ -17,6 +17,7 @@
 
 #include <iostream>
 
+#include <ignition/common/Profiler.hh>
 #include <ignition/common/MeshManager.hh>
 #include <ignition/math/eigen3/Conversions.hh>
 #include <ignition/physics/FeatureList.hh>
@@ -187,6 +188,7 @@ Physics::~Physics()
 //////////////////////////////////////////////////
 void Physics::Update(const UpdateInfo &_info, EntityComponentManager &_ecm)
 {
+  IGN_PROFILE("Physics::Update");
   if (this->dataPtr->engine)
   {
     if (!this->dataPtr->initialized)
@@ -209,6 +211,7 @@ void Physics::Update(const UpdateInfo &_info, EntityComponentManager &_ecm)
 void Physics::PostUpdate(const UpdateInfo &_info,
                          const EntityComponentManager &_ecm)
 {
+  IGN_PROFILE("Physics::PostUpdate");
   (void)_info;
   (void)_ecm;
 }
@@ -428,6 +431,7 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
 //////////////////////////////////////////////////
 void PhysicsPrivate::UpdatePhysics(const EntityComponentManager &_ecm)
 {
+  IGN_PROFILE("PhysicsPrivate::UpdatePhysics");
   // Handle joint state
   _ecm.Each<components::Joint>(
       [&](const Entity &_entity, const components::Joint *)
@@ -451,6 +455,7 @@ void PhysicsPrivate::UpdatePhysics(const EntityComponentManager &_ecm)
 //////////////////////////////////////////////////
 void PhysicsPrivate::Step(const std::chrono::steady_clock::duration &_dt)
 {
+  IGN_PROFILE("PhysicsPrivate::Step");
   ignition::physics::ForwardStep::Input input;
   ignition::physics::ForwardStep::State state;
   ignition::physics::ForwardStep::Output output;
@@ -466,6 +471,7 @@ void PhysicsPrivate::Step(const std::chrono::steady_clock::duration &_dt)
 //////////////////////////////////////////////////
 void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
 {
+  IGN_PROFILE("PhysicsPrivate::UpdateSim");
   _ecm.Each<components::Link, components::Pose>(
       [&](const Entity &_entity, components::Link * /*_link*/,
           components::Pose *_pose)->bool

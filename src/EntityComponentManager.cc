@@ -20,6 +20,8 @@
 #include <set>
 #include <vector>
 
+#include "ignition/common/Profiler.hh"
+
 using namespace ignition;
 using namespace gazebo;
 
@@ -184,10 +186,12 @@ void EntityComponentManager::RequestEraseEntities()
 /////////////////////////////////////////////////
 void EntityComponentManager::ProcessEraseEntityRequests()
 {
+  IGN_PROFILE("EntityComponentManager::ProcessEraseEntityRequests");
   std::lock_guard<std::mutex> lock(this->dataPtr->entityEraseMutex);
   // Short-cut if erasing all entities
   if (this->dataPtr->eraseAllEntities)
   {
+    IGN_PROFILE("EraseAll");
     this->dataPtr->eraseAllEntities = false;
     this->dataPtr->entities = EntityGraph();
     this->dataPtr->entityComponents.clear();
@@ -205,6 +209,7 @@ void EntityComponentManager::ProcessEraseEntityRequests()
   }
   else
   {
+    IGN_PROFILE("Erase");
     // Otherwise iterate through the list of entities to erase.
     for (const Entity entity : this->dataPtr->toEraseEntities)
     {
@@ -526,6 +531,7 @@ std::map<ComponentTypeKey, View>::iterator EntityComponentManager::AddView(
 //////////////////////////////////////////////////
 void EntityComponentManager::UpdateViews(const Entity _entity)
 {
+  IGN_PROFILE("EntityComponentManager::UpdateViews");
   for (std::pair<const ComponentTypeKey, View> &view : this->dataPtr->views)
   {
     // Add/update the entity if it matches the view.
@@ -554,6 +560,7 @@ void EntityComponentManager::UpdateViews(const Entity _entity)
 //////////////////////////////////////////////////
 void EntityComponentManager::RebuildViews()
 {
+  IGN_PROFILE("EntityComponentManager::RebuildViews");
   for (std::pair<const ComponentTypeKey, View> &view : this->dataPtr->views)
   {
     view.second.entities.clear();

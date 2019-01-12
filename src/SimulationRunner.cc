@@ -17,6 +17,8 @@
 
 #include "SimulationRunner.hh"
 
+#include "ignition/common/Profiler.hh"
+
 #include "ignition/gazebo/Events.hh"
 
 #include "ignition/gazebo/components/CanonicalLink.hh"
@@ -137,6 +139,8 @@ SimulationRunner::~SimulationRunner()
 /////////////////////////////////////////////////
 void SimulationRunner::UpdateCurrentInfo()
 {
+  IGN_PROFILE("SimulationRunner::UpdateCurrentInfo");
+
   // Store the real time and sim time only if not paused.
   if (this->realTimeWatch.Running())
   {
@@ -190,6 +194,8 @@ void SimulationRunner::UpdateCurrentInfo()
 /////////////////////////////////////////////////
 void SimulationRunner::PublishStats()
 {
+  IGN_PROFILE("SimulationRunner::PublishStats");
+
   // Create the world statistics publisher.
   if (!this->statsPub.Valid())
   {
@@ -243,20 +249,31 @@ void SimulationRunner::AddSystem(const SystemPluginPtr &_system)
 /////////////////////////////////////////////////
 void SimulationRunner::UpdateSystems()
 {
+  IGN_PROFILE("SimulationRunner::UpdateSystems");
+
   // \todo(nkoenig)  Systems used to be updated in parallel using
   // an ignition::common::WorkerPool. There is overhead associated with
   // this, most notably the creation and destruction of WorkOrders (see
   // WorkerPool.cc). We could turn on parallel updates in the future, and/or
   // turn it on if there are sufficient systems. More testing is required.
 
-  for (auto& system : this->systemsPreupdate)
-    system->PreUpdate(this->currentInfo, this->entityCompMgr);
+  {
+    IGN_PROFILE("PreUpdate");
+    for (auto& system : this->systemsPreupdate)
+      system->PreUpdate(this->currentInfo, this->entityCompMgr);
+  }
 
-  for (auto& system : this->systemsUpdate)
-    system->Update(this->currentInfo, this->entityCompMgr);
+  {
+    IGN_PROFILE("Update");
+    for (auto& system : this->systemsUpdate)
+      system->Update(this->currentInfo, this->entityCompMgr);
+  }
 
-  for (auto& system : this->systemsPostupdate)
-    system->PostUpdate(this->currentInfo, this->entityCompMgr);
+  {
+    IGN_PROFILE("PostUpdate");
+    for (auto& system : this->systemsPostupdate)
+      system->PostUpdate(this->currentInfo, this->entityCompMgr);
+  }
 }
 
 /////////////////////////////////////////////////
@@ -273,6 +290,8 @@ bool SimulationRunner::Run(const uint64_t _iterations)
   //
   // \todo(nkoenig) We should implement the two-phase update detailed
   // in the design.
+
+  IGN_PROFILE_THREAD_NAME("SimulationRunner");
 
   // Keep track of wall clock time. Only start the realTimeWatch if this
   // runner is not paused.
@@ -292,6 +311,7 @@ bool SimulationRunner::Run(const uint64_t _iterations)
        this->running && (_iterations == 0 ||
          this->currentInfo.iterations < _iterations + startingIterations);)
   {
+    IGN_PROFILE("SimulationRunner::Run - Iteration");
     // Compute the time to sleep in order to match, as closely as possible,
     // the update period.
     sleepTime = std::max(0ns, this->prevUpdateRealTime +
@@ -302,6 +322,7 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     // Only sleep if needed.
     if (sleepTime > 0ns)
     {
+      IGN_PROFILE("Sleep");
       // Get the current time, sleep for the duration needed to match the
       // updatePeriod, and then record the actual time slept.
       startTime = std::chrono::steady_clock::now();
@@ -357,6 +378,8 @@ bool SimulationRunner::Run(const uint64_t _iterations)
 void SimulationRunner::CreateEntities(const sdf::World *_world,
     const Entity _worldEntity)
 {
+  IGN_PROFILE("SimulationRunner::CreateEntities(sdf::World)");
+
   // World components
   this->entityCompMgr.CreateComponent(_worldEntity, components::World());
   this->entityCompMgr.CreateComponent(_worldEntity,
@@ -387,6 +410,8 @@ void SimulationRunner::CreateEntities(const sdf::World *_world,
 void SimulationRunner::CreateEntities(const sdf::Model *_model,
     const Entity _modelEntity)
 {
+  IGN_PROFILE("SimulationRunner::CreateEntities(sdf::Model)");
+
   // Components
   this->entityCompMgr.CreateComponent(_modelEntity, components::Model());
   this->entityCompMgr.CreateComponent(_modelEntity,
@@ -431,6 +456,8 @@ void SimulationRunner::CreateEntities(const sdf::Model *_model,
 void SimulationRunner::CreateEntities(const sdf::Light *_light,
     const Entity _lightEntity)
 {
+  IGN_PROFILE("SimulationRunner::CreateEntities(sdf::Light)");
+
   // Components
   this->entityCompMgr.CreateComponent(_lightEntity, components::Light(*_light));
   this->entityCompMgr.CreateComponent(_lightEntity,
@@ -443,6 +470,8 @@ void SimulationRunner::CreateEntities(const sdf::Light *_light,
 void SimulationRunner::CreateEntities(const sdf::Link *_link,
     const Entity _linkEntity)
 {
+  IGN_PROFILE("SimulationRunner::CreateEntities(sdf::Link)");
+
   // Components
   this->entityCompMgr.CreateComponent(_linkEntity, components::Link());
   this->entityCompMgr.CreateComponent(_linkEntity,
@@ -484,6 +513,8 @@ void SimulationRunner::CreateEntities(const sdf::Link *_link,
 void SimulationRunner::CreateEntities(const sdf::Joint *_joint,
     const Entity _jointEntity)
 {
+  IGN_PROFILE("SimulationRunner::CreateEntities(sdf::Joint)");
+
   // Components
   this->entityCompMgr.CreateComponent(_jointEntity,
       components::Joint());
@@ -518,6 +549,8 @@ void SimulationRunner::CreateEntities(const sdf::Joint *_joint,
 void SimulationRunner::CreateEntities(const sdf::Visual *_visual,
     const Entity _visualEntity)
 {
+  IGN_PROFILE("SimulationRunner::CreateEntities(sdf::Visual)");
+
   // Components
   this->entityCompMgr.CreateComponent(_visualEntity, components::Visual());
   this->entityCompMgr.CreateComponent(_visualEntity,
@@ -543,6 +576,8 @@ void SimulationRunner::CreateEntities(const sdf::Visual *_visual,
 void SimulationRunner::CreateEntities(const sdf::Collision *_collision,
     const Entity _collisionEntity)
 {
+  IGN_PROFILE("SimulationRunner::CreateEntities(sdf::Collision)");
+
   // Components
   this->entityCompMgr.CreateComponent(_collisionEntity,
       components::Collision());
@@ -649,6 +684,7 @@ bool SimulationRunner::OnWorldControl(const msgs::WorldControl &_req,
 /////////////////////////////////////////////////
 void SimulationRunner::ProcessMessages()
 {
+  IGN_PROFILE("SimulationRunner::ProcessMessages");
   std::lock_guard<std::mutex> lock(this->msgBufferMutex);
   this->ProcessWorldControl();
 }
@@ -656,6 +692,7 @@ void SimulationRunner::ProcessMessages()
 /////////////////////////////////////////////////
 void SimulationRunner::ProcessWorldControl()
 {
+  IGN_PROFILE("SimulationRunner::ProcessWorldControl");
   for (const msgs::WorldControl &msg : this->worldControlMsgs)
   {
     // Play / pause
