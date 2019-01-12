@@ -248,12 +248,10 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
         }
 
         // Find parent world
-        Entity parentEntity = _ecm.Entities().AdjacentsTo(_entity).begin()->first;
-        auto worldPtrPhys = this->entityWorldMap.at(parentEntity);
-
+        auto worldPtrPhys = this->entityWorldMap.at(_ecm.ParentEntity(_entity));
         if (nullptr == worldPtrPhys)
         {
-          ignwarn << "No world found for entity [" << parentEntity << "]"
+          ignwarn << "No parent found for entity [" << _name->Data() << "]"
                   << std::endl;
           return true;
         }
@@ -285,12 +283,10 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
         }
 
         // Find parent model
-        Entity parentEntity = _ecm.Entities().AdjacentsTo(_entity).begin()->first;
-        auto modelPtrPhys = this->entityModelMap.at(parentEntity);
-
+        auto modelPtrPhys = this->entityModelMap.at(_ecm.ParentEntity(_entity));
         if (nullptr == modelPtrPhys)
         {
-          ignwarn << "No model found for entity [" << parentEntity << "]"
+          ignwarn << "No parent found for entity [" << _name->Data() << "]"
                   << std::endl;
           return true;
         }
@@ -326,12 +322,10 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
         const components::Geometry *_geom)->bool
       {
         // Find parent link
-        Entity parentEntity = _ecm.Entities().AdjacentsTo(_entity).begin()->first;
-        auto linkPtrPhys = this->entityLinkMap.at(parentEntity);
-
+        auto linkPtrPhys = this->entityLinkMap.at(_ecm.ParentEntity(_entity));
         if (nullptr == linkPtrPhys)
         {
-          ignwarn << "No link found for entity [" << parentEntity << "]"
+          ignwarn << "No parent found for entity [" << _name->Data() << "]"
                   << std::endl;
           return true;
         }
@@ -395,12 +389,10 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
         }
 
         // Find parent model
-        Entity parentEntity = _ecm.Entities().AdjacentsTo(_entity).begin()->first;
-        auto modelPtrPhys = this->entityModelMap.at(parentEntity);
-
+        auto modelPtrPhys = this->entityModelMap.at(_ecm.ParentEntity(_entity));
         if (nullptr == modelPtrPhys)
         {
-          ignwarn << "No model found for entity [" << parentEntity << "]"
+          ignwarn << "No parent found for entity [" << _name->Data() << "]"
                   << std::endl;
           return true;
         }
@@ -488,7 +480,7 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
         auto canonicalLink = _ecm.Component<components::CanonicalLink>(_entity);
 
         // get the pose component of the parent model
-        Entity parentEntity = _ecm.Entities().AdjacentsTo(_entity).begin()->first;
+        Entity parentEntity = _ecm.ParentEntity(_entity);
         auto parentPose = _ecm.Component<components::Pose>(parentEntity);
 
         // if the parentPose is a nullptr, something is wrong with ECS

@@ -47,6 +47,7 @@ namespace ignition
     /// \brief Type alias for the graph that holds entities.
     /// Each vertex is an entity, and the direction points from the parent to
     /// its children.
+    /// All edges are positive booleans.
     using EntityGraph = math::graph::DirectedGraph<Entity, bool>;
 
     /// \brief A view is a cache to entities, and their components, that
@@ -338,8 +339,10 @@ namespace ignition
 
       /// \brief Creates a new Entity.
       /// \param[in] _parent Parent entity for the new entity. If left empty,
-      /// the entity will be detached from the entity graph.
+      /// the entity will be detached from the entity graph. The creation
+      /// will fail if the parent hasn't been created yet.
       /// \return An id for the Entity, or kNullEntity on failure.
+      /// TODO(louise) Support reparenting entities.
       public: Entity CreateEntity(const Entity _parent = kNullEntity);
 
       /// \brief Get the number of entities on the server.
@@ -349,7 +352,11 @@ namespace ignition
       /// \brief Request an entity deletion. This will insert the request
       /// into a queue. The queue is processed toward the end of a simulation
       /// update step.
-      public: void RequestEraseEntity(const Entity _entity);
+      /// \param[in] _entity Entity to be erased.
+      /// \param[in] _recursive Whether to recursively delete all child
+      /// entities. True by default.
+      public: void RequestEraseEntity(const Entity _entity,
+          bool _recursive = true);
 
       /// \brief Request to erase all entities. This will insert the request
       /// into a queue. The queue is processed toward the end of a simulation
@@ -357,9 +364,18 @@ namespace ignition
       public: void RequestEraseEntities();
 
       /// \brief Get whether an Entity exists.
-      /// \param[in] _entity Entity id to confirm.
+      /// \param[in] _entity Entity to confirm.
       /// \return True if the Entity exists.
       public: bool HasEntity(const Entity _entity) const;
+
+      /// \brief Get the entity which parents the given entity.
+      /// \detail If entity has more than one parent, it returns the first one
+      /// found.
+      /// TODO(louise) Either prevent multiple parents or provide full support
+      /// for multiple parents.
+      /// \param[in] _entity Entity.
+      /// \return The parent entity or kNullEntity if there's none.
+      public: Entity ParentEntity(const Entity _entity) const;
 
       /// \brief Get whether a component type has ever been created.
       /// \param[in] _typeId ID of the component type to check.
@@ -568,7 +584,8 @@ namespace ignition
       /// \param[in] _parent Entity which should be an immediate parent of the
       /// returned entity.
       /// \param[in] _desiredComponents All the components which must match.
-      /// \return Entity or kNullEntity if no entity has the exact components.
+      /// \return Entity or kNullEntity if no child entity has the exact
+      /// components.
       public: template<typename ...ComponentTypeTs>
               Entity ChildByComponents(Entity _parent,
                    const ComponentTypeTs &..._desiredComponents) const
@@ -585,7 +602,7 @@ namespace ignition
         {
           if (children.find(entity) == children.end())
           {
-            break;
+            continue;
           }
 
           // Iterate over desired components, comparing each of them to the
@@ -857,8 +874,8 @@ namespace ignition
         }
       }
 
-      /// \brief Get a graph with all the entities.
-      /// TODO document vertices and edges
+      /// \brief Get a graph with all the entities. Entities are vertices and
+      /// edges point from parent to children.
       /// \return Entity graph.
       public: const EntityGraph &Entities() const;
 

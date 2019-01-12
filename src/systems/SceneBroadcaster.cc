@@ -362,10 +362,8 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
         modelMsg->mutable_pose()->CopyFrom(msgs::Convert(_poseComp->Data()));
 
         // Add to graph
-        auto parentEntity =
-            _manager.Entities().AdjacentsTo(_entity).begin()->first;
         newGraph.AddVertex(_nameComp->Data(), modelMsg, _entity);
-        newGraph.AddEdge({parentEntity, _entity}, true);
+        newGraph.AddEdge({_manager.ParentEntity(_entity), _entity}, true);
 
         newEntity = true;
         return true;
@@ -383,10 +381,8 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
         linkMsg->mutable_pose()->CopyFrom(msgs::Convert(_poseComp->Data()));
 
         // Add to graph
-        auto parentEntity =
-            _manager.Entities().AdjacentsTo(_entity).begin()->first;
         newGraph.AddVertex(_nameComp->Data(), linkMsg, _entity);
-        newGraph.AddEdge({parentEntity, _entity}, true);
+        newGraph.AddEdge({_manager.ParentEntity(_entity), _entity}, true);
 
         newEntity = true;
         return true;
@@ -398,12 +394,9 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
           const components::Name *_nameComp,
           const components::Pose *_poseComp) -> bool
       {
-        auto parentEntity =
-            _manager.Entities().AdjacentsTo(_entity).begin()->first;
-
         auto visualMsg = std::make_shared<msgs::Visual>();
         visualMsg->set_id(_entity);
-        visualMsg->set_parent_id(parentEntity);
+        visualMsg->set_parent_id(_manager.ParentEntity(_entity));
         visualMsg->set_name(_nameComp->Data());
         visualMsg->mutable_pose()->CopyFrom(msgs::Convert(_poseComp->Data()));
 
@@ -425,7 +418,7 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
 
         // Add to graph
         newGraph.AddVertex(_nameComp->Data(), visualMsg, _entity);
-        newGraph.AddEdge({parentEntity, _entity}, true);
+        newGraph.AddEdge({_manager.ParentEntity(_entity), _entity}, true);
 
         newEntity = true;
         return true;
@@ -437,19 +430,16 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
           const components::Name *_nameComp,
           const components::Pose *_poseComp) -> bool
       {
-        auto parentEntity =
-            _manager.Entities().AdjacentsTo(_entity).begin()->first;
-
         auto lightMsg = std::make_shared<msgs::Light>();
         lightMsg->CopyFrom(Convert<msgs::Light>(_lightComp->Data()));
         lightMsg->set_id(_entity);
-        lightMsg->set_parent_id(parentEntity);
+        lightMsg->set_parent_id(_manager.ParentEntity(_entity));
         lightMsg->set_name(_nameComp->Data());
         lightMsg->mutable_pose()->CopyFrom(msgs::Convert(_poseComp->Data()));
 
         // Add to graph
         newGraph.AddVertex(_nameComp->Data(), lightMsg, _entity);
-        newGraph.AddEdge({parentEntity, _entity}, true);
+        newGraph.AddEdge({_manager.ParentEntity(_entity), _entity}, true);
         newEntity = true;
         return true;
       });

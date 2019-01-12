@@ -1185,7 +1185,78 @@ TEST_P(EntityComponentManagerFixture, EntityByComponents)
   EXPECT_EQ(gazebo::kNullEntity, manager.EntityByComponents(-123, 456u));
 }
 
+/////////////////////////////////////////////////
+TEST_P(EntityComponentManagerFixture, EntityGraph)
+{
+  EXPECT_EQ(0u, manager.EntityCount());
+
+  // Create a few entities
+  auto e0 = manager.CreateEntity();
+  auto e1 = manager.CreateEntity(e0);
+  auto e2 = manager.CreateEntity(e0);
+  auto e3 = manager.CreateEntity(e1);
+  auto e4 = manager.CreateEntity(e1);
+  auto e5 = manager.CreateEntity(e2);
+  EXPECT_EQ(6u, manager.EntityCount());
+
+  EXPECT_EQ(gazebo::kNullEntity, manager.CreateEntity(gazebo::Entity(1000)));
+  EXPECT_EQ(6u, manager.EntityCount());
+
+  // Check their parents
+  EXPECT_EQ(gazebo::kNullEntity, manager.ParentEntity(e0));
+  EXPECT_EQ(e0, manager.ParentEntity(e1));
+  EXPECT_EQ(e0, manager.ParentEntity(e2));
+  EXPECT_EQ(e1, manager.ParentEntity(e3));
+  EXPECT_EQ(e1, manager.ParentEntity(e4));
+  EXPECT_EQ(e2, manager.ParentEntity(e5));
+
+  // Add components
+  struct Even
+  {
+    bool operator!=(const Even &) const
+    {
+      return false;
+    }
+  };
+  manager.CreateComponent<Even>(e0, {});
+  manager.CreateComponent<Even>(e2, {});
+  manager.CreateComponent<Even>(e4, {});
+
+  struct Odd
+  {
+    bool operator!=(const Odd &) const
+    {
+      return false;
+    }
+  };
+  manager.CreateComponent<Odd>(e1, {});
+  manager.CreateComponent<Odd>(e3, {});
+  manager.CreateComponent<Odd>(e5, {});
+
+  // Get children by components
+  EXPECT_EQ(e2, manager.ChildByComponents(e0, Even()));
+  EXPECT_EQ(e1, manager.ChildByComponents(e0, Odd()));
+  EXPECT_EQ(e4, manager.ChildByComponents(e1, Even()));
+  EXPECT_EQ(e3, manager.ChildByComponents(e1, Odd()));
+  EXPECT_EQ(gazebo::kNullEntity, manager.ChildByComponents(e2, Even()));
+  EXPECT_EQ(e5, manager.ChildByComponents(e2, Odd()));
+  EXPECT_EQ(gazebo::kNullEntity, manager.ChildByComponents(e3, Even()));
+  EXPECT_EQ(gazebo::kNullEntity, manager.ChildByComponents(e3, Odd()));
+  EXPECT_EQ(gazebo::kNullEntity, manager.ChildByComponents(e4, Even()));
+  EXPECT_EQ(gazebo::kNullEntity, manager.ChildByComponents(e4, Odd()));
+  EXPECT_EQ(gazebo::kNullEntity, manager.ChildByComponents(e5, Even()));
+  EXPECT_EQ(gazebo::kNullEntity, manager.ChildByComponents(e5, Odd()));
+
+  // Erase recursively (e1, e3, e4)
+  manager.RequestEraseEntity(e1);
+  manager.ProcessEntityErasures();
+  EXPECT_EQ(3u, manager.EntityCount());
+  EXPECT_FALSE(manager.HasEntity(e1));
+  EXPECT_FALSE(manager.HasEntity(e3));
+  EXPECT_FALSE(manager.HasEntity(e4));
+}
+
 // Run multiple times. We want to make sure that static globals don't cause
 // problems.
 INSTANTIATE_TEST_CASE_P(EntityComponentManagerRepeat,
-    EntityComponentManagerFixture, ::testing::Range(1, 10));
+    EntityComponentManagerFixture, ::testing::Range(1, 2));

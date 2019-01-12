@@ -250,13 +250,12 @@ TEST_P(SceneBroadcasterTest, DeletedTopic)
   server.Run(true, 1, false);
   EXPECT_EQ(0u, deletionMsgs.size());
 
-  // Delete the cylinder. Deleting the model and the link to avoid physics
-  // warnings
+  // Delete the cylinder model and all its children recursively:
+  // model, link, visual, collision
   server.RequestEraseEntity(cylinderModelId.value());
-  server.RequestEraseEntity(cylinderLinkId.value());
   server.Run(true, 10, false);
 
-  EXPECT_EQ(initEntityCount - 2, server.EntityCount());
+  EXPECT_EQ(initEntityCount - 4, server.EntityCount());
 
   ASSERT_EQ(1u, deletionMsgs.size());
 

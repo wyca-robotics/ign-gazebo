@@ -230,8 +230,7 @@ TEST_F(PhysicsSystemFixture, CanonicalLink)
         [&](const ignition::gazebo::Entity &_entity, const components::Link *,
         const components::Name *_name, const components::Pose *_pose)->bool
         {
-          auto parentEntity =
-              _ecm.Entities().AdjacentsTo(_entity).begin()->first;
+          auto parentEntity = _ecm.ParentEntity(_entity);
           EXPECT_NE(gazebo::kNullEntity, parentEntity);
 
           auto parentModel = _ecm.Component<components::Name>(parentEntity);

@@ -25,6 +25,13 @@ using namespace gazebo;
 
 class ignition::gazebo::EntityComponentManagerPrivate
 {
+  /// \brief Recursively insert an entity and all its descendants into a given
+  /// set.
+  /// \param[in] _entity Entity to be inserted.
+  /// \param[in, out] _set Set to be filled.
+  public: void InsertEntityRecursive(Entity _entity,
+      std::set<Entity> &_set);
+
   /// \brief Map of component storage classes. The key is a component
   /// type id, and the value is a pointer to the component storage.
   public: std::map<ComponentTypeId,
@@ -82,6 +89,15 @@ Entity EntityComponentManager::CreateEntity(const Entity _parent)
 {
   Entity entity = kNullEntity;
 
+  // Check if parent is valid
+  if (kNullEntity != _parent && !this->HasEntity(_parent))
+  {
+    ignerr << "Parent entity [" << _parent << "] not found."
+            << " Make sure parent is created first."
+            << std::endl;
+    return entity;
+  }
+
   if (!this->dataPtr->availableEntities.empty())
   {
     // Reuse the smallest available Entity
@@ -94,11 +110,16 @@ Entity EntityComponentManager::CreateEntity(const Entity _parent)
     // Create a brand new entity
     entity = this->dataPtr->entities.Vertices().size();
   }
-  this->dataPtr->entities.AddVertex("", entity, entity);
+  this->dataPtr->entities.AddVertex(std::to_string(entity), entity, entity);
 
   if (_parent != kNullEntity)
   {
-    this->dataPtr->entities.AddEdge({_parent, entity}, true);
+    auto edge = this->dataPtr->entities.AddEdge({_parent, entity}, true);
+    if (math::graph::kNullId == edge.Id())
+    {
+      ignerr << "Internal error: Failed to set [" << _parent
+              << "] as parent of [" << entity << "]." << std::endl;
+    }
   }
 
   // Add entity to the list of newly created entities
@@ -122,11 +143,30 @@ void EntityComponentManager::ClearNewlyCreatedEntities()
 }
 
 /////////////////////////////////////////////////
-void EntityComponentManager::RequestEraseEntity(Entity _entity)
+void EntityComponentManagerPrivate::InsertEntityRecursive(Entity _entity,
+    std::set<Entity> &_set)
 {
+  for (const auto &vertex : this->entities.AdjacentsFrom(_entity))
+  {
+    this->InsertEntityRecursive(vertex.first, _set);
+  }
+  _set.insert(_entity);
+}
+
+/////////////////////////////////////////////////
+void EntityComponentManager::RequestEraseEntity(Entity _entity, bool _recursive)
+{
+  if (!_recursive)
+  {
+    ignwarn << "Erasing entities non-recursively is not yet supported."
+            << " Not erasing" << std::endl;
+    return;
+  }
+
   {
     std::lock_guard<std::mutex> lock(this->dataPtr->entityEraseMutex);
-    this->dataPtr->toEraseEntities.insert(_entity);
+    this->dataPtr->InsertEntityRecursive(_entity,
+        this->dataPtr->toEraseEntities);
   }
   this->UpdateViews(_entity);
 }
@@ -279,6 +319,17 @@ bool EntityComponentManager::HasEntity(const Entity _entity) const
     // Check that the _entity is not deleted (not in the available entity set)
     && this->dataPtr->availableEntities.find(_entity) ==
        this->dataPtr->availableEntities.end();
+}
+
+/////////////////////////////////////////////////
+Entity EntityComponentManager::ParentEntity(const Entity _entity) const
+{
+  auto parents = this->Entities().AdjacentsTo(_entity);
+  if (parents.empty())
+    return kNullEntity;
+
+  // TODO(louise) Do we want to support multiple parents?
+  return parents.begin()->first;
 }
 
 /////////////////////////////////////////////////
