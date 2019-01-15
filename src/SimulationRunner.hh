@@ -133,51 +133,58 @@ namespace ignition
       /// \brief Create all entities that exist in the sdf::World object and
       /// load their plugins.
       /// \param[in] _world SDF world object.
-      /// \return World entity.
+      /// \param[in] _worldEntity The entity that corresponds to the SDF object.
+      /// It must have been created before calling this function.
       public: void CreateEntities(const sdf::World *_world,
           const Entity _worldEntity);
 
       /// \brief Create all entities that exist in the sdf::Model object and
       /// load their plugins.
       /// \param[in] _model SDF model object.
-      /// \return Model entity.
+      /// \param[in] _modelEntity The entity that corresponds to the SDF object.
+      /// It must have been created before calling this function.
       public: void CreateEntities(const sdf::Model *_model,
-          const Entity _worldEntity);
+          const Entity _modelEntity);
 
       /// \brief Create all entities that exist in the sdf::Light object and
       /// load their plugins.
       /// \param[in] _light SDF light object.
-      /// \return Light entity.
+      /// \param[in] _lightEntity The entity that corresponds to the SDF object.
+      /// It must have been created before calling this function.
       public: void CreateEntities(const sdf::Light *_light,
-          const Entity _worldEntity);
+          const Entity _lightEntity);
 
       /// \brief Create all entities that exist in the sdf::Link object and
       /// load their plugins.
       /// \param[in] _link SDF link object.
-      /// \return Link entity.
+      /// \param[in] _linkEntity The entity that corresponds to the SDF object.
+      /// It must have been created before calling this function.
       public: void CreateEntities(const sdf::Link *_link,
-          const Entity _worldEntity);
+          const Entity _linkEntity);
 
       /// \brief Create all entities that exist in the sdf::Joint object and
       /// load their plugins.
       /// \param[in] _joint SDF joint object.
-      /// \return Joint entity.
+      /// \param[in] _jointEntity The entity that corresponds to the SDF object.
+      /// It must have been created before calling this function.
       public: void CreateEntities(const sdf::Joint *_joint,
-          const Entity _worldEntity);
+          const Entity _jointEntity);
 
       /// \brief Create all entities that exist in the sdf::Visual object and
       /// load their plugins.
       /// \param[in] _visual SDF visual object.
-      /// \return Visual entity.
+      /// \param[in] _visualEntity The entity that corresponds to the SDF
+      /// object. It must have been created before calling this function.
       public: void CreateEntities(const sdf::Visual *_visual,
-          const Entity _worldEntity);
+          const Entity _visualEntity);
 
       /// \brief Create all entities that exist in the sdf::Collision object and
       /// load their plugins.
       /// \param[in] _collision SDF collision object.
-      /// \return Collision entity.
+      /// \param[in] _collisionEntity The entity that corresponds to the SDF
+      /// object. It must have been created before calling this function.
       public: void CreateEntities(const sdf::Collision *_collision,
-          const Entity _worldEntity);
+          const Entity _collisionEntity);
 
       /// \brief Load system plugins for a given entity.
       /// \param[in] _sdf SDF element
