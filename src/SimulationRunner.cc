@@ -21,6 +21,7 @@
 
 #include "ignition/gazebo/Events.hh"
 
+#include "ignition/gazebo/components/Camera.hh"
 #include "ignition/gazebo/components/CanonicalLink.hh"
 #include "ignition/gazebo/components/Collision.hh"
 #include "ignition/gazebo/components/ChildLinkName.hh"
@@ -36,6 +37,7 @@
 #include "ignition/gazebo/components/Name.hh"
 #include "ignition/gazebo/components/ParentLinkName.hh"
 #include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/components/Sensor.hh"
 #include "ignition/gazebo/components/Static.hh"
 #include "ignition/gazebo/components/ThreadPitch.hh"
 #include "ignition/gazebo/components/Visual.hh"
@@ -507,6 +509,15 @@ void SimulationRunner::CreateEntities(const sdf::Link *_link,
     auto lightEntity = this->entityCompMgr.CreateEntity(_linkEntity);
     this->CreateEntities(light, lightEntity);
   }
+
+  // Sensors
+  for (uint64_t sensorIndex = 0; sensorIndex < _link->SensorCount();
+      ++sensorIndex)
+  {
+    auto sensor = _link->SensorByIndex(sensorIndex);
+    auto sensorEntity = this->entityCompMgr.CreateEntity(_linkEntity);
+    this->CreateEntities(sensor, sensorEntity);
+  }
 }
 
 //////////////////////////////////////////////////
@@ -590,6 +601,34 @@ void SimulationRunner::CreateEntities(const sdf::Collision *_collision,
   {
     this->entityCompMgr.CreateComponent(_collisionEntity,
         components::Geometry(*_collision->Geom()));
+  }
+}
+
+//////////////////////////////////////////////////
+void SimulationRunner::CreateEntities(const sdf::Sensor *_sensor,
+    const Entity _sensorEntity)
+{
+  IGN_PROFILE("SimulationRunner::CreateEntities(sdf::Sensor)");
+
+  // Components
+  this->entityCompMgr.CreateComponent(_sensorEntity,
+      components::Sensor());
+  this->entityCompMgr.CreateComponent(_sensorEntity,
+      components::Pose(_sensor->Pose()));
+  this->entityCompMgr.CreateComponent(_sensorEntity,
+      components::Name(_sensor->Name()));
+
+  if (_sensor->Type() == sdf::SensorType::CAMERA)
+  {
+    auto elem = _sensor->Element();
+
+    this->entityCompMgr.CreateComponent(_sensorEntity,
+        components::Camera(elem));
+  }
+  else
+  {
+    ignwarn << "Sensor type [" << static_cast<int>(_sensor->Type())
+            << "] not supported yet." << std::endl;
   }
 }
 

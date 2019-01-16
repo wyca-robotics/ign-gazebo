@@ -36,6 +36,7 @@
 #include <sdf/Link.hh>
 #include <sdf/Model.hh>
 #include <sdf/Physics.hh>
+#include <sdf/Sensor.hh>
 #include <sdf/Visual.hh>
 #include <sdf/World.hh>
 
@@ -185,6 +186,14 @@ namespace ignition
       /// object. It must have been created before calling this function.
       public: void CreateEntities(const sdf::Collision *_collision,
           const Entity _collisionEntity);
+
+      /// \brief Create all entities that exist in the sdf::Sensor object and
+      /// load their plugins.
+      /// \param[in] _sensor SDF sensor object.
+      /// \param[in] _sensorEntity The entity that corresponds to the SDF
+      /// object. It must have been created before calling this function.
+      public: void CreateEntities(const sdf::Sensor *_sensor,
+          const Entity _sensorEntity);
 
       /// \brief Load system plugins for a given entity.
       /// \param[in] _sdf SDF element
