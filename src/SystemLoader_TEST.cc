@@ -46,6 +46,9 @@ TEST(SystemLoader, Constructor)
       "</plugin>"
       "</world></sdf>");
 
+  auto invalidSystem = sm.LoadPlugin(nullptr);
+  ASSERT_FALSE(invalidSystem.has_value());
+
   auto worldElem = root.WorldByIndex(0)->Element();
   if (worldElem->HasElement("plugin")) {
     sdf::ElementPtr pluginElem = worldElem->GetElement("plugin");
@@ -65,3 +68,92 @@ TEST(SystemLoader, EmptyNames)
   auto system = sm.LoadPlugin("", "", element);
   ASSERT_FALSE(system.has_value());
 }
+
+TEST(SystemLoader, InvalidLibrary)
+{
+  gazebo::SystemLoader sm;
+
+  // Add test plugin to path (referenced in config)
+  auto testBuildPath = ignition::common::joinPaths(
+      std::string(PROJECT_BINARY_PATH), "lib");
+  sm.AddSystemPluginPath(testBuildPath);
+
+  sdf::Root root;
+  root.LoadSdfString("<?xml version='1.0'?><sdf version='1.6'>"
+      "<world name='default'>"
+      "<plugin filename='invalid-system.so'"
+      "        name='ignition::gazebo::systems::v0::Physics'>"
+      "</plugin>"
+      "</world></sdf>");
+
+  auto worldElem = root.WorldByIndex(0)->Element();
+  if (worldElem->HasElement("plugin")) {
+    sdf::ElementPtr pluginElem = worldElem->GetElement("plugin");
+    while (pluginElem)
+    {
+      auto system = sm.LoadPlugin(pluginElem);
+      ASSERT_FALSE(system.has_value());
+      pluginElem = pluginElem->GetNextElement("plugin");
+    }
+  }
+}
+
+
+TEST(SystemLoader, LibraryWithoutPlugsin)
+{
+  gazebo::SystemLoader sm;
+
+  // Add test plugin to path (referenced in config)
+  auto testBuildPath = ignition::common::joinPaths(
+      std::string(PROJECT_BINARY_PATH), "lib");
+  sm.AddSystemPluginPath(testBuildPath);
+
+  sdf::Root root;
+  root.LoadSdfString("<?xml version='1.0'?><sdf version='1.6'>"
+      "<world name='default'>"
+      "<plugin filename='libignition-gazebo.so'"
+      "        name='ignition::gazebo::systems::v0::Physics'>"
+      "</plugin>"
+      "</world></sdf>");
+
+  auto worldElem = root.WorldByIndex(0)->Element();
+  if (worldElem->HasElement("plugin")) {
+    sdf::ElementPtr pluginElem = worldElem->GetElement("plugin");
+    while (pluginElem)
+    {
+      auto system = sm.LoadPlugin(pluginElem);
+      ASSERT_FALSE(system.has_value());
+      pluginElem = pluginElem->GetNextElement("plugin");
+    }
+  }
+}
+
+TEST(SystemLoader, WrongPluginName)
+{
+  gazebo::SystemLoader sm;
+
+  // Add test plugin to path (referenced in config)
+  auto testBuildPath = ignition::common::joinPaths(
+      std::string(PROJECT_BINARY_PATH), "lib");
+  sm.AddSystemPluginPath(testBuildPath);
+
+  sdf::Root root;
+  root.LoadSdfString("<?xml version='1.0'?><sdf version='1.6'>"
+      "<world name='default'>"
+      "<plugin filename='libignition-gazebo-physics-system.so'"
+      "        name='ignition::gazebo::systems::v0::NotPhysics'>"
+      "</plugin>"
+      "</world></sdf>");
+
+  auto worldElem = root.WorldByIndex(0)->Element();
+  if (worldElem->HasElement("plugin")) {
+    sdf::ElementPtr pluginElem = worldElem->GetElement("plugin");
+    while (pluginElem)
+    {
+      auto system = sm.LoadPlugin(pluginElem);
+      ASSERT_FALSE(system.has_value());
+      pluginElem = pluginElem->GetNextElement("plugin");
+    }
+  }
+}
+
