@@ -25,9 +25,22 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#include <sdf/Collision.hh>
+#include <sdf/Gui.hh>
+#include <sdf/Joint.hh>
+#include <sdf/Light.hh>
+#include <sdf/Link.hh>
+#include <sdf/Model.hh>
+#include <sdf/Physics.hh>
+#include <sdf/Sensor.hh>
+#include <sdf/Visual.hh>
+#include <sdf/World.hh>
+
 #include <ignition/common/Console.hh>
 #include <ignition/math/graph/Graph.hh>
 #include "ignition/gazebo/Entity.hh"
+#include <ignition/gazebo/EventManager.hh>
 #include "ignition/gazebo/Export.hh"
 #include "ignition/gazebo/Types.hh"
 
@@ -390,6 +403,69 @@ namespace ignition
       /// edges point from parent to children.
       /// \return Entity graph.
       public: const EntityGraph &Entities() const;
+
+
+
+
+
+
+
+      /// \brief Create all entities that exist in the sdf::World object and
+      /// load their plugins.
+      /// \param[in] _world SDF world object.
+      /// \return World entity.
+      public: Entity CreateEntities(const sdf::World *_world,
+                  EventManager &_eventMgr);
+
+      /// \brief Create all entities that exist in the sdf::Model object and
+      /// load their plugins.
+      /// \param[in] _model SDF model object.
+      /// \return Model entity.
+      public: Entity CreateEntities(const sdf::Model *_model,
+                  EventManager &_eventMgr);
+
+      /// \brief Create all entities that exist in the sdf::Light object and
+      /// load their plugins.
+      /// \param[in] _light SDF light object.
+      /// \return Light entity.
+      public: Entity CreateEntities(const sdf::Light *_light);
+
+      /// \brief Create all entities that exist in the sdf::Link object and
+      /// load their plugins.
+      /// \param[in] _link SDF link object.
+      /// \return Link entity.
+      public: Entity CreateEntities(const sdf::Link *_link);
+
+      /// \brief Create all entities that exist in the sdf::Joint object and
+      /// load their plugins.
+      /// \param[in] _joint SDF joint object.
+      /// \return Joint entity.
+      public: Entity CreateEntities(const sdf::Joint *_joint);
+
+      /// \brief Create all entities that exist in the sdf::Visual object and
+      /// load their plugins.
+      /// \param[in] _visual SDF visual object.
+      /// \return Visual entity.
+      public: Entity CreateEntities(const sdf::Visual *_visual);
+
+      /// \brief Create all entities that exist in the sdf::Collision object and
+      /// load their plugins.
+      /// \param[in] _collision SDF collision object.
+      /// \return Collision entity.
+      public: Entity CreateEntities(const sdf::Collision *_collision);
+
+      /// \brief Create all entities that exist in the sdf::Sensor object and
+      /// load their plugins.
+      /// \param[in] _sensor SDF sensor object.
+      /// \return Sensor entity.
+      public: Entity CreateEntities(const sdf::Sensor *_sensor);
+
+      /// \brief Set an entity's parent entity. This function takes care of
+      /// updating the `EntityComponentManager` and necessary components.
+      /// \param[in] _child Entity which should be parented.
+      /// \param[in] _parent Entity which should be _child's parent.
+      public: void SetParent(Entity _child, Entity _parent);
+
 
       /// \brief Clear the list of newly added entities so that a call to
       /// EachAdded after this will have no entities to iterate. This function

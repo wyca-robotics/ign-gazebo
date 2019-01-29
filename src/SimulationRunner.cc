@@ -90,8 +90,7 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
       std::placeholders::_2));
 
   // Create entities and components
-  auto factory = Factory(this->entityCompMgr, this->eventMgr);
-  factory.CreateEntities(_world);
+  this->entityCompMgr.CreateEntities(_world, this->eventMgr);
 
   // World control
   transport::NodeOptions opts;

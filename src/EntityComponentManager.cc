@@ -15,6 +15,32 @@
  *
 */
 #include "ignition/gazebo/EntityComponentManager.hh"
+#include "ignition/gazebo/Events.hh"
+
+#include "ignition/gazebo/components/Altimeter.hh"
+#include "ignition/gazebo/components/Camera.hh"
+#include "ignition/gazebo/components/CanonicalLink.hh"
+#include "ignition/gazebo/components/Collision.hh"
+#include "ignition/gazebo/components/ChildLinkName.hh"
+#include "ignition/gazebo/components/Geometry.hh"
+#include "ignition/gazebo/components/Inertial.hh"
+#include "ignition/gazebo/components/Joint.hh"
+#include "ignition/gazebo/components/JointAxis.hh"
+#include "ignition/gazebo/components/JointType.hh"
+#include "ignition/gazebo/components/Light.hh"
+#include "ignition/gazebo/components/LinearVelocity.hh"
+#include "ignition/gazebo/components/Link.hh"
+#include "ignition/gazebo/components/Material.hh"
+#include "ignition/gazebo/components/Model.hh"
+#include "ignition/gazebo/components/Name.hh"
+#include "ignition/gazebo/components/ParentLinkName.hh"
+#include "ignition/gazebo/components/ParentEntity.hh"
+#include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/components/Sensor.hh"
+#include "ignition/gazebo/components/Static.hh"
+#include "ignition/gazebo/components/ThreadPitch.hh"
+#include "ignition/gazebo/components/Visual.hh"
+#include "ignition/gazebo/components/World.hh"
 
 #include <map>
 #include <set>
@@ -131,6 +157,17 @@ void EntityComponentManagerPrivate::InsertEntityRecursive(Entity _entity,
 /////////////////////////////////////////////////
 void EntityComponentManager::RequestEraseEntity(Entity _entity, bool _recursive)
 {
+  // Leave children parentless
+  if (!_recursive)
+  {
+    auto childEntities = this->ChildrenByComponents(_entity,
+        components::ParentEntity(_entity));
+    for (const auto childEntity : childEntities)
+    {
+      this->RemoveComponent<components::ParentEntity>(childEntity);
+    }
+  }
+
   {
     std::lock_guard<std::mutex> lock(this->dataPtr->entityEraseMutex);
     if (!_recursive)
@@ -594,3 +631,320 @@ void EntityComponentManager::RebuildViews()
   }
 }
 
+//////////////////////////////////////////////////
+void EntityComponentManager::SetParent(Entity _child, Entity _parent)
+{
+  // TODO(louise) Figure out a way to avoid duplication while keeping all
+  // state in components and also keeping a convenient graph in the ECM
+  this->SetParentEntity(_child, _parent);
+  this->CreateComponent(_child, components::ParentEntity(_parent));
+}
+
+//////////////////////////////////////////////////
+Entity EntityComponentManager::CreateEntities(const sdf::World *_world,
+    EventManager &_eventMgr)
+{
+  IGN_PROFILE("EntityComponentManager::CreateEntities(sdf::World)");
+
+  // World entity
+  Entity worldEntity = this->CreateEntity();
+
+  // World components
+  this->CreateComponent(worldEntity, components::World());
+  this->CreateComponent(worldEntity,
+      components::Name(_world->Name()));
+
+  // Models
+  for (uint64_t modelIndex = 0; modelIndex < _world->ModelCount();
+      ++modelIndex)
+  {
+    auto model = _world->ModelByIndex(modelIndex);
+    auto modelEntity = this->CreateEntities(model, _eventMgr);
+
+    this->SetParent(modelEntity, worldEntity);
+  }
+
+  // Lights
+  for (uint64_t lightIndex = 0; lightIndex < _world->LightCount();
+      ++lightIndex)
+  {
+    auto light = _world->LightByIndex(lightIndex);
+    auto lightEntity = this->CreateEntities(light);
+
+    this->SetParent(lightEntity, worldEntity);
+  }
+
+  _eventMgr.Emit<events::LoadPlugins>(worldEntity, _world->Element());
+
+  return worldEntity;
+}
+
+//////////////////////////////////////////////////
+Entity EntityComponentManager::CreateEntities(const sdf::Model *_model,
+    EventManager &_eventMgr)
+{
+  IGN_PROFILE("EntityComponentManager::CreateEntities(sdf::Model)");
+
+  // Entity
+  Entity modelEntity = this->CreateEntity();
+
+  // Components
+  this->CreateComponent(modelEntity, components::Model());
+  this->CreateComponent(modelEntity,
+      components::Pose(_model->Pose()));
+  this->CreateComponent(modelEntity,
+      components::Name(_model->Name()));
+  this->CreateComponent(modelEntity,
+      components::Static(_model->Static()));
+
+  // NOTE: Pose components of links, visuals, and collisions are expressed in
+  // the parent frame until we get frames working.
+
+  // Links
+  for (uint64_t linkIndex = 0; linkIndex < _model->LinkCount();
+      ++linkIndex)
+  {
+    auto link = _model->LinkByIndex(linkIndex);
+    auto linkEntity = this->CreateEntities(link);
+
+    this->SetParent(linkEntity, modelEntity);
+    if (linkIndex == 0)
+    {
+      this->CreateComponent(linkEntity, components::CanonicalLink());
+    }
+  }
+
+  // Joints
+  for (uint64_t jointIndex = 0; jointIndex < _model->JointCount();
+      ++jointIndex)
+  {
+    auto joint = _model->JointByIndex(jointIndex);
+    auto jointEntity = this->CreateEntities(joint);
+
+    this->SetParent(jointEntity, modelEntity);
+  }
+
+  // Model plugins
+  _eventMgr.Emit<events::LoadPlugins>(modelEntity, _model->Element());
+
+  return modelEntity;
+}
+
+//////////////////////////////////////////////////
+Entity EntityComponentManager::CreateEntities(const sdf::Light *_light)
+{
+  IGN_PROFILE("EntityComponentManager::CreateEntities(sdf::Light)");
+
+  // Entity
+  Entity lightEntity = this->CreateEntity();
+
+  // Components
+  this->CreateComponent(lightEntity, components::Light(*_light));
+  this->CreateComponent(lightEntity,
+      components::Pose(_light->Pose()));
+  this->CreateComponent(lightEntity,
+      components::Name(_light->Name()));
+
+  return lightEntity;
+}
+
+//////////////////////////////////////////////////
+Entity EntityComponentManager::CreateEntities(const sdf::Link *_link)
+{
+  IGN_PROFILE("EntityComponentManager::CreateEntities(sdf::Link)");
+
+  // Entity
+  Entity linkEntity = this->CreateEntity();
+
+  // Components
+  this->CreateComponent(linkEntity, components::Link());
+  this->CreateComponent(linkEntity,
+      components::Pose(_link->Pose()));
+  this->CreateComponent(linkEntity,
+      components::Name(_link->Name()));
+  this->CreateComponent(linkEntity,
+      components::Inertial(_link->Inertial()));
+
+  // Visuals
+  for (uint64_t visualIndex = 0; visualIndex < _link->VisualCount();
+      ++visualIndex)
+  {
+    auto visual = _link->VisualByIndex(visualIndex);
+    auto visualEntity = this->CreateEntities(visual);
+
+    this->SetParent(visualEntity, linkEntity);
+  }
+
+  // Collisions
+  for (uint64_t collisionIndex = 0; collisionIndex < _link->CollisionCount();
+      ++collisionIndex)
+  {
+    auto collision = _link->CollisionByIndex(collisionIndex);
+    auto collisionEntity = this->CreateEntities(collision);
+
+    this->SetParent(collisionEntity, linkEntity);
+  }
+
+  // Lights
+  for (uint64_t lightIndex = 0; lightIndex < _link->LightCount();
+      ++lightIndex)
+  {
+    auto light = _link->LightByIndex(lightIndex);
+    auto lightEntity = this->CreateEntities(light);
+
+    this->SetParent(lightEntity, linkEntity);
+  }
+
+  // Sensors
+  for (uint64_t sensorIndex = 0; sensorIndex < _link->SensorCount();
+      ++sensorIndex)
+  {
+    auto sensor = _link->SensorByIndex(sensorIndex);
+    auto sensorEntity = this->CreateEntities(sensor);
+
+    this->SetParent(sensorEntity, linkEntity);
+  }
+
+  return linkEntity;
+}
+
+//////////////////////////////////////////////////
+Entity EntityComponentManager::CreateEntities(const sdf::Joint *_joint)
+{
+  IGN_PROFILE("EntityComponentManager::CreateEntities(sdf::Joint)");
+
+  // Entity
+  Entity jointEntity = this->CreateEntity();
+
+  // Components
+  this->CreateComponent(jointEntity,
+      components::Joint());
+  this->CreateComponent(jointEntity,
+      components::JointType(_joint->Type()));
+
+  if (_joint->Axis(0))
+  {
+    this->CreateComponent(jointEntity,
+        components::JointAxis(*_joint->Axis(0)));
+  }
+
+  if (_joint->Axis(1))
+  {
+    this->CreateComponent(jointEntity,
+        components::JointAxis2(*_joint->Axis(1)));
+  }
+
+  this->CreateComponent(jointEntity,
+      components::Pose(_joint->Pose()));
+  this->CreateComponent(jointEntity ,
+      components::Name(_joint->Name()));
+  this->CreateComponent(jointEntity ,
+      components::ThreadPitch(_joint->ThreadPitch()));
+  this->CreateComponent(jointEntity,
+      components::ParentLinkName(_joint->ParentLinkName()));
+  this->CreateComponent(jointEntity,
+      components::ChildLinkName(_joint->ChildLinkName()));
+
+  return jointEntity;
+}
+
+//////////////////////////////////////////////////
+Entity EntityComponentManager::CreateEntities(const sdf::Visual *_visual)
+{
+  IGN_PROFILE("EntityComponentManager::CreateEntities(sdf::Visual)");
+
+  // Entity
+  Entity visualEntity = this->CreateEntity();
+
+  // Components
+  this->CreateComponent(visualEntity, components::Visual());
+  this->CreateComponent(visualEntity,
+      components::Pose(_visual->Pose()));
+  this->CreateComponent(visualEntity,
+      components::Name(_visual->Name()));
+
+  if (_visual->Geom())
+  {
+    this->CreateComponent(visualEntity,
+        components::Geometry(*_visual->Geom()));
+  }
+
+  // \todo(louise) Populate with default material if undefined
+  if (_visual->Material())
+  {
+    this->CreateComponent(visualEntity,
+        components::Material(*_visual->Material()));
+  }
+
+  return visualEntity;
+}
+
+//////////////////////////////////////////////////
+Entity EntityComponentManager::CreateEntities(const sdf::Collision *_collision)
+{
+  IGN_PROFILE("EntityComponentManager::CreateEntities(sdf::Collision)");
+
+  // Entity
+  Entity collisionEntity = this->CreateEntity();
+
+  // Components
+  this->CreateComponent(collisionEntity,
+      components::Collision());
+  this->CreateComponent(collisionEntity,
+      components::Pose(_collision->Pose()));
+  this->CreateComponent(collisionEntity,
+      components::Name(_collision->Name()));
+
+  if (_collision->Geom())
+  {
+    this->CreateComponent(collisionEntity,
+        components::Geometry(*_collision->Geom()));
+  }
+
+  return collisionEntity;
+}
+
+//////////////////////////////////////////////////
+Entity EntityComponentManager::CreateEntities(const sdf::Sensor *_sensor)
+{
+  IGN_PROFILE("EntityComponentManager::CreateEntities(sdf::Sensor)");
+
+  // Entity
+  Entity sensorEntity = this->CreateEntity();
+
+  // Components
+  this->CreateComponent(sensorEntity,
+      components::Sensor());
+  this->CreateComponent(sensorEntity,
+      components::Pose(_sensor->Pose()));
+  this->CreateComponent(sensorEntity,
+      components::Name(_sensor->Name()));
+
+  if (_sensor->Type() == sdf::SensorType::CAMERA)
+  {
+    auto elem = _sensor->Element();
+
+    this->CreateComponent(sensorEntity,
+        components::Camera(elem));
+  }
+  else if (_sensor->Type() == sdf::SensorType::ALTIMETER)
+  {
+     auto elem = _sensor->Element();
+
+    this->CreateComponent(sensorEntity,
+        components::Altimeter(elem));
+
+    // create components to be filled by physics
+    this->CreateComponent(sensorEntity,
+        components::WorldPose(math::Pose3d::Zero));
+    this->CreateComponent(sensorEntity,
+        components::WorldLinearVelocity(math::Vector3d::Zero));
+  }
+  else
+  {
+    ignwarn << "Sensor type [" << static_cast<int>(_sensor->Type())
+            << "] not supported yet." << std::endl;
+  }
+
+  return sensorEntity;
+}
