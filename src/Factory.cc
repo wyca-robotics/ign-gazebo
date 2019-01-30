@@ -21,19 +21,25 @@
 #include "ignition/gazebo/Events.hh"
 #include "ignition/gazebo/Factory.hh"
 
+#include "ignition/gazebo/components/AngularVelocity.hh"
 #include "ignition/gazebo/components/Altimeter.hh"
 #include "ignition/gazebo/components/Camera.hh"
 #include "ignition/gazebo/components/CanonicalLink.hh"
 #include "ignition/gazebo/components/Collision.hh"
 #include "ignition/gazebo/components/ChildLinkName.hh"
+#include "ignition/gazebo/components/Gravity.hh"
 #include "ignition/gazebo/components/Geometry.hh"
+#include "ignition/gazebo/components/Imu.hh"
 #include "ignition/gazebo/components/Inertial.hh"
 #include "ignition/gazebo/components/Joint.hh"
 #include "ignition/gazebo/components/JointAxis.hh"
 #include "ignition/gazebo/components/JointType.hh"
 #include "ignition/gazebo/components/Light.hh"
+#include "ignition/gazebo/components/LinearAcceleration.hh"
 #include "ignition/gazebo/components/LinearVelocity.hh"
 #include "ignition/gazebo/components/Link.hh"
+#include "ignition/gazebo/components/MagneticField.hh"
+#include "ignition/gazebo/components/Magnetometer.hh"
 #include "ignition/gazebo/components/Material.hh"
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/components/Name.hh"
@@ -120,6 +126,20 @@ Entity Factory::CreateEntities(const sdf::World *_world)
     this->dataPtr->ecm->CreateComponent(lightEntity,
         components::ParentEntity(worldEntity));
   }
+
+  // Gravity
+  auto gravityEntity = this->dataPtr->ecm->CreateEntity();
+  this->dataPtr->ecm->CreateComponent(gravityEntity,
+      components::Gravity(_world->Gravity()));
+  this->dataPtr->ecm->CreateComponent(gravityEntity,
+      components::ParentEntity(worldEntity));
+
+  // Magnetic field
+  auto magneticFieldEntity = this->dataPtr->ecm->CreateEntity();
+  this->dataPtr->ecm->CreateComponent(magneticFieldEntity,
+      components::MagneticField(_world->MagneticField()));
+  this->dataPtr->ecm->CreateComponent(magneticFieldEntity,
+      components::ParentEntity(worldEntity));
 
   this->dataPtr->eventManager->Emit<events::LoadPlugins>(worldEntity,
       _world->Element());
@@ -394,6 +414,36 @@ Entity Factory::CreateEntities(const sdf::Sensor *_sensor)
         components::WorldPose(math::Pose3d::Zero));
     this->dataPtr->ecm->CreateComponent(sensorEntity,
         components::WorldLinearVelocity(math::Vector3d::Zero));
+  }
+  else if (_sensor->Type() == sdf::SensorType::IMU)
+  {
+     auto elem = _sensor->Element();
+
+    this->dataPtr->ecm->CreateComponent(sensorEntity,
+        components::Imu(elem));
+
+    // create components to be filled by physics
+    this->dataPtr->ecm->CreateComponent(sensorEntity,
+        components::WorldPose(math::Pose3d::Zero));
+    this->dataPtr->ecm->CreateComponent(sensorEntity,
+        components::AngularVelocity(math::Vector3d::Zero));
+    this->dataPtr->ecm->CreateComponent(sensorEntity,
+        components::LinearAcceleration(math::Vector3d::Zero));
+    this->dataPtr->ecm->CreateComponent(sensorEntity,
+        components::Gravity(math::Vector3d::Zero));
+  }
+  else if (_sensor->Type() == sdf::SensorType::MAGNETOMETER)
+  {
+     auto elem = _sensor->Element();
+
+    this->dataPtr->ecm->CreateComponent(sensorEntity,
+        components::Magnetometer(elem));
+
+    // create components to be filled by physics
+    this->dataPtr->ecm->CreateComponent(sensorEntity,
+        components::WorldPose(math::Pose3d::Zero));
+    this->dataPtr->ecm->CreateComponent(sensorEntity,
+        components::MagneticField(math::Vector3d::Zero));
   }
   else
   {
