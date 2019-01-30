@@ -56,49 +56,6 @@ namespace systems
     public: void PostUpdate(const UpdateInfo &_info,
                             const EntityComponentManager &_ecm) override final;
 
-    // /// \brief Returns the angular velocity in the IMU sensor local frame.
-    // /// \param[in] _noiseFree True if the returned measurement should
-    // /// not use noise.
-    // /// \return Angular velocity.
-    // public: ignition::math::Vector3d AngularVelocity(
-    //             const bool _noiseFree = false) const;
-    //
-    // /// \brief Returns the imu linear acceleration in the IMU sensor
-    // /// local frame
-    // /// \param[in] _noiseFree True if the returned measurement should
-    // /// not use noise.
-    // /// \return Linear acceleration.
-    // public: ignition::math::Vector3d LinearAcceleration(
-    //             const bool _noiseFree = false) const;
-    //
-    // /// \brief get orientation of the IMU relative to a reference pose
-    // /// Initially, the reference pose is the boot up pose of the IMU,
-    // /// but user can call either SetReferencePose to define current
-    // /// pose as the reference frame, or call SetWorldToReferencePose
-    // /// to define transform from world frame to reference frame.
-    // /// \return returns the orientation quaternion of the IMU relative to
-    // /// the imu reference pose.
-    // public: ignition::math::Quaterniond Orientation() const;
-    //
-    // /// \brief Sets the current IMU pose as the reference NED pose,
-    // /// i.e. X axis of the IMU is aligned with North,
-    // ///      Y axis of the IMU is aligned with East,
-    // ///      Z axis of the IMU is aligned with Downward (gravity) direction.
-    // public: void SetReferencePose();
-    //
-    // // Documentation inherited.
-    // public: virtual bool IsActive() const;
-
-    /// \brief Sets the rotation transform from world frame to IMU's
-    /// reference frame.
-    /// For example, if this IMU works with respect to NED frame, then
-    /// call this function with the transform that transforms world frame
-    /// to NED frame. Subsequently, ImuSensor::Orientation will return
-    /// identity transform if the IMU is aligned with the NED frame.
-    /// \param _orientation rotation from world frame to imu reference frame.
-    public: void SetWorldToReferenceOrientation(
-      const ignition::math::Quaterniond &_orientation);
-
     /// \brief Private data pointer.
     private: std::unique_ptr<ImuPrivate> dataPtr;
   };
