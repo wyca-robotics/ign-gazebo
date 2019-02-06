@@ -287,7 +287,10 @@ bool CreateCommand::Execute()
     }
     case msgs::EntityFactory::kSdfFilename:
     {
-      errors = root.Load(createMsg->sdf_filename());
+      auto file = sdf::findFile(createMsg->sdf_filename(), true, true);
+      if (file.find("model.sdf") == std::string::npos)
+        file += "/model.sdf";
+      errors = root.Load(file);
       break;
     }
     case msgs::EntityFactory::kModel:
