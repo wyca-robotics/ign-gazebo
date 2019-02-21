@@ -48,6 +48,7 @@
 #include "ignition/gazebo/Events.hh"
 #include "SimulationRunner.hh"
 
+
 namespace ignition
 {
 namespace gazebo
