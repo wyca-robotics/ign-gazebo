@@ -58,6 +58,7 @@
 #include "ignition/gazebo/EntityComponentManager.hh"
 // Components
 #include "ignition/gazebo/components/AngularVelocity.hh"
+#include "ignition/gazebo/components/AxisAlignedBox.hh"
 #include "ignition/gazebo/components/CanonicalLink.hh"
 #include "ignition/gazebo/components/ChildLinkName.hh"
 #include "ignition/gazebo/components/Collision.hh"
@@ -92,6 +93,7 @@ class ignition::gazebo::systems::PhysicsPrivate
 {
   public: using MinimumFeatureList = ignition::physics::FeatureList<
           ignition::physics::LinkFrameSemantics,
+          ignition::physics::GetShapeCollisionProperties,
           ignition::physics::ForwardStep,
           ignition::physics::GetEntities,
           ignition::physics::RemoveEntities,
@@ -556,9 +558,11 @@ void PhysicsPrivate::Step(const std::chrono::steady_clock::duration &_dt)
 void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
 {
   IGN_PROFILE("PhysicsPrivate::UpdateSim");
-  _ecm.Each<components::Link, components::Pose, components::ParentEntity>(
+  _ecm.Each<components::Link, components::Pose, components::ParentEntity,
+            components::AxisAlignedBox>(
       [&](const Entity &_entity, components::Link * /*_link*/,
-          components::Pose *_pose, components::ParentEntity *_parent)->bool
+          components::Pose *_pose, components::ParentEntity *_parent,
+          components::AxisAlignedBox *_boundingBox)->bool
       {
         auto linkIt = this->entityLinkMap.find(_entity);
         if (linkIt != this->entityLinkMap.end())
@@ -571,6 +575,14 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
               _ecm.Component<components::Pose>(_parent->Data());
 
           auto worldPose = linkIt->second->FrameDataRelativeToWorld().pose;
+
+          std::size_t shapeCount = linkIt->second->GetShapeCount();
+          std::cout << "Shape Count[" << shapeCount << "]\n";
+          for (std::size_t shapeI = 0; shapeI < shapeCount; ++shapeI)
+          {
+            math::AxisAlignedBox box = linkIt->second->GetShape(shapeI)->GetBoundingBox();
+std::cout <<  "Box[" << box << "]\n";
+          }
 
           // if the parentPose is a nullptr, something is wrong with ECS
           // creation
