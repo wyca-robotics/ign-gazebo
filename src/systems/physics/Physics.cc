@@ -579,7 +579,7 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
           // Update the bounding box information for the link and the parent
           // model.
           // \todo(nkoenig) This block of code should ideally be computed
-          // only when requested. It's not need every iteration of
+          // only when requested. It's not needed every iteration of
           // simulation.
           {
             std::size_t shapeCount = linkIt->second->GetShapeCount();
