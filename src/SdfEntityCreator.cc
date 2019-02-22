@@ -23,7 +23,7 @@
 
 #include "ignition/gazebo/components/Altimeter.hh"
 #include "ignition/gazebo/components/AngularVelocity.hh"
-#include "ignition/gazebo/components/AxisAlignedBox.hh"
+#include "ignition/gazebo/components/BoundingBox.hh"
 #include "ignition/gazebo/components/Camera.hh"
 #include "ignition/gazebo/components/CanonicalLink.hh"
 #include "ignition/gazebo/components/Collision.hh"
@@ -157,7 +157,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Model *_model)
   this->dataPtr->ecm->CreateComponent(modelEntity,
       components::Static(_model->Static()));
   this->dataPtr->ecm->CreateComponent(modelEntity,
-      components::AxisAlignedBox(ignition::math::AxisAlignedBox()));
+      components::BoundingBox(ignition::math::AxisAlignedBox()));
 
   // NOTE: Pose components of links, visuals, and collisions are expressed in
   // the parent frame until we get frames working.
@@ -208,8 +208,6 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Light *_light)
       components::Pose(_light->Pose()));
   this->dataPtr->ecm->CreateComponent(lightEntity,
       components::Name(_light->Name()));
-  this->dataPtr->ecm->CreateComponent(lightEntity,
-      components::AxisAlignedBox(ignition::math::AxisAlignedBox()));
 
   return lightEntity;
 }
@@ -231,7 +229,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Link *_link)
   this->dataPtr->ecm->CreateComponent(linkEntity,
       components::Inertial(_link->Inertial()));
   this->dataPtr->ecm->CreateComponent(linkEntity,
-      components::AxisAlignedBox(ignition::math::AxisAlignedBox()));
+      components::BoundingBox(ignition::math::AxisAlignedBox()));
 
   // Visuals
   for (uint64_t visualIndex = 0; visualIndex < _link->VisualCount();
@@ -312,8 +310,6 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Joint *_joint)
       components::ParentLinkName(_joint->ParentLinkName()));
   this->dataPtr->ecm->CreateComponent(jointEntity,
       components::ChildLinkName(_joint->ChildLinkName()));
-  this->dataPtr->ecm->CreateComponent(jointEntity,
-      components::AxisAlignedBox(ignition::math::AxisAlignedBox()));
 
   return jointEntity;
 }
@@ -332,8 +328,6 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Visual *_visual)
       components::Pose(_visual->Pose()));
   this->dataPtr->ecm->CreateComponent(visualEntity,
       components::Name(_visual->Name()));
-  this->dataPtr->ecm->CreateComponent(visualEntity,
-      components::AxisAlignedBox(ignition::math::AxisAlignedBox()));
 
   if (_visual->Geom())
   {
@@ -366,8 +360,6 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Collision *_collision)
       components::Pose(_collision->Pose()));
   this->dataPtr->ecm->CreateComponent(collisionEntity,
       components::Name(_collision->Name()));
-  this->dataPtr->ecm->CreateComponent(collisionEntity,
-      components::AxisAlignedBox(ignition::math::AxisAlignedBox()));
 
   if (_collision->Geom())
   {
@@ -393,8 +385,6 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Sensor *_sensor)
       components::Pose(_sensor->Pose()));
   this->dataPtr->ecm->CreateComponent(sensorEntity,
       components::Name(_sensor->Name()));
-  this->dataPtr->ecm->CreateComponent(sensorEntity,
-      components::AxisAlignedBox(ignition::math::AxisAlignedBox()));
 
   if (_sensor->Type() == sdf::SensorType::CAMERA)
   {

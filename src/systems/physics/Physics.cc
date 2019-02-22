@@ -58,7 +58,7 @@
 #include "ignition/gazebo/EntityComponentManager.hh"
 // Components
 #include "ignition/gazebo/components/AngularVelocity.hh"
-#include "ignition/gazebo/components/AxisAlignedBox.hh"
+#include "ignition/gazebo/components/BoundingBox.hh"
 #include "ignition/gazebo/components/CanonicalLink.hh"
 #include "ignition/gazebo/components/ChildLinkName.hh"
 #include "ignition/gazebo/components/Collision.hh"
@@ -559,10 +559,10 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
 {
   IGN_PROFILE("PhysicsPrivate::UpdateSim");
   _ecm.Each<components::Link, components::Pose, components::ParentEntity,
-            components::AxisAlignedBox>(
+            components::BoundingBox>(
       [&](const Entity &_entity, components::Link * /*_link*/,
           components::Pose *_pose, components::ParentEntity *_parent,
-          components::AxisAlignedBox *_boundingBox)->bool
+          components::BoundingBox *_boundingBox)->bool
       {
         auto linkIt = this->entityLinkMap.find(_entity);
         if (linkIt != this->entityLinkMap.end())
@@ -586,11 +586,11 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
             math::AxisAlignedBox boundingBox;
             for (std::size_t shapeI = 0; shapeI < shapeCount; ++shapeI)
               boundingBox += linkIt->second->GetShape(shapeI)->GetBoundingBox();
-            *_boundingBox = components::AxisAlignedBox(boundingBox);
+            *_boundingBox = components::BoundingBox(boundingBox);
 
-            components::AxisAlignedBox *modelBoundingBox =
-              _ecm.Component<components::AxisAlignedBox>(_parent->Data());
-            *modelBoundingBox = components::AxisAlignedBox(
+            components::BoundingBox *modelBoundingBox =
+              _ecm.Component<components::BoundingBox>(_parent->Data());
+            *modelBoundingBox = components::BoundingBox(
                 modelBoundingBox->Data() + boundingBox);
           }
 

@@ -22,7 +22,7 @@
 #include <ignition/plugin/RegisterMore.hh>
 #include <ignition/transport/Node.hh>
 
-#include "ignition/gazebo/components/AxisAlignedBox.hh"
+#include "ignition/gazebo/components/BoundingBox.hh"
 #include "ignition/gazebo/components/Geometry.hh"
 #include "ignition/gazebo/components/Light.hh"
 #include "ignition/gazebo/components/Link.hh"
@@ -372,12 +372,12 @@ void SceneBroadcasterPrivate::SceneGraphAddEntities(
   // Models
   _manager.EachNew<components::Model, components::Name,
                    components::ParentEntity, components::Pose,
-                   components::AxisAlignedBox>(
+                   components::BoundingBox>(
       [&](const Entity &_entity, const components::Model *,
           const components::Name *_nameComp,
           const components::ParentEntity *_parentComp,
           const components::Pose *_poseComp,
-          const components::AxisAlignedBox *_aaBoxComp) -> bool
+          const components::BoundingBox *_aaBoxComp) -> bool
       {
         auto modelMsg = std::make_shared<msgs::Model>();
         modelMsg->set_id(_entity);

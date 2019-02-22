@@ -14,8 +14,8 @@
  * limitations under the License.
  *
 */
-#ifndef IGNITION_GAZEBO_COMPONENTS_AXISALIGNEDBOX_HH_
-#define IGNITION_GAZEBO_COMPONENTS_AXISALIGNEDBOX_HH_
+#ifndef IGNITION_GAZEBO_COMPONENTS_BOUNDINGBOX_HH_
+#define IGNITION_GAZEBO_COMPONENTS_BOUNDINGBOX_HH_
 
 #include <ignition/math/AxisAlignedBox.hh>
 #include <ignition/gazebo/components/Factory.hh>
@@ -32,10 +32,10 @@ namespace components
 {
   /// \brief A component type that contains an axis aligned box,
   /// ignition::math::AxisAlignedBox, information.
-  using AxisAlignedBox = Component<ignition::math::AxisAlignedBox,
-                                   class AxisAlignedBoxTag>;
+  using BoundingBox = Component<ignition::math::AxisAlignedBox,
+                                class BoundingBoxTag>;
   IGN_GAZEBO_REGISTER_COMPONENT(
-      "ign_gazebo_components.AxisAlignedBox", AxisAlignedBox)
+      "ign_gazebo_components.BoundingBox", BoundingBox)
 }
 }
 }
