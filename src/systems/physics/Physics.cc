@@ -576,12 +576,22 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
 
           auto worldPose = linkIt->second->FrameDataRelativeToWorld().pose;
 
-          std::size_t shapeCount = linkIt->second->GetShapeCount();
-          std::cout << "Shape Count[" << shapeCount << "]\n";
-          for (std::size_t shapeI = 0; shapeI < shapeCount; ++shapeI)
+          // Update the bounding box information for the link and the parent
+          // model.
+          // \todo(nkoenig) This block of code should ideally be computed
+          // only when requested. It's not need every iteration of
+          // simulation.
           {
-            math::AxisAlignedBox box = linkIt->second->GetShape(shapeI)->GetBoundingBox();
-std::cout <<  "Box[" << box << "]\n";
+            std::size_t shapeCount = linkIt->second->GetShapeCount();
+            math::AxisAlignedBox boundingBox;
+            for (std::size_t shapeI = 0; shapeI < shapeCount; ++shapeI)
+              boundingBox += linkIt->second->GetShape(shapeI)->GetBoundingBox();
+            *_boundingBox = components::AxisAlignedBox(boundingBox);
+
+            components::AxisAlignedBox *modelBoundingBox =
+              _ecm.Component<components::AxisAlignedBox>(_parent->Data());
+            *modelBoundingBox = components::AxisAlignedBox(
+                modelBoundingBox->Data() + boundingBox);
           }
 
           // if the parentPose is a nullptr, something is wrong with ECS
