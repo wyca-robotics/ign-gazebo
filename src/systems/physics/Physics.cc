@@ -94,7 +94,6 @@ class ignition::gazebo::systems::PhysicsPrivate
   public: using MinimumFeatureList = ignition::physics::FeatureList<
           ignition::physics::LinkFrameSemantics,
           ignition::physics::GetShapeBoundingBox,
-          ignition::physics::GetShapeCollisionProperties,
           ignition::physics::ForwardStep,
           ignition::physics::GetEntities,
           ignition::physics::RemoveEntities,
