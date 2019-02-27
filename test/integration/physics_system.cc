@@ -30,6 +30,10 @@
 #include <sdf/Sphere.hh>
 #include <sdf/World.hh>
 
+#include <ignition/msgs/model.pb.h>
+#include <ignition/msgs/stringmsg.pb.h>
+#include <ignition/transport/Node.hh>
+
 #include "ignition/gazebo/Server.hh"
 #include "ignition/gazebo/SystemLoader.hh"
 #include "ignition/gazebo/test_config.hh"  // NOLINT(build/include)
@@ -48,6 +52,7 @@
 #include "ignition/gazebo/components/Static.hh"
 #include "ignition/gazebo/components/Visual.hh"
 #include "ignition/gazebo/components/World.hh"
+
 
 #include "plugins/MockSystem.hh"
 
@@ -423,4 +428,39 @@ TEST_F(PhysicsSystemFixture, CreateRuntime)
     EXPECT_GT(pose.Pos().Z(), poseComp->Data().Pos().Z());
     pose = poseComp->Data();
   }
+}
+
+/////////////////////////////////////////////////
+TEST_F(PhysicsSystemFixture, AxisAlignedBoundingBox)
+{
+  ignition::gazebo::ServerConfig serverConfig;
+
+  serverConfig.SetSdfFile(std::string(PROJECT_SOURCE_PATH) +
+    "/examples/worlds/shapes.sdf");
+
+  gazebo::Server server(serverConfig);
+
+  server.SetUpdatePeriod(1ns);
+  server.Run(false, 0, false);
+
+  // Wait for the server to start
+  IGN_SLEEP_S(1);
+
+  ignition::msgs::Model rep;
+  ignition::msgs::StringMsg req;
+  ignition::transport::Node node;
+  bool result;
+  unsigned int timeout = 5000;
+  req.set_data("box");
+  bool executed = node.Request("/world/shapes/model/info",
+      req, timeout, rep, result);
+  EXPECT_TRUE(executed);
+  EXPECT_TRUE(result);
+  EXPECT_DOUBLE_EQ(-0.5, rep.bounding_box().min_corner().x());
+  EXPECT_DOUBLE_EQ(-0.5, rep.bounding_box().min_corner().y());
+  EXPECT_DOUBLE_EQ(0.0, rep.bounding_box().min_corner().z());
+
+  EXPECT_DOUBLE_EQ(0.5, rep.bounding_box().max_corner().x());
+  EXPECT_DOUBLE_EQ(0.5, rep.bounding_box().max_corner().y());
+  EXPECT_DOUBLE_EQ(1.0, rep.bounding_box().max_corner().z());
 }
