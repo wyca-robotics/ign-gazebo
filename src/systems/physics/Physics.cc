@@ -190,6 +190,8 @@ Physics::Physics() : System(), dataPtr(std::make_unique<PhysicsPrivate>())
       this->dataPtr->engine = ignition::physics::RequestEngine<
         ignition::physics::FeaturePolicy3d,
         PhysicsPrivate::MinimumFeatureList>::From(plugin);
+      if (!this->dataPtr->engine)
+        ignerr << "Failed to create the " << className << " physics engine.\n";
     }
     else
     {
@@ -598,8 +600,11 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
             std::size_t shapeCount = linkIt->second->GetShapeCount();
             math::AxisAlignedBox boundingBox;
             for (std::size_t shapeI = 0; shapeI < shapeCount; ++shapeI)
-              boundingBox += math::eigen3::convert(linkIt->second->GetShape(
-                  shapeI)->GetAxisAlignedBoundingBox());
+            {
+              boundingBox += math::eigen3::convert(
+                  linkIt->second->GetShape(
+                    shapeI)->GetAxisAlignedBoundingBox());
+            }
             *_boundingBox = components::AxisAlignedBoundingBox(boundingBox);
 
             components::AxisAlignedBoundingBox *modelBoundingBox =
