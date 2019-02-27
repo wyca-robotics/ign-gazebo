@@ -93,6 +93,7 @@ class ignition::gazebo::systems::PhysicsPrivate
 {
   public: using MinimumFeatureList = ignition::physics::FeatureList<
           ignition::physics::LinkFrameSemantics,
+          ignition::physics::GetShapeBoundingBox,
           ignition::physics::GetShapeCollisionProperties,
           ignition::physics::ForwardStep,
           ignition::physics::GetEntities,
@@ -597,7 +598,8 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
             std::size_t shapeCount = linkIt->second->GetShapeCount();
             math::AxisAlignedBox boundingBox;
             for (std::size_t shapeI = 0; shapeI < shapeCount; ++shapeI)
-              boundingBox += linkIt->second->GetShape(shapeI)->GetBoundingBox();
+              boundingBox += math::eigen3::convert(linkIt->second->GetShape(
+                  shapeI)->GetAxisAlignedBoundingBox());
             *_boundingBox = components::AxisAlignedBoundingBox(boundingBox);
 
             components::AxisAlignedBoundingBox *modelBoundingBox =
