@@ -53,8 +53,9 @@
 #include "ignition/gazebo/components/Visual.hh"
 #include "ignition/gazebo/components/World.hh"
 
-
 #include "plugins/MockSystem.hh"
+
+#define TOL 1e-4
 
 using namespace ignition;
 using namespace gazebo;
@@ -436,12 +437,12 @@ TEST_F(PhysicsSystemFixture, AxisAlignedBoundingBox)
   ignition::gazebo::ServerConfig serverConfig;
 
   serverConfig.SetSdfFile(std::string(PROJECT_SOURCE_PATH) +
-    "/examples/worlds/shapes.sdf");
+    "/test/worlds/shapes.sdf");
 
   gazebo::Server server(serverConfig);
 
   server.SetUpdatePeriod(1ns);
-  server.Run(false, 0, false);
+  server.Run(true, 10, false);
 
   // Wait for the server to start
   IGN_SLEEP_S(1);
@@ -456,11 +457,11 @@ TEST_F(PhysicsSystemFixture, AxisAlignedBoundingBox)
       req, timeout, rep, result);
   EXPECT_TRUE(executed);
   EXPECT_TRUE(result);
-  EXPECT_DOUBLE_EQ(-0.5, rep.bounding_box().min_corner().x());
-  EXPECT_DOUBLE_EQ(-0.5, rep.bounding_box().min_corner().y());
-  EXPECT_DOUBLE_EQ(0.0, rep.bounding_box().min_corner().z());
+  EXPECT_NEAR(-0.5, rep.bounding_box().min_corner().x(), TOL);
+  EXPECT_NEAR(-0.5, rep.bounding_box().min_corner().y(), TOL);
+  EXPECT_NEAR(0.0,  rep.bounding_box().min_corner().z(), TOL);
 
-  EXPECT_DOUBLE_EQ(0.5, rep.bounding_box().max_corner().x());
-  EXPECT_DOUBLE_EQ(0.5, rep.bounding_box().max_corner().y());
-  EXPECT_DOUBLE_EQ(1.0, rep.bounding_box().max_corner().z());
+  EXPECT_NEAR(0.5, rep.bounding_box().max_corner().x(), TOL);
+  EXPECT_NEAR(0.5, rep.bounding_box().max_corner().y(), TOL);
+  EXPECT_NEAR(1.0, rep.bounding_box().max_corner().z(), TOL);
 }
