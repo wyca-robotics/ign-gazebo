@@ -49,14 +49,16 @@ class ignition::gazebo::ServerConfig::PluginInfoPrivate
   /// \param[in] _name Name of the interface within the plugin library
   /// to load.
   /// \param[in] _sdf Plugin XML elements associated with this plugin.
-  public: PluginInfoPrivate(const std::string &_entityName,
-                            const std::string &_entityType,
-                            const std::string &_filename,
-                            const std::string &_name)
-          : entityName(_entityName),
-            entityType(_entityType),
-            filename(_filename),
-            name(_name) {}
+  public: PluginInfoPrivate(std::string _entityName,
+                            std::string _entityType,
+                            std::string _filename,
+                            std::string _name)
+          : entityName(std::move(_entityName)),
+            entityType(std::move(_entityType)),
+            filename(std::move(_filename)),
+            name(std::move(_name))
+  {
+  }
 
   /// \brief The name of the entity.
   public: std::string entityName = "";
@@ -106,7 +108,8 @@ ServerConfig::PluginInfo::PluginInfo(const ServerConfig::PluginInfo &_info)
 ServerConfig::PluginInfo &ServerConfig::PluginInfo::operator=(
     const ServerConfig::PluginInfo &_info)
 {
-  this->dataPtr.reset(new ServerConfig::PluginInfoPrivate(_info.dataPtr));
+  this->dataPtr = std::make_unique<ServerConfig::PluginInfoPrivate>(
+      _info.dataPtr);
   return *this;
 }
 
@@ -117,9 +120,21 @@ const std::string &ServerConfig::PluginInfo::EntityName() const
 }
 
 //////////////////////////////////////////////////
+void ServerConfig::PluginInfo::SetEntityName(const std::string &_entityName)
+{
+  this->dataPtr->entityName = _entityName;
+}
+
+//////////////////////////////////////////////////
 const std::string &ServerConfig::PluginInfo::EntityType() const
 {
   return this->dataPtr->entityType;
+}
+
+//////////////////////////////////////////////////
+void ServerConfig::PluginInfo::SetEntityType(const std::string &_entityType)
+{
+  this->dataPtr->entityType = _entityType;
 }
 
 //////////////////////////////////////////////////
@@ -129,15 +144,36 @@ const std::string &ServerConfig::PluginInfo::Filename() const
 }
 
 //////////////////////////////////////////////////
+void ServerConfig::PluginInfo::SetFilename(const std::string &_filename)
+{
+  this->dataPtr->filename = _filename;
+}
+
+//////////////////////////////////////////////////
 const std::string &ServerConfig::PluginInfo::Name() const
 {
   return this->dataPtr->name;
 }
 
 //////////////////////////////////////////////////
+void ServerConfig::PluginInfo::SetName(const std::string &_name)
+{
+  this->dataPtr->name = _name;
+}
+
+//////////////////////////////////////////////////
 const sdf::ElementPtr &ServerConfig::PluginInfo::Sdf() const
 {
   return this->dataPtr->sdf;
+}
+
+//////////////////////////////////////////////////
+void ServerConfig::PluginInfo::SetSdf(const sdf::ElementPtr &_sdf)
+{
+  if (_sdf)
+    this->dataPtr->sdf = _sdf->Clone();
+  else
+    this->dataPtr->sdf = nullptr;
 }
 
 /// \brief Private data for ServerConfig.
@@ -267,6 +303,6 @@ const std::list<ServerConfig::PluginInfo> &ServerConfig::Plugins() const
 /////////////////////////////////////////////////
 ServerConfig &ServerConfig::operator=(const ServerConfig &_cfg)
 {
-  this->dataPtr.reset(new ServerConfigPrivate(_cfg.dataPtr));
+  this->dataPtr = std::make_unique<ServerConfigPrivate>(_cfg.dataPtr);
   return *this;
 }

@@ -10,10 +10,12 @@ set(tests
   examples_build.cc
   imu_system.cc
   level_manager.cc
+  magnetometer_system.cc
   model.cc
   network_handshake.cc
   physics_system.cc
   play_pause.cc
+  pose_publisher_system.cc
   sdf_include.cc
   user_commands.cc
 )
