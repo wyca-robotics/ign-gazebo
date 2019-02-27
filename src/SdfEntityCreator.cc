@@ -23,7 +23,7 @@
 
 #include "ignition/gazebo/components/Altimeter.hh"
 #include "ignition/gazebo/components/AngularVelocity.hh"
-#include "ignition/gazebo/components/BoundingBox.hh"
+#include "ignition/gazebo/components/AxisAlignedBoundingBox.hh"
 #include "ignition/gazebo/components/Camera.hh"
 #include "ignition/gazebo/components/CanonicalLink.hh"
 #include "ignition/gazebo/components/Collision.hh"
@@ -157,7 +157,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Model *_model)
   this->dataPtr->ecm->CreateComponent(modelEntity,
       components::Static(_model->Static()));
   this->dataPtr->ecm->CreateComponent(modelEntity,
-      components::BoundingBox(ignition::math::AxisAlignedBox()));
+      components::AxisAlignedBoundingBox(ignition::math::AxisAlignedBox()));
 
   // NOTE: Pose components of links, visuals, and collisions are expressed in
   // the parent frame until we get frames working.
@@ -229,7 +229,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Link *_link)
   this->dataPtr->ecm->CreateComponent(linkEntity,
       components::Inertial(_link->Inertial()));
   this->dataPtr->ecm->CreateComponent(linkEntity,
-      components::BoundingBox(ignition::math::AxisAlignedBox()));
+      components::AxisAlignedBoundingBox(ignition::math::AxisAlignedBox()));
 
   // Visuals
   for (uint64_t visualIndex = 0; visualIndex < _link->VisualCount();
