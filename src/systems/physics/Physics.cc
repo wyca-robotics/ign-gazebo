@@ -580,7 +580,19 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
           // model.
           // \todo(nkoenig) This block of code should ideally be computed
           // only when requested. It's not needed every iteration of
-          // simulation.
+          // simulation. This could be done using:
+          // 1. Simulation starts, no models have BoundingBox components yet,
+          //    so Physics doesn't calculate them.
+          // 2. User sends request, providing a callback to be called on
+          //    response.
+          // 3. SceneBroadcaster receives the request, but doesn't call the
+          //    response callback yet. Instead, it creates a new BoundingBox
+          //    component for the given model.
+          // 4. Physics sees there's now a BB component and fills it.
+          // 5. SceneBroadcaster gets the info from the component, publishes
+          //    the response to the user, and deletes the component.
+          // 6. The model doesn't have a BB anymore, so physics will not fill
+          //    it from now on.
           {
             std::size_t shapeCount = linkIt->second->GetShapeCount();
             math::AxisAlignedBox boundingBox;
