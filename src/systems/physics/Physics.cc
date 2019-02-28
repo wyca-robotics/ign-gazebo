@@ -169,7 +169,12 @@ class ignition::gazebo::systems::PhysicsPrivate
 
   /// \brief Pointer to the underlying ign-physics Engine entity.
   public: EnginePtrType engine = nullptr;
+
+  public: static std::mutex initMutex;
 };
+
+// Initialize static variable
+std::mutex PhysicsPrivate::initMutex;
 
 //////////////////////////////////////////////////
 Physics::Physics() : System(), dataPtr(std::make_unique<PhysicsPrivate>())
@@ -247,8 +252,11 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
         sdf::World world;
         world.SetName(_name->Data());
         world.SetGravity(_gravity->Data());
-        auto worldPtrPhys = this->engine->ConstructWorld(world);
-        this->entityWorldMap.insert(std::make_pair(_entity, worldPtrPhys));
+        {
+          std::lock_guard<std::mutex> lock(PhysicsPrivate::initMutex);
+          auto worldPtrPhys = this->engine->ConstructWorld(world);
+          this->entityWorldMap.insert(std::make_pair(_entity, worldPtrPhys));
+        }
 
         return true;
       });
