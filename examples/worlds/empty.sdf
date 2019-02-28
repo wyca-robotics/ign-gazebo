@@ -50,6 +50,31 @@ ign service -s /world/empty/remove \
 --timeout 300 \
 --req 'name: "spawned_light" type: LIGHT'
 
+  Ask for the scene graph and paste the result into a DOT viewer:
+
+ign service -s /world/empty/scene/graph \
+--reqtype ignition.msgs.Empty \
+--reptype ignition.msgs.StringMsg \
+--timeout 300 \
+--req 'unused: false'
+
+  Ask for the scene info:
+
+ign service -s /world/empty/scene/info \
+--reqtype ignition.msgs.Empty \
+--reptype ignition.msgs.Scene \
+--timeout 300 \
+--req 'unused: false'
+
+  Ask for info for a single model:
+
+ign service -s /world/empty/model/info \
+--reqtype ignition.msgs.StringMsg \
+--reptype ignition.msgs.Model \
+--timeout 300 \
+--req 'data: "new_name"'
+
+
 -->
 <sdf version="1.6">
   <world name="empty">

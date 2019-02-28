@@ -58,9 +58,16 @@ class ignition::gazebo::systems::SceneBroadcasterPrivate
   public: bool SceneInfoService(ignition::msgs::Scene &_res);
 
   /// \brief Callback for scene graph service.
-  /// \param[out] _res Response containing the the scene graph in DOT format.
+  /// \param[out] _res Response containing the scene graph in DOT format.
   /// \return True if successful.
   public: bool SceneGraphService(ignition::msgs::StringMsg &_res);
+
+  /// \brief Callback for model info service.
+  /// \param[in] _res Request containing model name.
+  /// \param[out] _res Response containing the model's details.
+  /// \return True if successful.
+  public: bool ModelInfoService(const msgs::StringMsg &_req,
+              msgs::Model &_rep);
 
   /// \brief Updates the scene graph when entities are added
   /// \param[in] _manager The entity component manager
@@ -111,9 +118,6 @@ class ignition::gazebo::systems::SceneBroadcasterPrivate
   /// \param[in/out] _graph Scene graph
   public: static void RemoveFromGraph(const Entity _entity,
                                       SceneGraphType &_graph);
-
-  public: bool OnModelInfoRequest(const msgs::StringMsg &_req,
-              msgs::Model &_rep);
 
   /// \brief Transport node.
   public: std::unique_ptr<transport::Node> node{nullptr};
@@ -293,7 +297,7 @@ void SceneBroadcasterPrivate::SetupTransport(const std::string &_worldName)
   std::string modelInfoTopic{"/world/" + _worldName + "/model/info"};
 
   this->node->Advertise(modelInfoTopic,
-      &SceneBroadcasterPrivate::OnModelInfoRequest, this);
+      &SceneBroadcasterPrivate::ModelInfoService, this);
 
   // Scene info topic
   std::string sceneTopic{"/world/" + _worldName + "/scene/info"};
@@ -645,8 +649,8 @@ void SceneBroadcasterPrivate::RemoveFromGraph(const Entity _entity,
 }
 
 //////////////////////////////////////////////////
-bool SceneBroadcasterPrivate::OnModelInfoRequest(const msgs::StringMsg &_req,
-                                                 msgs::Model &_rep)
+bool SceneBroadcasterPrivate::ModelInfoService(const msgs::StringMsg &_req,
+                                               msgs::Model &_rep)
 {
   const math::graph::VertexRef_M<
     std::shared_ptr<google::protobuf::Message>> verts =
