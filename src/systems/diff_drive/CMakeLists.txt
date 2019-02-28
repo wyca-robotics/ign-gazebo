@@ -8,10 +8,9 @@ ign_add_component(diff-drive-system
   CXX_STANDARD 17)
 
 target_link_libraries(${diff_drive_system_target}
-  PUBLIC
-    ignition-common${IGN_COMMON_VER}::ignition-common${IGN_COMMON_VER}
-    ${PROJECT_LIBRARY_TARGET_NAME}
   PRIVATE
+    ${PROJECT_LIBRARY_TARGET_NAME}
+    ignition-common${IGN_COMMON_VER}::ignition-common${IGN_COMMON_VER}
     ignition-plugin${IGN_PLUGIN_VER}::register
 )
 
