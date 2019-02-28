@@ -159,7 +159,7 @@ namespace ignition
         bool expanded = false;
         if (this->components.size() == this->components.capacity())
         {
-          this->components.reserve(this->components.capacity() + 100);
+          this->components.reserve(this->components.capacity()*2);
           expanded = true;
         }
 
@@ -167,8 +167,7 @@ namespace ignition
         result = this->idCounter++;
         this->idMap[result] = this->components.size();
         // Copy the component
-        this->components.push_back(std::move(
-              ComponentTypeT(*static_cast<const ComponentTypeT *>(_data))));
+        this->components.push_back(*static_cast<const ComponentTypeT *>(_data));
 
         return {result, expanded};
       }
