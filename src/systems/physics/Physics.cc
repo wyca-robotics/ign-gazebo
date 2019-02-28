@@ -611,7 +611,7 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
             }
             *_boundingBox = components::AxisAlignedBoundingBox(boundingBox);
 
-            components::AxisAlignedBoundingBox *modelBoundingBox =
+            auto modelBoundingBox =
               _ecm.Component<components::AxisAlignedBoundingBox>(
                   _parent->Data());
             *modelBoundingBox = components::AxisAlignedBoundingBox(

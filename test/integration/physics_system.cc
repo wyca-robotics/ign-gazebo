@@ -17,6 +17,9 @@
 
 #include <gtest/gtest.h>
 
+#include <ignition/msgs/model.pb.h>
+#include <ignition/msgs/stringmsg.pb.h>
+
 #include <algorithm>
 #include <vector>
 
@@ -30,8 +33,6 @@
 #include <sdf/Sphere.hh>
 #include <sdf/World.hh>
 
-#include <ignition/msgs/model.pb.h>
-#include <ignition/msgs/stringmsg.pb.h>
 #include <ignition/transport/Node.hh>
 
 #include "ignition/gazebo/Server.hh"
