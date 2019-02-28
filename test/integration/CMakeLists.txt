@@ -4,6 +4,7 @@ set(tests
   altimeter_system.cc
   components.cc
   diff_drive_system.cc
+  diff_drive_system2.cc
   each_new_removed.cc
   entity_erase.cc
   events.cc
