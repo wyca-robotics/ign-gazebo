@@ -438,15 +438,15 @@ TEST_F(PhysicsSystemFixture, AxisAlignedBoundingBox)
   ignition::gazebo::ServerConfig serverConfig;
 
   serverConfig.SetSdfFile(std::string(PROJECT_SOURCE_PATH) +
-    "/test/worlds/shapes.sdf");
+    "/examples/worlds/shapes.sdf");
 
   gazebo::Server server(serverConfig);
 
   server.SetUpdatePeriod(1ns);
-  server.Run(true, 10, false);
-
-  // Wait for the server to start
-  IGN_SLEEP_S(1);
+  // Step once
+  server.Run(true, 1, false);
+  // Run paused
+  server.Run(false, 0, false);
 
   ignition::msgs::Model rep;
   ignition::msgs::StringMsg req;

@@ -598,16 +598,13 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
           //    it from now on.
           {
             std::size_t shapeCount = linkIt->second->GetShapeCount();
-            math::AxisAlignedBox boundingBox;
+            math::AxisAlignedBox boundingBox{math::Vector3d::Zero,
+                                             math::Vector3d::Zero};
             for (std::size_t shapeI = 0; shapeI < shapeCount; ++shapeI)
             {
-              math::AxisAlignedBox b = math::eigen3::convert(
+              boundingBox += math::eigen3::convert(
                   linkIt->second->GetShape(
                     shapeI)->GetAxisAlignedBoundingBox());
-              b.Min() = b.Min() + worldPose.Pos();
-              b.Max() = b.Max() + worldPose.Pos();
-
-              boundingBox += b;
             }
             *_boundingBox = components::AxisAlignedBoundingBox(boundingBox);
 
