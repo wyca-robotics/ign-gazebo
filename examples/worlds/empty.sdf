@@ -91,7 +91,7 @@ ign service -s /world/empty/model/info \
       name="ignition::gazebo::systems::UserCommands">
     </plugin>
     <plugin
-      filename="libignition-gazebo-systems.so"
+      filename="libignition-gazebo-scene-broadcaster-system.so"
       name="ignition::gazebo::systems::SceneBroadcaster">
     </plugin>
 
