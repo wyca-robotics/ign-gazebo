@@ -48,7 +48,6 @@ TEST_F(ComponentFactoryTest, Register)
   EXPECT_NE(0u, MyCustom::typeId);
 
   // Store number of registered component types
-  EXPECT_EQ(factory->TypeIds().size(), factory->TypeIds().size());
   auto registeredCount = factory->TypeIds().size();
 
   factory->Register<MyCustom>(
@@ -59,6 +58,13 @@ TEST_F(ComponentFactoryTest, Register)
   auto ids = factory->TypeIds();
   EXPECT_EQ(registeredCount + 1, ids.size());
   EXPECT_NE(ids.end(), std::find(ids.begin(), ids.end(), MyCustom::typeId));
+
+  // Unregister
+  factory->Unregister<MyCustom>();
+
+  // Check it has no type id yet
+  ids = factory->TypeIds();
+  EXPECT_EQ(registeredCount, ids.size());
 }
 
 /////////////////////////////////////////////////

@@ -96,7 +96,6 @@ namespace components
   {
     /// \brief Register a component so that the factory can create instances
     /// of the component and its storage based on an ID.
-    /// \param[in] _type Type of component to register.
     /// \param[in] _compDesc Object to manage the creation of ComponentTypeT
     ///  objects.
     /// \param[in] _storageDesc Object to manage the creation of storages for
@@ -104,11 +103,42 @@ namespace components
     /// \tparam ComponentTypeT Type of component to register.
     public: template<typename ComponentTypeT>
     void Register(ComponentDescriptorBase *_compDesc,
-                  StorageDescriptorBase *_storageDesc = nullptr)
+      StorageDescriptorBase *_storageDesc)
     {
+      // Already registered
+      if (this->compsById.find(ComponentTypeT::typeId) != this->compsById.end())
+      {
+        return;
+      }
+
       // Keep track of all types
       this->compsById[ComponentTypeT::typeId] = _compDesc;
       this->storagesById[ComponentTypeT::typeId] = _storageDesc;
+    }
+
+    /// \brief Unregister a component so that the factory can't create instances
+    /// of the component or its storage anymore.
+    /// \tparam ComponentTypeT Type of component to unregister.
+    public: template<typename ComponentTypeT>
+    void Unregister()
+    {
+      {
+        auto it = this->compsById.find(ComponentTypeT::typeId);
+        if (it != this->compsById.end())
+        {
+          delete it->second;
+          this->compsById.erase(it);
+        }
+      }
+
+      {
+        auto it = this->storagesById.find(ComponentTypeT::typeId);
+        if (it != this->storagesById.end())
+        {
+          delete it->second;
+          this->storagesById.erase(it);
+        }
+      }
     }
 
     /// \brief Create a new instance of a component.
@@ -189,6 +219,9 @@ namespace components
   /// \brief Static component registration macro.
   ///
   /// Use this macro to register components.
+  ///
+  /// \detail Each time a plugin which uses a component is loaded, it tries to
+  /// register the component again, so we prevent that.
   /// \param[in] _compType Component type name.
   /// \param[in] _classname Class name for component.
   #define IGN_GAZEBO_REGISTER_COMPONENT(_compType, _classname) \
