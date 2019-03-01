@@ -576,8 +576,7 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
           auto parentPose =
               _ecm.Component<components::Pose>(_parent->Data());
 
-          math::Pose3d worldPose = math::eigen3::convert(
-            linkIt->second->FrameDataRelativeToWorld().pose);
+          auto worldPose = linkIt->second->FrameDataRelativeToWorld().pose;
 
           // Update the bounding box information for the link and the parent
           // model.
@@ -634,12 +633,12 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
             // to premultiply it by the inverse of the initial transform of
             // the link w.r.t to its model.
             *parentPose = components::Pose(_pose->Data().Inverse() +
-                                           worldPose);
+                                           math::eigen3::convert(worldPose));
           }
           else
           {
             // Compute the relative pose of this link from the model
-            *_pose = components::Pose(worldPose +
+            *_pose = components::Pose(math::eigen3::convert(worldPose) +
                                       parentPose->Data().Inverse());
           }
         }
