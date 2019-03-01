@@ -18,7 +18,6 @@
 #define IGNITION_GAZEBO_COMPONENTS_CHILDLINKNAME_HH_
 
 #include <string>
-#include <ignition/gazebo/components/Factory.hh>
 #include <ignition/gazebo/components/Component.hh>
 #include <ignition/gazebo/config.hh>
 
@@ -33,8 +32,6 @@ namespace components
   /// \brief A component used to indicate that a model is childlinkname (i.e.
   /// not moveable).
   using ChildLinkName = Component<std::string, class ChildLinkNameTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT(
-    "ign_gazebo_components.ChildLinkName", ChildLinkName)
 }
 }
 }

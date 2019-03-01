@@ -20,7 +20,6 @@
 #include <ignition/gazebo/config.hh>
 #include <ignition/gazebo/Export.hh>
 
-#include "ignition/gazebo/components/Factory.hh"
 #include "ignition/gazebo/components/Component.hh"
 
 namespace ignition
@@ -33,7 +32,6 @@ namespace components
 {
   /// \brief This component identifies an entity as being a performer.
   using Performer = Component<NoData, class PerformerTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.Performer", Performer)
 }
 }
 }

@@ -22,7 +22,6 @@
 #include <ignition/gazebo/config.hh>
 #include <ignition/gazebo/Export.hh>
 
-#include <ignition/gazebo/components/Factory.hh>
 #include "ignition/gazebo/components/Component.hh"
 
 namespace ignition
@@ -37,15 +36,11 @@ namespace components
   /// represented by ignition::math::Vector3d.
   using AngularVelocity =
     Component<math::Vector3d, class AngularVelocityTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.AngularVelocity",
-      AngularVelocity)
 
   /// \brief A component type that contains angular velocity of an entity in the
   /// world frame represented by ignition::math::Vector3d.
   using WorldAngularVelocity =
       Component<math::Vector3d, class WorldAngularVelocityTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.WorldAngularVelocity",
-      WorldAngularVelocity)
 }
 }
 }

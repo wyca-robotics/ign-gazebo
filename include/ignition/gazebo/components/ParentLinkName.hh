@@ -18,7 +18,6 @@
 #define IGNITION_GAZEBO_COMPONENTS_PARENTLINKNAME_HH_
 
 #include <string>
-#include <ignition/gazebo/components/Factory.hh>
 #include <ignition/gazebo/components/Component.hh>
 #include <ignition/gazebo/config.hh>
 
@@ -32,8 +31,6 @@ namespace components
 {
   /// \brief Holds the name of the entity's parent link.
   using ParentLinkName = Component<std::string, class ParentLinkNameTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT(
-    "ign_gazebo_components.ParentLinkName", ParentLinkName)
 }
 }
 }

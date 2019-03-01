@@ -289,6 +289,9 @@ namespace components
   template <typename DataType, typename Identifier>
   class Component: public BaseComponent
   {
+    public: using Type = DataType;
+    public: using Tag = Identifier;
+
     /// \brief Default constructor
     public: Component();
 
@@ -354,7 +357,7 @@ namespace components
 
     /// \brief Unique ID for this component type. This is set through the
     /// Factory registration.
-    public: inline static ComponentTypeId typeId{0};
+    public: static const ComponentTypeId typeId; // NOLINT
   };
 
   /// \brief Specialization for components that don't wrap any data.
@@ -368,6 +371,9 @@ namespace components
   template <typename Identifier>
   class Component<NoData, Identifier> : public BaseComponent
   {
+    public: using Type = NoData;
+    public: using Tag = Identifier;
+
     /// \brief Components with no data are always equal to another instance of
     /// the same type.
     /// \param[in] _component Component to compare to
@@ -405,7 +411,7 @@ namespace components
 
     /// \brief Unique ID for this component type. This is set through the
     /// Factory registration.
-    public: inline static ComponentTypeId typeId{0};
+    public: static const ComponentTypeId typeId; // NOLINT
   };
 
   template <typename DataType>

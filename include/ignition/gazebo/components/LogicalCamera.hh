@@ -18,7 +18,6 @@
 #define IGNITION_GAZEBO_COMPONENTS_LOGICALCAMERA_HH_
 
 #include <sdf/Element.hh>
-#include <ignition/gazebo/components/Factory.hh>
 #include <ignition/gazebo/components/Component.hh>
 #include <ignition/gazebo/config.hh>
 
@@ -33,8 +32,6 @@ namespace components
   /// \brief TODO(anyone) Substitute with sdf::LogicalCamera once that exists?
   /// This is currently the whole <sensor> element.
   using LogicalCamera = Component<sdf::ElementPtr, class LogicalCameraTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.LogicalCamera",
-      LogicalCamera)
 }
 }
 }

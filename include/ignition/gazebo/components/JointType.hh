@@ -19,7 +19,6 @@
 
 #include <memory>
 #include <sdf/Joint.hh>
-#include <ignition/gazebo/components/Factory.hh>
 #include <ignition/gazebo/components/Component.hh>
 #include <ignition/gazebo/config.hh>
 
@@ -34,8 +33,6 @@ namespace components
   /// \brief A component that contains the joint type. This is a simple wrapper
   /// around sdf::JointType
   using JointType = Component<sdf::JointType, class JointTypeTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT(
-      "ign_gazebo_components.JointType", JointType)
 }
 }
 }

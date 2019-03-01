@@ -20,10 +20,11 @@
 #include <ignition/common/Console.hh>
 #include <ignition/math/Pose3.hh>
 #include <ignition/math/Rand.hh>
+#include <ignition/gazebo/config.hh>
+
 #include "ignition/gazebo/components/Factory.hh"
 #include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
-#include <ignition/gazebo/config.hh>
 
 using namespace ignition;
 using namespace gazebo;
@@ -40,7 +41,7 @@ using IntComponent = components::Component<int, class IntComponentTag>;
 IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.IntComponent",
     IntComponent)
 
-using UIntComponent = components::Component<int, class IntComponentTag>;
+using UIntComponent = components::Component<int, class UIntComponentTag>;
 IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.UIntComponent",
     UIntComponent)
 

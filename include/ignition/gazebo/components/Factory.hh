@@ -103,12 +103,9 @@ namespace components
     /// objects of type ComponentTypeT.
     /// \tparam ComponentTypeT Type of component to register.
     public: template<typename ComponentTypeT>
-    void Register(const std::string &_type, ComponentDescriptorBase *_compDesc,
-      StorageDescriptorBase *_storageDesc = nullptr)
+    void Register(ComponentDescriptorBase *_compDesc,
+                  StorageDescriptorBase *_storageDesc = nullptr)
     {
-      // Initialize static member variable
-      ComponentTypeT::typeId = ignition::common::hash64(_type);
-
       // Keep track of all types
       this->compsById[ComponentTypeT::typeId] = _compDesc;
       this->storagesById[ComponentTypeT::typeId] = _storageDesc;
@@ -163,8 +160,8 @@ namespace components
       std::vector<ComponentTypeId> types;
 
       // Return the list of all known component types.
-      for (const auto &[id, funct] : this->compsById)
-        types.push_back(id);
+      for (const auto &comp : this->compsById)
+        types.push_back(comp.first);
 
       return types;
     }
@@ -195,6 +192,11 @@ namespace components
   /// \param[in] _compType Component type name.
   /// \param[in] _classname Class name for component.
   #define IGN_GAZEBO_REGISTER_COMPONENT(_compType, _classname) \
+  template<> \
+  const ignition::gazebo::ComponentTypeId  \
+    ignition::gazebo::components::Component< \
+        _classname::Type, _classname::Tag>::typeId = \
+        ignition::common::hash64(_compType); \
   class IGNITION_GAZEBO_VISIBLE IgnGazeboComponents##_classname \
   { \
     public: IgnGazeboComponents##_classname() \
@@ -203,7 +205,7 @@ namespace components
       using Desc = gazebo::components::ComponentDescriptor<_classname>; \
       using StorageDesc = gazebo::components::StorageDescriptor<_classname>; \
       gazebo::components::Factory::Instance()->Register<_classname>(\
-        _compType, new Desc(), new StorageDesc());\
+        new Desc(), new StorageDesc());\
     } \
   }; \
   static IgnGazeboComponents##_classname\

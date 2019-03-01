@@ -34,8 +34,8 @@ using namespace ignition;
 using namespace std::chrono_literals;
 
 using IntComponent = gazebo::components::Component<int, class IntComponentTag>;
-IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.IntComponent",
-    IntComponent)
+IGN_GAZEBO_REGISTER_COMPONENT(
+    "ign_gazebo_components.IntComponent", IntComponent)
 
 class EachNewRemovedFixture : public ::testing::Test
 {

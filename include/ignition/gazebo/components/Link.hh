@@ -17,7 +17,6 @@
 #ifndef IGNITION_GAZEBO_COMPONENTS_LINK_HH_
 #define IGNITION_GAZEBO_COMPONENTS_LINK_HH_
 
-#include <ignition/gazebo/components/Factory.hh>
 #include <ignition/gazebo/components/Component.hh>
 #include <ignition/gazebo/config.hh>
 
@@ -31,7 +30,6 @@ namespace components
 {
   /// \brief A component that identifies an entity as being a link.
   using Link = Component<NoData, class LinkTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.Link", Link)
 }
 }
 }

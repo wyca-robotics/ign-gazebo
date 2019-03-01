@@ -18,7 +18,6 @@
 #define IGNITION_GAZEBO_COMPONENTS_GPU_LIDAR_HH_
 
 #include <sdf/Element.hh>
-#include <ignition/gazebo/components/Factory.hh>
 #include <ignition/gazebo/components/Component.hh>
 #include <ignition/gazebo/config.hh>
 
@@ -33,7 +32,6 @@ namespace components
   /// \brief TODO(louise) Substitute with sdf::GpuLidar once that exists?
   /// This is currently the whole <sensor> element.
   using GpuLidar = Component<sdf::ElementPtr, class GpuLidarTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.GpuLidar", GpuLidar)
 }
 }
 }

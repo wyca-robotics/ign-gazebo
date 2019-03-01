@@ -22,7 +22,6 @@
 #include <ignition/gazebo/config.hh>
 #include <ignition/gazebo/Export.hh>
 
-#include <ignition/gazebo/components/Factory.hh>
 #include "ignition/gazebo/components/Component.hh"
 
 namespace ignition
@@ -36,7 +35,6 @@ namespace components
   /// \brief TODO(anyone) Substitute with sdf::Imu once that exists?
   /// This is currently the whole <sensor> element.
   using Imu = Component<sdf::ElementPtr, class ImuTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.Imu", Imu)
 }
 }
 }

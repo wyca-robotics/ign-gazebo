@@ -34,6 +34,7 @@ set (sources
   EventManager.cc
   LevelManager.cc
   Model.cc
+  RegisterComponents.cc
   SdfEntityCreator.cc
   Server.cc
   ServerConfig.cc

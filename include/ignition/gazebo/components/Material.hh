@@ -18,7 +18,6 @@
 #define IGNITION_GAZEBO_COMPONENTS_MATERIAL_HH_
 
 #include <sdf/Material.hh>
-#include <ignition/gazebo/components/Factory.hh>
 #include <ignition/gazebo/components/Component.hh>
 #include <ignition/gazebo/config.hh>
 
@@ -32,8 +31,6 @@ namespace components
 {
   /// \brief This component holds an entity's material.
   using Material = Component<sdf::Material, class MaterialTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT(
-      "ign_gazebo_components.Material", Material)
 }
 }
 }
