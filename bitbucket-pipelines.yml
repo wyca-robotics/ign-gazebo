@@ -95,7 +95,7 @@ pipelines:
           # Ignition physics (uncomment if a specific branch is needed)
           - apt install -y
             libdart6-dev libdart6-collision-bullet-dev libdart6-collision-ode-dev libdart6-utils-urdf-dev
-          - hg clone http://bitbucket.org/ignitionrobotics/ign-physics -b boundingbox
+          - hg clone http://bitbucket.org/ignitionrobotics/ign-physics -b ign-physics1
           - cd ign-physics
           - mkdir build
           - cd build
