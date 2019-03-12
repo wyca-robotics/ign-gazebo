@@ -27,7 +27,7 @@ pipelines:
             libignition-transport6-dev
             libsdformat8-dev
             libignition-fuel-tools3-dev
-          # libignition-sensors-dev
+          #  libignition-sensors-dev
           # SDFormat (uncomment if a specific branch is needed)
           # - apt install -y
           #   libxml2-utils
