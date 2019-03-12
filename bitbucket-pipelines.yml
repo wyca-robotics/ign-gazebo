@@ -57,7 +57,7 @@ pipelines:
           # - make -j4 install
           # - cd ../..
           # Ignition sensors (uncomment if a specific branch is needed)
-          - hg clone http://bitbucket.org/ignitionrobotics/ign-sensors -b imu
+          - hg clone http://bitbucket.org/ignitionrobotics/ign-sensors -b imu_pipelines
           - cd ign-sensors
           - mkdir build
           - cd build
@@ -99,6 +99,7 @@ pipelines:
           - cd build
           - cmake .. -DCMAKE_BUILD_TYPE=coverage
           - make -j4 install
+          - ldd /usr/local/lib/ign-gazebo-0/plugins/libignition-gazebo0-imu-system.so
           - make test ARGS="-VV"
           - make coverage
           # Use a special version of codecov for handling gcc8 output.
