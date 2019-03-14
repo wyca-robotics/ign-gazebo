@@ -107,14 +107,14 @@ namespace components
     void Register(const std::string &_type, ComponentDescriptorBase *_compDesc,
       StorageDescriptorBase *_storageDesc)
     {
-      auto typeHash = ignition::common::hash64(_type);
-
       // Every time a plugin which uses a component type is loaded, it attempts
       // to register it again, so we skip it.
       if (ComponentTypeT::typeId != 0)
       {
         return;
       }
+
+      auto typeHash = ignition::common::hash64(_type);
 
       // Initialize static member variable
       ComponentTypeT::typeId = typeHash;

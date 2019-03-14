@@ -51,6 +51,15 @@ class ignition::gazebo::systems::LogPlaybackPrivate
   /// \param[in] _ecm Mutable ECM.
   public: void ParseNext(EntityComponentManager &_ecm);
 
+  /// \brief Reads the next PoseV message in log file and updates the ECM
+  /// \param[in] _ecm Mutable ECM.
+  public: void ParsePoseV(EntityComponentManager &_ecm);
+
+  /// \brief Reads the next SerializedState message in log file and updates the
+  /// ECM
+  /// \param[in] _ecm Mutable ECM.
+  public: void ParseSerializedState(EntityComponentManager &_ecm);
+
   /// \brief A batch of data from log file, of all pose messages
   public: transport::log::Batch batch;
 
@@ -72,17 +81,8 @@ LogPlayback::LogPlayback()
 LogPlayback::~LogPlayback() = default;
 
 //////////////////////////////////////////////////
-void LogPlaybackPrivate::ParseNext(EntityComponentManager &_ecm)
+void LogPlaybackPrivate::ParsePoseV(EntityComponentManager &_ecm)
 {
-  size_t foundPos = this->iter->Type().find_last_of('.');
-  if (this->iter->Type().substr(foundPos + 1).compare("Pose_V") != 0)
-  {
-    ignwarn << "Logged message types other than Pose_V are currently not "
-      << "supported. Message of type [" << this->iter->Type()
-      << "] will not be played.\n";
-    return;
-  }
-
   // Protobuf message
   msgs::Pose_V posevMsg;
 
@@ -118,6 +118,33 @@ void LogPlaybackPrivate::ParseNext(EntityComponentManager &_ecm)
 
     return true;
   });
+}
+
+//////////////////////////////////////////////////
+void LogPlaybackPrivate::ParseSerializedState(EntityComponentManager &_ecm)
+{
+  msgs::SerializedState stateMsg;
+  stateMsg.ParseFromString(this->iter->Data());
+  _ecm.SetState(stateMsg);
+}
+
+//////////////////////////////////////////////////
+void LogPlaybackPrivate::ParseNext(EntityComponentManager &_ecm)
+{
+  if (this->iter->Type() == "ignition.msgs.Pose_V")
+  {
+    this->ParsePoseV(_ecm);
+  }
+  else if (this->iter->Type() == "ignition.msgs.SerializedState")
+  {
+    this->ParseSerializedState(_ecm);
+  }
+  else
+  {
+    ignwarn << "Logged message types other than Pose_V and SerializedState are "
+      << "currently not supported. Message of type [" << this->iter->Type()
+      << "] will not be played.\n";
+  }
 }
 
 //////////////////////////////////////////////////
@@ -235,28 +262,24 @@ void LogPlayback::Configure(const Entity &_worldEntity,
 
   _eventMgr.Emit<events::LoadPlugins>(_worldEntity, sdfWorld->Element());
 
-  ignmsg << "Playing back log file [" << dbPath << "]" << std::endl;
-
   // Call Log.hh directly to load a .tlog file
   auto log = std::make_unique<transport::log::Log>();
   log->Open(dbPath);
 
   // Access messages in .tlog file
   transport::log::TopicList opts("/world/" +
-    sdfWorld->Element()->GetAttribute("name")->GetAsString() + "/pose/info");
+    sdfWorld->Element()->GetAttribute("name")->GetAsString() + "/log");
   this->dataPtr->batch = log->QueryMessages(opts);
   this->dataPtr->iter = this->dataPtr->batch.begin();
-
-  this->dataPtr->ParseNext(_ecm);
-
-  // Advance one entry in batch for Update()
-  ++(this->dataPtr->iter);
 }
 
 //////////////////////////////////////////////////
-void LogPlayback::Update(const UpdateInfo &_info,
-    EntityComponentManager &_ecm)
+void LogPlayback::Update(const UpdateInfo &_info, EntityComponentManager &_ecm)
 {
+  if (_info.paused)
+    return;
+
+  // TODO(anyone) Support rewind
   // Sanity check. If reached the end, done.
   if (this->dataPtr->iter == this->dataPtr->batch.end())
   {
@@ -269,18 +292,37 @@ void LogPlayback::Update(const UpdateInfo &_info,
     return;
   }
 
-  // If timestamp since start of program has exceeded next logged timestamp,
-  //   play the joint positions at next logged timestamp.
+  auto msgType = this->dataPtr->iter->Type();
 
   // Get timestamp in logged data
-  msgs::Pose_V posevMsg;
-  posevMsg.ParseFromString(this->dataPtr->iter->Data());
+  msgs::Time stampMsg;
 
-  auto now = _info.simTime;
-  if (now.count() >= (posevMsg.header().stamp().sec() * 1000000000 +
-    posevMsg.header().stamp().nsec()))
+  // TODO(louise) Remove the duplicate `ParseFromString` call from Parse*
+  if (msgType == "ignition.msgs.Pose_V")
   {
-    // Parse pose and move link
+    msgs::Pose_V msg;
+    msg.ParseFromString(this->dataPtr->iter->Data());
+    stampMsg = msg.header().stamp();
+  }
+  else if (msgType == "ignition.msgs.SerializedState")
+  {
+    msgs::SerializedState msg;
+    msg.ParseFromString(this->dataPtr->iter->Data());
+    stampMsg = msg.header().stamp();
+  }
+  else
+  {
+    ignwarn << "Trying to playback unsupported message type ["
+            << msgType << "]" << std::endl;
+    return;
+  }
+
+  // Only playback if current sim time has exceeded next logged timestamp
+  // TODO(anyone) Support multiple msgs per update, in case playback has a lower
+  // frequency than record
+  auto now = _info.simTime;
+  if (now.count() >= (stampMsg.sec() * 1000000000 + stampMsg.nsec()))
+  {
     this->dataPtr->ParseNext(_ecm);
 
     // Advance one entry in batch for next Update() iteration

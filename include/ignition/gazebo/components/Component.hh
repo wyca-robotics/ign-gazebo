@@ -242,9 +242,15 @@ namespace components
     /// \param[in] _out Out stream.
     protected: virtual void Serialize(std::ostream &/*_out*/) const
     {
-      ignwarn << "Trying to serialize copmponent which hasn't implemented "
-              << "the `Serialize` function. Component will not be serialized."
-              << std::endl;
+      static bool warned{false};
+      if (!warned)
+      {
+        ignwarn << "Trying to serialize copmponent of type [" << this->TypeId()
+                << "], which hasn't implemented the `Serialize` function. "
+                << "Component will not be serialized."
+                << std::endl;
+        warned = true;
+      }
     };
 
     /// \brief Fills a component based on a stream with a serialized data.
@@ -257,9 +263,15 @@ namespace components
     /// \param[in] _in In stream.
     protected: virtual void Deserialize(std::istream &/*_in*/)
     {
-      ignwarn << "Trying to deserialize copmponent which hasn't implemented "
-              << "the `Deserialize` function. Component will not be "
-              << "deserialized." << std::endl;
+      static bool warned{false};
+      if (!warned)
+      {
+        ignwarn << "Trying to deserialize copmponent of type ["
+                << this->TypeId() << "], which hasn't implemented the "
+                << "`Deserialize` function. Component will not be deserialized."
+                << std::endl;
+        warned = true;
+      }
     };
 
     /// \brief Returns the unique ID for the component's type.
