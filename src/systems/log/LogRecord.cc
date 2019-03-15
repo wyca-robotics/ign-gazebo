@@ -64,6 +64,13 @@ class ignition::gazebo::systems::LogRecordPrivate
   /// \param[in] _pathAndName Full absolute path
   public: std::string UniqueDirectoryPath(const std::string &_dir);
 
+  /// \brief Clock used to timestamp recorded messages with sim time
+  /// coming from /clock topic. This is not the timestamp on the header,
+  /// rather a logging-specific stamp.
+  /// In case there's disagreement between these stamps, the one in the
+  /// header should be used.
+  public: std::unique_ptr<transport::NetworkClock> clock;
+
   /// \brief Ignition transport recorder
   public: transport::log::Recorder recorder;
 
@@ -191,10 +198,17 @@ void LogRecord::Configure(const Entity &/*_entity*/,
 
   // Use ign-transport directly
   sdf::ElementPtr sdfWorld = sdfRoot->GetElement("world");
-  auto logTopic = "/world/" + sdfWorld->GetAttribute("name")->GetAsString() +
-      "/log";
+  auto worldName = sdfWorld->GetAttribute("name")->GetAsString();
+  auto logTopic = "/world/" + worldName + "/log";
 
   this->dataPtr->recorder.AddTopic(logTopic);
+
+  // Timestamp messages with sim time from clock topic
+  // Note that the message headers should also have a timestamp
+  auto clockTopic = "/world/" + worldName + "/clock";
+  this->dataPtr->clock = std::make_unique<transport::NetworkClock>(clockTopic,
+      transport::NetworkClock::TimeBase::SIM);
+  this->dataPtr->recorder.Sync(this->dataPtr->clock.get());
 
   // This calls Log::Open() and loads sql schema
   this->dataPtr->recorder.Start(dbPath);

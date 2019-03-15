@@ -266,9 +266,14 @@ void LogPlayback::Update(const UpdateInfo &_info, EntityComponentManager &_ecm)
     return;
   }
 
+  // Sim time stamp from /clock topic
+  auto msgStamp = this->dataPtr->iter->TimeReceived();
+
+  if (_info.simTime < msgStamp)
+    return;
+
   auto msgType = this->dataPtr->iter->Type();
 
-  // Only playback if current sim time has exceeded next logged timestamp
   // TODO(anyone) Support multiple msgs per update, in case playback has a lower
   // frequency than record
   if (msgType == "ignition.msgs.Pose_V")
@@ -276,28 +281,16 @@ void LogPlayback::Update(const UpdateInfo &_info, EntityComponentManager &_ecm)
     msgs::Pose_V msg;
     msg.ParseFromString(this->dataPtr->iter->Data());
 
-    auto stamp = convert<std::chrono::steady_clock::duration>(
-        msg.header().stamp());
-
-    if (_info.simTime >= stamp)
-    {
-      this->dataPtr->Parse(_ecm, msg);
-      ++(this->dataPtr->iter);
-    }
+    this->dataPtr->Parse(_ecm, msg);
+    ++(this->dataPtr->iter);
   }
   else if (msgType == "ignition.msgs.SerializedState")
   {
     msgs::SerializedState msg;
     msg.ParseFromString(this->dataPtr->iter->Data());
 
-    auto stamp = convert<std::chrono::steady_clock::duration>(
-        msg.header().stamp());
-
-    if (_info.simTime >= stamp)
-    {
-      this->dataPtr->Parse(_ecm, msg);
-      ++(this->dataPtr->iter);
-    }
+    this->dataPtr->Parse(_ecm, msg);
+    ++(this->dataPtr->iter);
   }
   else
   {
