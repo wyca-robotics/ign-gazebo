@@ -50,13 +50,12 @@ class ignition::gazebo::systems::LogPlaybackPrivate
 {
   /// \brief Reads the next PoseV message in log file and updates the ECM
   /// \param[in] _ecm Mutable ECM.
-  public: void Parse(EntityComponentManager &_ecm, const msgs::Pose_V &_msg);
+  public: void ParsePoseV(EntityComponentManager &_ecm);
 
   /// \brief Reads the next SerializedState message in log file and updates the
   /// ECM
   /// \param[in] _ecm Mutable ECM.
-  public: void Parse(EntityComponentManager &_ecm,
-      const msgs::SerializedState &_msg);
+  public: void ParseSerializedState(EntityComponentManager &_ecm);
 
   /// \brief A batch of data from log file, of all pose messages
   public: transport::log::Batch batch;
@@ -79,16 +78,21 @@ LogPlayback::LogPlayback()
 LogPlayback::~LogPlayback() = default;
 
 //////////////////////////////////////////////////
-void LogPlaybackPrivate::Parse(EntityComponentManager &_ecm,
-    const msgs::Pose_V &_msg)
+void LogPlaybackPrivate::ParsePoseV(EntityComponentManager &_ecm)
 {
+  // Protobuf message
+  msgs::Pose_V posevMsg;
+
+  // Convert binary bytes in string into a ign-msgs msg
+  posevMsg.ParseFromString(this->iter->Data());
+
   // Maps entity to pose recorded
   // Key: entity. Value: pose
   std::map <Entity, msgs::Pose> idToPose;
 
-  for (int i = 0; i < _msg.pose_size(); ++i)
+  for (int i = 0; i < posevMsg.pose_size(); ++i)
   {
-    msgs::Pose pose = _msg.pose(i);
+    msgs::Pose pose = posevMsg.pose(i);
 
     // Update entity pose in map
     idToPose.insert_or_assign(pose.id(), pose);
@@ -114,11 +118,13 @@ void LogPlaybackPrivate::Parse(EntityComponentManager &_ecm,
 }
 
 //////////////////////////////////////////////////
-void LogPlaybackPrivate::Parse(EntityComponentManager &_ecm,
-    const msgs::SerializedState &_msg)
+void LogPlaybackPrivate::ParseSerializedState(EntityComponentManager &_ecm)
 {
+  msgs::SerializedState msg;
+  msg.ParseFromString(this->iter->Data());
+
   // TODO(anyone) Support setting only user-selected components
-  _ecm.SetState(_msg);
+  _ecm.SetState(msg);
 }
 
 //////////////////////////////////////////////////
@@ -240,10 +246,8 @@ void LogPlayback::Configure(const Entity &_worldEntity,
   auto log = std::make_unique<transport::log::Log>();
   log->Open(dbPath);
 
-  // Access messages in .tlog file
-  transport::log::TopicList opts("/world/" +
-    sdfWorld->Element()->GetAttribute("name")->GetAsString() + "/log");
-  this->dataPtr->batch = log->QueryMessages(opts);
+  // Access all messages in .tlog file
+  this->dataPtr->batch = log->QueryMessages();
   this->dataPtr->iter = this->dataPtr->batch.begin();
 }
 
@@ -278,25 +282,19 @@ void LogPlayback::Update(const UpdateInfo &_info, EntityComponentManager &_ecm)
   // frequency than record
   if (msgType == "ignition.msgs.Pose_V")
   {
-    msgs::Pose_V msg;
-    msg.ParseFromString(this->dataPtr->iter->Data());
-
-    this->dataPtr->Parse(_ecm, msg);
-    ++(this->dataPtr->iter);
+    this->dataPtr->ParsePoseV(_ecm);
   }
   else if (msgType == "ignition.msgs.SerializedState")
   {
-    msgs::SerializedState msg;
-    msg.ParseFromString(this->dataPtr->iter->Data());
-
-    this->dataPtr->Parse(_ecm, msg);
-    ++(this->dataPtr->iter);
+    this->dataPtr->ParseSerializedState(_ecm);
   }
   else
   {
     ignwarn << "Trying to playback unsupported message type ["
             << msgType << "]" << std::endl;
   }
+
+  ++(this->dataPtr->iter);
 }
 
 IGNITION_ADD_PLUGIN(ignition::gazebo::systems::LogPlayback,

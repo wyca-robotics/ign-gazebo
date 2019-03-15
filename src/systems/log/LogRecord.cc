@@ -143,9 +143,9 @@ LogRecord::~LogRecord()
 }
 
 //////////////////////////////////////////////////
-void LogRecord::Configure(const Entity &/*_entity*/,
+void LogRecord::Configure(const Entity &_entity,
     const std::shared_ptr<const sdf::Element> &_sdf,
-    EntityComponentManager &/*_ecm*/, EventManager &/*_eventMgr*/)
+    EntityComponentManager &_ecm, EventManager &/*_eventMgr*/)
 {
   // Get directory paths from SDF params
   auto logPath = _sdf->Get<std::string>("path");
@@ -197,10 +197,9 @@ void LogRecord::Configure(const Entity &/*_entity*/,
   ignmsg << "Recording to log file [" << dbPath << "]" << std::endl;
 
   // Use ign-transport directly
-  sdf::ElementPtr sdfWorld = sdfRoot->GetElement("world");
-  auto worldName = sdfWorld->GetAttribute("name")->GetAsString();
-  auto logTopic = "/world/" + worldName + "/log";
+  auto worldName = _ecm.Component<components::Name>(_entity)->Data();
 
+  auto logTopic = "/world/" + worldName + "/log";
   this->dataPtr->recorder.AddTopic(logTopic);
 
   // Timestamp messages with sim time from clock topic
@@ -225,6 +224,7 @@ void LogRecord::PostUpdate(const UpdateInfo &_info,
   if (_info.paused)
     return;
 
+  // TODO(anyone) Support getting only user-selected components
   // Get current state and timestamp it
   auto stateMsg = _ecm.State();
   stateMsg.mutable_header()->mutable_stamp()->CopyFrom(
