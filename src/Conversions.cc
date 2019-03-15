@@ -28,6 +28,8 @@
 #include <ignition/msgs/spheregeom.pb.h>
 #include <ignition/msgs/Utility.hh>
 
+#include <ignition/math/Helpers.hh>
+
 #include <ignition/common/Console.hh>
 
 #include <sdf/Box.hh>
