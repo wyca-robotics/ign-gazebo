@@ -35,6 +35,7 @@
 
 #include <sdf/Root.hh>
 
+#include "ignition/gazebo/Conversions.hh"
 #include "ignition/gazebo/Events.hh"
 #include "ignition/gazebo/SdfEntityCreator.hh"
 #include "ignition/gazebo/components/Pose.hh"
@@ -47,18 +48,15 @@ using namespace systems;
 /// \brief Private LogPlayback data class.
 class ignition::gazebo::systems::LogPlaybackPrivate
 {
-  /// \brief Reads the next message in log file and updates the ECM
-  /// \param[in] _ecm Mutable ECM.
-  public: void ParseNext(EntityComponentManager &_ecm);
-
   /// \brief Reads the next PoseV message in log file and updates the ECM
   /// \param[in] _ecm Mutable ECM.
-  public: void ParsePoseV(EntityComponentManager &_ecm);
+  public: void Parse(EntityComponentManager &_ecm, const msgs::Pose_V &_msg);
 
   /// \brief Reads the next SerializedState message in log file and updates the
   /// ECM
   /// \param[in] _ecm Mutable ECM.
-  public: void ParseSerializedState(EntityComponentManager &_ecm);
+  public: void Parse(EntityComponentManager &_ecm,
+      const msgs::SerializedState &_msg);
 
   /// \brief A batch of data from log file, of all pose messages
   public: transport::log::Batch batch;
@@ -81,21 +79,16 @@ LogPlayback::LogPlayback()
 LogPlayback::~LogPlayback() = default;
 
 //////////////////////////////////////////////////
-void LogPlaybackPrivate::ParsePoseV(EntityComponentManager &_ecm)
+void LogPlaybackPrivate::Parse(EntityComponentManager &_ecm,
+    const msgs::Pose_V &_msg)
 {
-  // Protobuf message
-  msgs::Pose_V posevMsg;
-
-  // Convert binary bytes in string into a ign-msgs msg
-  posevMsg.ParseFromString(this->iter->Data());
-
   // Maps entity to pose recorded
   // Key: entity. Value: pose
   std::map <Entity, msgs::Pose> idToPose;
 
-  for (int i = 0; i < posevMsg.pose_size(); ++i)
+  for (int i = 0; i < _msg.pose_size(); ++i)
   {
-    msgs::Pose pose = posevMsg.pose(i);
+    msgs::Pose pose = _msg.pose(i);
 
     // Update entity pose in map
     idToPose.insert_or_assign(pose.id(), pose);
@@ -121,30 +114,11 @@ void LogPlaybackPrivate::ParsePoseV(EntityComponentManager &_ecm)
 }
 
 //////////////////////////////////////////////////
-void LogPlaybackPrivate::ParseSerializedState(EntityComponentManager &_ecm)
+void LogPlaybackPrivate::Parse(EntityComponentManager &_ecm,
+    const msgs::SerializedState &_msg)
 {
-  msgs::SerializedState stateMsg;
-  stateMsg.ParseFromString(this->iter->Data());
-  _ecm.SetState(stateMsg);
-}
-
-//////////////////////////////////////////////////
-void LogPlaybackPrivate::ParseNext(EntityComponentManager &_ecm)
-{
-  if (this->iter->Type() == "ignition.msgs.Pose_V")
-  {
-    this->ParsePoseV(_ecm);
-  }
-  else if (this->iter->Type() == "ignition.msgs.SerializedState")
-  {
-    this->ParseSerializedState(_ecm);
-  }
-  else
-  {
-    ignwarn << "Logged message types other than Pose_V and SerializedState are "
-      << "currently not supported. Message of type [" << this->iter->Type()
-      << "] will not be played.\n";
-  }
+  // TODO(anyone) Support setting only user-selected components
+  _ecm.SetState(_msg);
 }
 
 //////////////////////////////////////////////////
@@ -294,40 +268,41 @@ void LogPlayback::Update(const UpdateInfo &_info, EntityComponentManager &_ecm)
 
   auto msgType = this->dataPtr->iter->Type();
 
-  // Get timestamp in logged data
-  msgs::Time stampMsg;
-
-  // TODO(louise) Remove the duplicate `ParseFromString` call from Parse*
+  // Only playback if current sim time has exceeded next logged timestamp
+  // TODO(anyone) Support multiple msgs per update, in case playback has a lower
+  // frequency than record
   if (msgType == "ignition.msgs.Pose_V")
   {
     msgs::Pose_V msg;
     msg.ParseFromString(this->dataPtr->iter->Data());
-    stampMsg = msg.header().stamp();
+
+    auto stamp = convert<std::chrono::steady_clock::duration>(
+        msg.header().stamp());
+
+    if (_info.simTime >= stamp)
+    {
+      this->dataPtr->Parse(_ecm, msg);
+      ++(this->dataPtr->iter);
+    }
   }
   else if (msgType == "ignition.msgs.SerializedState")
   {
     msgs::SerializedState msg;
     msg.ParseFromString(this->dataPtr->iter->Data());
-    stampMsg = msg.header().stamp();
+
+    auto stamp = convert<std::chrono::steady_clock::duration>(
+        msg.header().stamp());
+
+    if (_info.simTime >= stamp)
+    {
+      this->dataPtr->Parse(_ecm, msg);
+      ++(this->dataPtr->iter);
+    }
   }
   else
   {
     ignwarn << "Trying to playback unsupported message type ["
             << msgType << "]" << std::endl;
-    return;
-  }
-
-  // Only playback if current sim time has exceeded next logged timestamp
-  // TODO(anyone) Support multiple msgs per update, in case playback has a lower
-  // frequency than record
-  auto now = _info.simTime;
-  if (now.count() >= (stampMsg.sec() * 1000000000 + stampMsg.nsec()))
-  {
-    this->dataPtr->ParseNext(_ecm);
-
-    // Advance one entry in batch for next Update() iteration
-    // Process one log entry per Update() step.
-    ++(this->dataPtr->iter);
   }
 }
 
