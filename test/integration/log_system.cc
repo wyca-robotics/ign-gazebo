@@ -16,11 +16,18 @@
 */
 
 #include <gtest/gtest.h>
+#include <ignition/msgs/pose_v.pb.h>
 
 #include <string>
 
 #include <ignition/common/Console.hh>
 #include <ignition/common/Filesystem.hh>
+#include <ignition/transport/Node.hh>
+#include <ignition/transport/log/Log.hh>
+#include <ignition/transport/log/Batch.hh>
+#include <ignition/transport/log/MsgIter.hh>
+#include <ignition/transport/log/QualifiedTime.hh>
+#include <ignition/math/Pose3.hh>
 
 #include <sdf/Root.hh>
 #include <sdf/World.hh>
@@ -33,8 +40,22 @@
 using namespace ignition;
 using namespace gazebo;
 
+//////////////////////////////////////////////////
 class LogSystemTest : public ::testing::Test
 {
+  /// \brief Clear and get a path to store logs during the test
+  /// \return The destination path
+  public: std::string InitializeLogPath()
+  {
+    std::string logDest = common::joinPaths(PROJECT_BINARY_PATH, "test",
+      "test_log");
+    if (common::exists(logDest))
+    {
+      common::removeAll(logDest);
+    }
+    return logDest;
+  }
+
   // Documentation inherited
   protected: void SetUp() override
   {
@@ -48,64 +69,172 @@ class LogSystemTest : public ::testing::Test
 // This test checks that a file is created by log recorder
 TEST_F(LogSystemTest, CreateLogFile)
 {
-  // Configure to use binary path as cache
-  std::string cacheDir = common::joinPaths(PROJECT_BINARY_PATH, "test",
-    "test_cache");
-  if (common::exists(cacheDir))
-  {
-    common::removeAll(cacheDir);
-  }
-  common::createDirectories(cacheDir);
-  std::string logDest = common::joinPaths(cacheDir, "log");
+  // Configure to use binary path as log destination
+  auto logDest = this->InitializeLogPath();
 
+  // Configure server to load falling world with LogRecorder plugin
+  ServerConfig::PluginInfo pluginInfo;
+  pluginInfo.SetEntityName("default");
+  pluginInfo.SetEntityType("world");
+  pluginInfo.SetFilename("libignition-gazebo-log-system.so");
+  pluginInfo.SetName("ignition::gazebo::systems::LogRecord");
+
+  auto pluginElem = std::make_shared<sdf::Element>();
+  pluginElem->SetName("plugin");
+  pluginElem->AddAttribute("name", "string",
+      "ignition::gazebo::systems::LogRecord", true);
+  pluginElem->AddAttribute("filename", "string", "libignition-gazebo-log-system.so",
+      true);
+
+  auto pathElem = std::make_shared<sdf::Element>();
+  pluginElem->InsertElement(pathElem);
+  pathElem->SetName("path");
+  pathElem->AddValue("string", logDest, "1");
+
+  pluginInfo.SetSdf(pluginElem);
+
+  // Fill server configuration
   ServerConfig serverConfig;
-  serverConfig.SetResourceCache(cacheDir);
-
-  const auto sdfPath = common::joinPaths(std::string(PROJECT_SOURCE_PATH),
-    "test", "worlds", "log_record_keyboard.sdf");
-
-  sdf::Root root;
-  EXPECT_EQ(root.Load(sdfPath).size(), 0lu);
-  EXPECT_GT(root.WorldCount(), 0lu);
-  const sdf::World * sdfWorld = root.WorldByIndex(0);
-  EXPECT_TRUE(sdfWorld->Element()->HasElement("plugin"));
-
-  sdf::ElementPtr pluginElt = sdfWorld->Element()->GetElement("plugin");
-  while (pluginElt != nullptr)
-  {
-    if (pluginElt->HasAttribute("name"))
-    {
-      // Change log path to build directory
-      if (pluginElt->GetAttribute("name")->GetAsString().find("LogRecord")
-        != std::string::npos)
-      {
-        if (pluginElt->HasElement("path"))
-        {
-          sdf::ElementPtr pathElt = pluginElt->GetElement("path");
-          pathElt->Set(logDest);
-        }
-        else
-        {
-          sdf::ElementPtr pathElt = pluginElt->AddElement("path");
-          pathElt->Set(logDest);
-        }
-      }
-    }
-
-    // Go to next plugin
-    pluginElt = pluginElt->GetNextElement("plugin");
-  }
-
-  // Pass changed SDF to server
-  serverConfig.SetSdfString(root.Element()->ToString(""));
+  serverConfig.AddPlugin(pluginInfo);
+  serverConfig.SetSdfFile(common::joinPaths(
+      std::string(PROJECT_SOURCE_PATH), "test", "worlds", "falling.sdf"));
 
   // Start server
   Server server(serverConfig);
-  server.Run(true, 1000, false);
+
+  // Run for a few seconds to record different states
+  server.Run(true, 3000, false);
 
   // Verify file is created
   EXPECT_TRUE(common::exists(common::joinPaths(logDest, "state.tlog")));
 
-  common::removeAll(cacheDir);
+  common::removeAll(logDest);
 }
 
+/////////////////////////////////////////////////
+// This test checks that state is played back correctly
+TEST_F(LogSystemTest, StatePlayback)
+{
+  auto logPath = common::joinPaths(std::string(PROJECT_SOURCE_PATH), "test",
+      "media", "log_falling_serialized_state");
+
+  // Configure server to load falling world with LogRecorder plugin
+  ServerConfig::PluginInfo pluginInfo;
+  pluginInfo.SetEntityName("default");
+  pluginInfo.SetEntityType("world");
+  pluginInfo.SetFilename("libignition-gazebo-log-system.so");
+  pluginInfo.SetName("ignition::gazebo::systems::LogPlayback");
+
+  auto pluginElem = std::make_shared<sdf::Element>();
+  pluginElem->SetName("plugin");
+  pluginElem->AddAttribute("name", "string",
+      "ignition::gazebo::systems::LogPlayback", true);
+  pluginElem->AddAttribute("filename", "string",
+      "libignition-gazebo-log-system.so", true);
+
+  auto pathElem = std::make_shared<sdf::Element>();
+  pluginElem->InsertElement(pathElem);
+  pathElem->SetName("path");
+  pathElem->AddValue("string", logPath, "1");
+
+  pluginInfo.SetSdf(pluginElem);
+
+  // Fill server configuration
+  ServerConfig serverConfig;
+  serverConfig.AddPlugin(pluginInfo);
+  serverConfig.SetSdfFile(common::joinPaths(
+      std::string(PROJECT_SOURCE_PATH), "test", "worlds", "blank.sdf"));
+
+  // Start server
+  Server server(serverConfig);
+
+  // TODO(louise) Instead of subscribing to pose messages, do a simple check of
+  // pose components to see that the sphere is falling
+
+  // Callback function for entities played back
+//  auto msgCb = [&](const msgs::Pose_V &_msg) -> void
+//  {
+//    server.SetPaused(true);
+//
+//    // Look for recorded topics with current sim time
+//    std::chrono::nanoseconds end =
+//      std::chrono::seconds(_msg.header().stamp().sec()) +
+//      std::chrono::nanoseconds(_msg.header().stamp().nsec());
+//    auto timeRange = transport::log::QualifiedTimeRange(begin, end);
+//
+//    // Access selective recorded messages in .tlog file
+//    transport::log::TopicList topicList(logPoseTopic);
+//    transport::log::Batch batch = log.QueryMessages(topicList);
+//    transport::log::MsgIter iter = batch.begin();
+//    // If no messages
+//    if (iter == batch.end())
+//      return;
+//
+//    // Skip until last timestamp in range, closest to current time
+//    msgs::Pose_V posevMsg;
+//    for (; iter != batch.end(); ++iter)
+//    {
+//      // Convert recorded binary bytes in string into a ign-msgs msg
+//      posevMsg.ParseFromString(iter->Data());
+//    }
+//
+//    // Maps entity to pose recorded
+//    // Key: entity. Value: pose
+//    std::map <Entity, msgs::Pose> idToPose;
+//    // Loop through all recorded poses, update map
+//    for (int i = 0; i < posevMsg.pose_size(); ++i)
+//    {
+//      msgs::Pose pose = posevMsg.pose(i);
+//      idToPose.insert_or_assign(pose.id(), pose);
+//    }
+//
+//    // Loop through all played poses and compare to recorded ones
+//    //std::cerr << _msg.pose_size() << std::endl;
+//    for (int i = 0; i < _msg.pose_size(); ++i)
+//    {
+//      math::Pose3d posePlayed = msgs::Convert(_msg.pose(i));
+//      math::Pose3d poseRecorded = msgs::Convert(idToPose.at(_msg.pose(i).id()));
+//
+//      /*
+//      double dist = sqrt(pow(posePlayed.Pos().X() - poseRecorded.Pos().X(), 2) +
+//        pow(posePlayed.Pos().Y() - poseRecorded.Pos().Y(), 2) +
+//        pow(posePlayed.Pos().Z() - poseRecorded.Pos().Z(), 2));
+//
+//      if (dist >= 0.3)
+//      {
+//        std::cerr << _msg.pose(i).name() << std::endl;
+//        std::cerr << posePlayed << std::endl;
+//        std::cerr << poseRecorded << std::endl;
+//      }
+//
+//      // Allow small tolerance to difference between recorded and played back
+//      EXPECT_LT(dist, 0.3);
+//      */
+//
+//
+//      auto diff = posePlayed - poseRecorded;
+//      std::cerr << diff << std::endl;
+//
+//      EXPECT_EQ(diff, math::Pose3d());
+//
+//      /*
+//      EXPECT_NEAR(abs(diff.Pos().X()), 0.1);
+//      EXPECT_NEAR(abs(diff.Pos().Y()), 0.1);
+//      EXPECT_NEAR(abs(diff.Pos().Z()), 0.1);
+//
+//      EXPECT_NEAR(abs(diff.Rot().W()), 0.1);
+//      EXPECT_NEAR(abs(diff.Rot().X()), 0.1);
+//      EXPECT_NEAR(abs(diff.Rot().Y()), 0.1);
+//      EXPECT_NEAR(abs(diff.Rot().Z()), 0.1);
+//      */
+//    }
+//
+//    // Update begin time range for next time step
+//    begin = std::chrono::nanoseconds(end);
+//
+//    server.SetPaused(false);
+//  };
+
+  // Run for a few seconds to play back different poses
+  server.Run(true, 3000, false);
+}

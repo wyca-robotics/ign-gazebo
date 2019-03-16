@@ -163,7 +163,7 @@ void LogRecord::Configure(const Entity &_entity,
   if (common::exists(logPath))
   {
     logPath = this->dataPtr->UniqueDirectoryPath(logPath);
-    ignwarn << "Log path already exist on disk! "
+    ignwarn << "Log path already exists on disk! "
       << "Recording instead to [" << logPath << "]" << std::endl;
   }
 
@@ -183,16 +183,23 @@ void LogRecord::Configure(const Entity &_entity,
 
   // TODO(mabelmzhang): For now, just dumping a big string to a text file,
   // until we have a message for the SDF.
-  std::ofstream ofs(sdfPath);
-
-  // Go up to root of SDF, to output entire SDF file
-  sdf::ElementPtr sdfRoot = _sdf->GetParent();
-  while (sdfRoot->GetParent() != nullptr)
+  if (nullptr != _sdf && nullptr != _sdf->GetParent())
   {
-    sdfRoot = sdfRoot->GetParent();
+    std::ofstream ofs(sdfPath);
+
+    // Go up to root of SDF, to output entire SDF file
+    sdf::ElementPtr sdfRoot = _sdf->GetParent();
+    while (sdfRoot->GetParent() != nullptr)
+    {
+      sdfRoot = sdfRoot->GetParent();
+    }
+    ofs << sdfRoot->ToString("");
+    ignmsg << "Saved initial SDF file to [" << sdfPath << "]" << std::endl;
   }
-  ofs << sdfRoot->ToString("");
-  ignmsg << "Saved initial SDF file to [" << sdfPath << "]" << std::endl;
+  else
+  {
+    ignerr << "Failed to save initial SDF world file." << std::endl;
+  }
 
   ignmsg << "Recording to log file [" << dbPath << "]" << std::endl;
 
