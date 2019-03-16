@@ -244,11 +244,19 @@ void LogPlayback::Configure(const Entity &_worldEntity,
 
   // Call Log.hh directly to load a .tlog file
   auto log = std::make_unique<transport::log::Log>();
-  log->Open(dbPath);
+  if (!log->Open(dbPath))
+  {
+    ignerr << "Failed to open log file [" << dbPath << "]" << std::endl;
+  }
 
   // Access all messages in .tlog file
   this->dataPtr->batch = log->QueryMessages();
   this->dataPtr->iter = this->dataPtr->batch.begin();
+
+  if (this->dataPtr->iter == this->dataPtr->batch.end())
+  {
+    ignerr << "No messages found in log file [" << dbPath << "]" << std::endl;
+  }
 }
 
 //////////////////////////////////////////////////
@@ -279,7 +287,7 @@ void LogPlayback::Update(const UpdateInfo &_info, EntityComponentManager &_ecm)
   auto msgType = this->dataPtr->iter->Type();
 
   // TODO(anyone) Support multiple msgs per update, in case playback has a lower
-  // frequency than record
+  // frequency than record - using transport::log::TimeRangeOption should help.
   if (msgType == "ignition.msgs.Pose_V")
   {
     this->dataPtr->ParsePoseV(_ecm);
