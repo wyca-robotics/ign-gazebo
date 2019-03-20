@@ -214,11 +214,14 @@ namespace components
       return types;
     }
 
-    /// \brief Get all the registered component types by ID.
-    /// return Vector of component IDs.
+    /// \brief Get a component's type name given its type ID.
+    /// return Unique component name.
     public: std::string NameById(ComponentTypeId _typeId) const
     {
-      return this->idsToNames.at(_typeId);
+      if (this->idsToNames.find(_typeId) != this->idsToNames.end())
+        return this->idsToNames.at(_typeId);
+
+      return "";
     }
 
     /// \brief A list of registered components where the key is its id.
