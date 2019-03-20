@@ -15,10 +15,14 @@
  *
  */
 
-#ifndef IGNITION_GAZEBO_SYNCMANAGER_HH
-#define IGNITION_GAZEBO_SYNCMANAGER_HH
+#ifndef IGNITION_GAZEBO_SYNCMANAGERPRIMARY_HH
+#define IGNITION_GAZEBO_SYNCMANAGERPRIMARY_HH
+
+#include <vector>
 
 #include "ignition/gazebo/config.hh"
+#include "ignition/transport/Node.hh"
+#include "SyncManager.hh"
 
 namespace ignition
 {
@@ -32,35 +36,37 @@ namespace ignition
 
     /// \brief Used to manage syncronization between simulation primary and
     /// simulation secondaries.
-    ///
-    /// Utilizes the concept of "performers" introduced in the level manager.
-    /// Each performer has an affinity, which is the mapping between the
-    /// performer and the distributed simulation secondary. The distributed
-    /// simulation primary does not have any performers of itself, but
-    /// purely manages the distribution of performers to the secondaries.
-    ///
-    /// The SyncManager will also attach components to the performer entity to
-    /// manage the distribution. The first is PerformerAffinity, to note the
-    /// secondary that each performer is associated with. The second is
-    /// PerformerActive, which marks whether the performer is active on this
-    /// secondary.
-    class SyncManager
+    class IGNITION_GAZEBO_VISIBLE SyncManagerPrimary : public SyncManager
     {
       /// \brief Constructor
       /// \param[in] _runner A pointer to the simulationrunner that owns this
-      public: explicit SyncManager(SimulationRunner *_runner);
+      public: explicit SyncManagerPrimary(SimulationRunner *_runner);
 
       /// \brief Distribute performer affinity to the secondaries in the
       /// distributed simulation environment.
-      public: virtual void DistributePerformers() = 0;
+      public: void DistributePerformers() override;
 
       /// \brief Syncronize state between primary and secondary
       /// EntityComponentManagers
-      public: virtual bool Sync() = 0;
+      public: bool Sync() override;
 
-      /// \brief Pointer to the simulation runner associated with the sync
-      /// manager.
-      protected: SimulationRunner *const runner;
+      /// \brief Callback for when pose syncronization is received.
+      /// \param[in] _msg Message with vector of incoming pose updates
+      /// \TODO(mjcarroll) to be replaced with ECM sync.
+      private: void OnPose(const ignition::msgs::Pose_V &_msg);
+
+      /// \brief Ignition transport communication node
+      private: ignition::transport::Node node;
+
+      /// \brief Publisher for managed perfomers
+      /// \TODO(mjcarroll) - Update this to utilize ECM sync
+      private: ignition::transport::Node::Publisher posePub;
+
+      /// \brief Mutex to protect collection of incoming pose messages
+      private: std::mutex poseMutex;
+
+      /// \brief Collection of incoming pose update messages
+      private: std::vector<ignition::msgs::Pose_V> poseMsgs;
     };
     }
   }

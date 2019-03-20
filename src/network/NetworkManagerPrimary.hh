@@ -41,17 +41,22 @@ namespace ignition
     {
       /// \brief indicate if the secondary is ready to execute
       std::atomic<bool> ready {false};
+
       /// \brief acknowledge received flag
       std::atomic<bool> recvStepAck {false};
+
       /// \brief last acknowledged iteration from secondary peer.
       std::atomic<uint64_t> recvIter {0};
 
       /// \brief id of the secondary peer
       std::string id;
+
       /// \brief prefix namespace of the secondary peer
       std::string prefix;
+
       /// \brief string identification of associated performers to this peer
       std::vector<std::string> performers;
+
       /// \brief entity identification of associated performers to this peer
       std::vector<Entity> performerIds;
 

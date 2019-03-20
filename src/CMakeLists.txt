@@ -40,6 +40,8 @@ set (sources
   ServerPrivate.cc
   SimulationRunner.cc
   SyncManager.cc
+  SyncManagerPrimary.cc
+  SyncManagerSecondary.cc
   System.cc
   SystemLoader.cc
   Util.cc

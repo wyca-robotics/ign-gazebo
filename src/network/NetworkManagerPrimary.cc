@@ -116,7 +116,7 @@ void NetworkManagerPrimary::Initialize()
             std::placeholders::_1);
     this->node.Subscribe<msgs::SimulationStep>(ackTopic, fcn);
 
-    secondaries[sc->prefix] = std::move(sc);
+    this->secondaries[sc->prefix] = std::move(sc);
   }
 }
 
@@ -169,7 +169,7 @@ bool NetworkManagerPrimary::StepAck(uint64_t _iteration)
 {
   bool stepAck = true;
   bool iters = true;
-  for (const auto& secondary : this->secondaries)
+  for (const auto &secondary : this->secondaries)
   {
     stepAck &= secondary.second->recvStepAck;
     iters &= (_iteration == secondary.second->recvIter);
@@ -177,7 +177,7 @@ bool NetworkManagerPrimary::StepAck(uint64_t _iteration)
 
   if (stepAck && iters)
   {
-    for (auto & secondary : this->secondaries)
+    for (auto &secondary : this->secondaries)
     {
       secondary.second->recvStepAck = false;
     }

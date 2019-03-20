@@ -16,6 +16,8 @@
 */
 
 #include "SimulationRunner.hh"
+#include "SyncManagerPrimary.hh"
+#include "SyncManagerSecondary.hh"
 
 #include "ignition/common/Profiler.hh"
 
@@ -117,18 +119,20 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
 
     if (this->networkMgr->IsPrimary())
     {
+      // Create the sync manager
+      this->syncMgr = std::make_unique<SyncManagerPrimary>(this);
+
       ignmsg << "Network Primary, expects ["
              << this->networkMgr->Config().numSecondariesExpected
              << "] seondaries." << std::endl;
     }
     else if (this->networkMgr->IsSecondary())
     {
+      this->syncMgr = std::make_unique<SyncManagerSecondary>(this);
+
       ignmsg << "Network Secondary, with namespace ["
              << this->networkMgr->Namespace() << "]." << std::endl;
     }
-
-    // Create the sync manager
-    this->syncMgr = std::make_unique<SyncManager>(this);
   }
 
   // Load the active levels

@@ -29,8 +29,11 @@ Distributed environment participants can take one of the following roles.
 The distribution of simulation work utilizes the concept of performers in
 order to set where physics simulation will occur. A performer is an additional
 annotation in an SDF file which marks each model that will be a performer.
-Performers are allocated to secondaries using a round-robin fashion. If there
-are more performers than secondaries, multiple performers will be allocated to each secondary.
+
+There can be 0 to N performers being simulated in an instance at a time.
+Each level can only be simulated by one secondary at a time, so performers
+in the same level are always in the same instance. If there are more levels
+active than instances, multiple levels will be allocated to each secondary.
 
 ## Assumptions
 
@@ -45,6 +48,9 @@ are more performers than secondaries, multiple performers will be allocated to e
 * Fixed runners - all simulation runners have to be defined ahead of time.
   If a runner joins or leaves the graph after simulation has started, simulation
   will terminate.
+
+* Fixed performers - all performers are defined at startup and can't be added at
+  runtime.
 
 ## Execution flow
 
@@ -69,8 +75,9 @@ The secondary instances will only read the role environment variable
 ### Discovery
 
 Once the `ign-gazebo` instance is started, it will begin a process of
-discovering peers in the network. Each peer will send an announcement when it
-joins or leaves the network, and also periodically sends a heartbeat.
+discovering peers in the network. Each peer will send an announcement in the
+`/announce` topic when it joins or leaves the network, and also periodically
+sends a heartbeat on `/hearbeat`.
 
 Simulation is allowed to begin once each secondary has discovered the
 primary and the primary has discovered the correct number of secondaries.
@@ -88,31 +95,38 @@ duration. Both of these signals will cause the termination of the simulation.
 ### Distribution
 
 After discovery, the `NetworkManager` and `SyncManager` work to distribute
-performers across the network graph. Each performer specified in the SDF file
-gets assigned to a network secondary. If there are more performers than
-secondaries, then some secondaries will receive multiple performers.
+performers across the network graph according to the levels they're in. If
+there are more performers than secondaries, then some secondaries will
+receive multiple performers. On the other hand, if performers are located
+in less levels than secondaries, some secondaries will be left idle.
 
-When a secondary is assigned a performer, it is marked as active and not
-static (dynamic) in the physics simulation environment. For unassigned
-performers, they are treated as static objects at this point.
+Performers are assigned to secondaries through the `/<namespace>/affinity`
+topic.
+
+When a secondary is assigned a performer, the performer's state is transfered
+to the secondary. Performers not assigned to a secondary are removed from it.
 
 The primary performs no physics simulation at this point.
 
 ### Stepping
 
 At the beginning of each simulation step, the simulation primary sends the
-current iteration, step size, and simulation clock time.
+current iteration, step size, and simulation clock time on the `/step` topic.
 
 Each secondary then proceeds to simulate that iteration, and sends the results
-back to the simulation primary.  Each secondary then sends an additional `ack`
-signal back to the simulation primary to indicate that the current iteration
-is done.
+back to the simulation primary through the `pose_update` topic (temporary).
+Each secondary then sends an additional `ack` signal back to the simulation
+primary to indicate that the current iteration is done, this is done through
+topic `/<namespace>/stepAck`.
 
 Once all secondary `ack` signals have been received, the primary allows
 simulation to continue to the next step.
 
 ### Interaction
 
-All interaction with the simulation environment happens via the primary.
+All interaction with the simulation environment should happen via the same
+topics that are used for non-distributed simulation, which should all be
+provided by the primary. Therefore, play/pause and GUI functionality all
+interact with the simulation primary instance, which in turn propagates the
+commands to the secondaries.
 
-Play/pause and GUI functionality all work with the simulation primary instance.
