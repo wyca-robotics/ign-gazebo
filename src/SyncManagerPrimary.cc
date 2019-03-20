@@ -48,8 +48,7 @@ SyncManagerPrimary::SyncManagerPrimary(SimulationRunner *_runner)
     return;
   }
 
-  this->posePub = this->node.Advertise<ignition::msgs::Pose_V>("pose_update");
-  this->node.Subscribe("pose_update", &SyncManagerPrimary::OnPose, this);
+  this->node.Subscribe("state_update", &SyncManagerPrimary::OnState, this);
 }
 
 /////////////////////////////////////////////////
@@ -125,10 +124,10 @@ void SyncManagerPrimary::DistributePerformers()
 }
 
 /////////////////////////////////////////////////
-void SyncManagerPrimary::OnPose(const ignition::msgs::Pose_V & _msg)
+void SyncManagerPrimary::OnState(const ignition::msgs::SerializedState & _msg)
 {
-  std::lock_guard<std::mutex> lock(this->poseMutex);
-  this->poseMsgs.push_back(_msg);
+  std::lock_guard<std::mutex> lock(this->msgMutex);
+  this->stateMsgs.push_back(_msg);
 }
 
 /////////////////////////////////////////////////
@@ -136,22 +135,14 @@ bool SyncManagerPrimary::Sync()
 {
   IGN_PROFILE("SyncManagerPrimary::Sync");
 
-  // TODO(mjcarroll) this is where more advanced serialization/sync will go.
   auto &ecm = this->runner->entityCompMgr;
 
-  std::lock_guard<std::mutex> lock(this->poseMutex);
-  for (const auto &msg : this->poseMsgs)
+  std::lock_guard<std::mutex> lock(this->msgMutex);
+  for (const auto &msg : this->stateMsgs)
   {
-    for (int ii = 0; ii < msg.pose_size(); ++ii)
-    {
-      const auto &poseMsg = msg.pose(ii);
-      auto pid = ecm.Component<components::ParentEntity>(poseMsg.id());
-      auto pose = ecm.Component<components::Pose>(pid->Data());
-      auto newPose = ignition::msgs::Convert(poseMsg);
-      *pose = components::Pose(newPose);
-    }
+    ecm.SetState(msg);
   }
-  this->poseMsgs.clear();
+  this->stateMsgs.clear();
 
   return true;
 }

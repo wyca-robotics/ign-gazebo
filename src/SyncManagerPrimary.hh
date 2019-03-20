@@ -50,23 +50,18 @@ namespace ignition
       /// EntityComponentManagers
       public: bool Sync() override;
 
-      /// \brief Callback for when pose syncronization is received.
-      /// \param[in] _msg Message with vector of incoming pose updates
-      /// \TODO(mjcarroll) to be replaced with ECM sync.
-      private: void OnPose(const ignition::msgs::Pose_V &_msg);
+      /// \brief Callback for when state syncronization is received.
+      /// \param[in] _msg Message with incoming state updates.
+      private: void OnState(const ignition::msgs::SerializedState &_msg);
 
       /// \brief Ignition transport communication node
       private: ignition::transport::Node node;
 
-      /// \brief Publisher for managed perfomers
-      /// \TODO(mjcarroll) - Update this to utilize ECM sync
-      private: ignition::transport::Node::Publisher posePub;
+      /// \brief Mutex to protect collection of incoming state messages
+      private: std::mutex msgMutex;
 
-      /// \brief Mutex to protect collection of incoming pose messages
-      private: std::mutex poseMutex;
-
-      /// \brief Collection of incoming pose update messages
-      private: std::vector<ignition::msgs::Pose_V> poseMsgs;
+      /// \brief Collection of incoming state update messages
+      private: std::vector<ignition::msgs::SerializedState> stateMsgs;
     };
     }
   }

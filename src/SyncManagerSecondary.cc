@@ -19,18 +19,13 @@
 #include "ignition/gazebo/Events.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
 
-#include "ignition/gazebo/components/Name.hh"
 #include "ignition/gazebo/components/ParentEntity.hh"
-#include "ignition/gazebo/components/Performer.hh"
 #include "ignition/gazebo/components/PerformerAffinity.hh"
-#include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/Static.hh"
-#include "ignition/gazebo/components/World.hh"
 
 #include "SyncManagerSecondary.hh"
 #include "SimulationRunner.hh"
 
-#include "network/NetworkManagerPrimary.hh"
 #include "network/NetworkManagerSecondary.hh"
 #include "network/components/PerformerActive.hh"
 
@@ -51,7 +46,8 @@ SyncManagerSecondary::SyncManagerSecondary(SimulationRunner *_runner)
     return;
   }
 
-  this->posePub = this->node.Advertise<ignition::msgs::Pose_V>("pose_update");
+  this->statePub = this->node.Advertise<ignition::msgs::SerializedState>(
+      "state_update");
 }
 
 /////////////////////////////////////////////////
@@ -83,7 +79,7 @@ void SyncManagerSecondary::DistributePerformers()
 
         if (affinityMsg.secondary_prefix() == mgr->Namespace())
         {
-          this->performers.push_back(entityId);
+          this->performers.insert(entityId);
           *isStatic = components::Static(false);
           *isActive = components::PerformerActive(true);
           igndbg << "Secondary [" << mgr->Namespace()
@@ -115,20 +111,17 @@ bool SyncManagerSecondary::Sync()
 {
   IGN_PROFILE("SyncManagerSecondary::Sync");
 
-  // TODO(mjcarroll) this is where more advanced serialization/sync will go.
-  auto &ecm = this->runner->entityCompMgr;
+  auto & ecm = this->runner->entityCompMgr;
 
-  ignition::msgs::Pose_V msg;
-
-  for (const auto &entity : this->performers)
+  // Get all the performer's models
+  std::unordered_set<Entity> models;
+  for (const auto &perf : this->performers)
   {
-    auto pid = ecm.Component<components::ParentEntity>(entity);
-    auto pose = ecm.Component<components::Pose>(pid->Data());
-    auto poseMsg = msg.add_pose();
-    ignition::msgs::Set(poseMsg, pose->Data());
-    poseMsg->set_id(entity);
+    models.insert(ecm.Component<components::ParentEntity>(perf)->Data());
   }
-  this->posePub.Publish(msg);
+
+  auto msg = ecm.State(models);
+  this->statePub.Publish(msg);
 
   return true;
 }

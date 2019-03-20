@@ -107,8 +107,6 @@ namespace components
     void Register(const std::string &_type, ComponentDescriptorBase *_compDesc,
       StorageDescriptorBase *_storageDesc)
     {
-      auto typeHash = ignition::common::hash64(_type);
-
       // Every time a plugin which uses a component type is loaded, it attempts
       // to register it again, so we skip it.
       if (ComponentTypeT::typeId != 0)
@@ -116,12 +114,16 @@ namespace components
         return;
       }
 
+      auto typeHash = ignition::common::hash64(_type);
+
       // Initialize static member variable
       ComponentTypeT::typeId = typeHash;
+      ComponentTypeT::typeName = _type;
 
       // Keep track of all types
       this->compsById[ComponentTypeT::typeId] = _compDesc;
       this->storagesById[ComponentTypeT::typeId] = _storageDesc;
+      this->idsToNames[ComponentTypeT::typeId] = ComponentTypeT::typeName;
     }
 
     /// \brief Unregister a component so that the factory can't create instances
@@ -201,7 +203,7 @@ namespace components
 
     /// \brief Get all the registered component types by ID.
     /// return Vector of component IDs.
-    public: std::vector<uint64_t> TypeIds() const
+    public: std::vector<ComponentTypeId> TypeIds() const
     {
       std::vector<ComponentTypeId> types;
 
@@ -210,6 +212,13 @@ namespace components
         types.push_back(comp.first);
 
       return types;
+    }
+
+    /// \brief Get all the registered component types by ID.
+    /// return Vector of component IDs.
+    public: std::string NameById(ComponentTypeId _typeId) const
+    {
+      return this->idsToNames.at(_typeId);
     }
 
     /// \brief A list of registered components where the key is its id.
@@ -230,6 +239,9 @@ namespace components
     /// \brief A list of registered storages where the key is its component's
     /// type id.
     private: std::map<ComponentTypeId, StorageDescriptorBase *> storagesById;
+
+    /// \brief A list of IDs and their equivalent names.
+    private: std::map<ComponentTypeId, std::string> idsToNames;
   };
 
   /// \brief Static component registration macro.

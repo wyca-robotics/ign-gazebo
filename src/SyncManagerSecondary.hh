@@ -59,11 +59,10 @@ namespace ignition
       private: ignition::transport::Node node;
 
       /// \brief Publisher for managed perfomers
-      /// \TODO(mjcarroll) - Update this to utilize ECM sync
-      private: ignition::transport::Node::Publisher posePub;
+      private: ignition::transport::Node::Publisher statePub;
 
       /// \brief Collection of performers associated with a secondary
-      private: std::vector<Entity> performers;
+      private: std::unordered_set<Entity> performers;
     };
     }
   }

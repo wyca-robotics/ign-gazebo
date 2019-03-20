@@ -173,6 +173,10 @@ class NoSerialize : public components::BaseComponent
   {
     return 0;
   }
+  public: std::string TypeName() const override
+  {
+    return "";
+  }
 };
 
 //////////////////////////////////////////////////
