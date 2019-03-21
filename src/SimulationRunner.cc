@@ -16,8 +16,8 @@
 */
 
 #include "SimulationRunner.hh"
-#include "SyncManagerPrimary.hh"
-#include "SyncManagerSecondary.hh"
+#include "network/SyncManagerPrimary.hh"
+#include "network/SyncManagerSecondary.hh"
 
 #include "ignition/common/Profiler.hh"
 

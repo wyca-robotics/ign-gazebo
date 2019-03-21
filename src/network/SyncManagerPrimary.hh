@@ -22,7 +22,6 @@
 
 #include "ignition/gazebo/config.hh"
 #include "ignition/transport/Node.hh"
-#include "network/NetworkManager.hh"
 #include "SyncManager.hh"
 
 namespace ignition

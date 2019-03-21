@@ -21,7 +21,7 @@
 #include "ignition/gazebo/config.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
 
-#include "network/NetworkManager.hh"
+#include "NetworkManager.hh"
 
 namespace ignition
 {

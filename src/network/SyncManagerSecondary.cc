@@ -23,11 +23,9 @@
 #include "ignition/gazebo/components/PerformerAffinity.hh"
 #include "ignition/gazebo/components/Static.hh"
 
+#include "components/PerformerActive.hh"
+#include "NetworkManagerSecondary.hh"
 #include "SyncManagerSecondary.hh"
-#include "SimulationRunner.hh"
-
-#include "network/NetworkManagerSecondary.hh"
-#include "network/components/PerformerActive.hh"
 
 using namespace ignition;
 using namespace gazebo;

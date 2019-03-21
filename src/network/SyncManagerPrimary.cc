@@ -25,11 +25,9 @@
 #include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/Static.hh"
 
+#include "components/PerformerActive.hh"
+#include "NetworkManagerPrimary.hh"
 #include "SyncManagerPrimary.hh"
-#include "SimulationRunner.hh"
-
-#include "network/NetworkManagerPrimary.hh"
-#include "network/components/PerformerActive.hh"
 
 #include "msgs/performer_affinity.pb.h"
 
