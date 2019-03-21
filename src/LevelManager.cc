@@ -85,7 +85,7 @@ void LevelManager::ReadLevelPerformerInfo()
 
   auto worldElem = this->runner->sdfWorld->Element();
 
-  // TODO(anyone) This should probaly go somewhere else as it is a global
+  // TODO(anyone) This should probably go somewhere else as it is a global
   // constant.
   const std::string kPluginName{"ignition::gazebo"};
 

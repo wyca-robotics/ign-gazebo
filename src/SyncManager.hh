@@ -19,6 +19,9 @@
 #define IGNITION_GAZEBO_SYNCMANAGER_HH
 
 #include "ignition/gazebo/config.hh"
+#include "ignition/gazebo/EntityComponentManager.hh"
+
+#include "network/NetworkManager.hh"
 
 namespace ignition
 {
@@ -26,9 +29,6 @@ namespace ignition
   {
     // Inline bracket to help doxygen filtering.
     inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
-    //
-    // forward declaration
-    class SimulationRunner;
 
     /// \brief Used to manage syncronization between simulation primary and
     /// simulation secondaries.
@@ -48,11 +48,16 @@ namespace ignition
     {
       /// \brief Constructor
       /// \param[in] _runner A pointer to the simulationrunner that owns this
-      public: explicit SyncManager(SimulationRunner *_runner);
+      public: explicit SyncManager(EntityComponentManager &_ecm,
+          NetworkManager *_networkManager);
 
       /// \brief Distribute performer affinity to the secondaries in the
       /// distributed simulation environment.
-      public: virtual void DistributePerformers() = 0;
+      public: virtual void Initialize() = 0;
+
+      /// \brief Distribute performer affinity to the secondaries in the
+      /// distributed simulation environment.
+      public: bool Initialized() const;
 
       /// \brief Syncronize state between primary and secondary
       /// EntityComponentManagers
@@ -60,7 +65,10 @@ namespace ignition
 
       /// \brief Pointer to the simulation runner associated with the sync
       /// manager.
-      protected: SimulationRunner *const runner;
+      protected: EntityComponentManager *ecm;
+      protected: NetworkManager *networkManager;
+
+      protected: bool initialized{false};
     };
     }
   }

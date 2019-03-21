@@ -61,9 +61,10 @@ namespace ignition
       std::vector<Entity> performerIds;
 
       /// \brief Convenience alias for unique_ptr.
-      using Ptr = std::unique_ptr<SecondaryControl>;
+      using Ptr = std::shared_ptr<SecondaryControl>;
     };
 
+    using SecondariesMap = std::map<std::string, SecondaryControl::Ptr>;
 
     /// \class NetworkManagerPrimary NetworkManagerPrimary.hh
     ///   ignition/gazebo/network/NetworkManagerPrimary.hh
@@ -99,15 +100,15 @@ namespace ignition
 
       /// \brief Return a mutable reference to the currently detected secondary
       /// peers.
-      public: std::map<std::string, SecondaryControl::Ptr>& Secondaries();
+      public: SecondariesMap &Secondaries();
 
       /// \brief Called when a step acknowledgement is received from a
       /// secondary.
       public: void OnStepAck(const std::string &_secondary,
-                  const msgs::SimulationStep &_msg);
+                  const private_msgs::SimulationStep &_msg);
 
       /// \brief Container of currently used secondary peers
-      private: std::map<std::string, SecondaryControl::Ptr> secondaries;
+      private: SecondariesMap secondaries;
 
       /// \brief Transport node
       private: ignition::transport::Node node;

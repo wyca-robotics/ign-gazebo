@@ -29,81 +29,64 @@
 #include "network/NetworkManagerSecondary.hh"
 #include "network/components/PerformerActive.hh"
 
-#include "msgs/performer_affinity.pb.h"
-
 using namespace ignition;
 using namespace gazebo;
 
 /////////////////////////////////////////////////
-SyncManagerSecondary::SyncManagerSecondary(SimulationRunner *_runner)
-  : SyncManager(_runner)
+SyncManagerSecondary::SyncManagerSecondary(EntityComponentManager &_ecm,
+    NetworkManager *_networkManager) : SyncManager(_ecm, _networkManager)
 {
-  if (!this->runner->networkMgr)
-  {
-    ignerr << "Cannot start distributed simulation. " <<
-      "Server was given --distributed flag, " <<
-      "but invalid configuration detected." << std::endl;
-    return;
-  }
+  std::string topic {_networkManager->Namespace() + "/affinity"};
+
+  this->node.Advertise(topic, &SyncManagerSecondary::AffinityService, this);
+
+  igndbg << "Secondary [" << this->networkManager->Namespace()
+         << "] waiting for affinity assignment." << std::endl;
 
   this->statePub = this->node.Advertise<ignition::msgs::SerializedState>(
       "state_update");
 }
 
 /////////////////////////////////////////////////
-void SyncManagerSecondary::DistributePerformers()
+void SyncManagerSecondary::Initialize()
 {
-  auto mgr = dynamic_cast<NetworkManagerSecondary *>(
-      this->runner->networkMgr.get());
-  auto &ecm = this->runner->entityCompMgr;
-  std::string topic {mgr->Namespace() + "/affinity"};
-  bool received = false;
+}
 
-  std::function<bool(const msgs::PerformerAffinities &,
-                     msgs::PerformerAffinities &)> fcn =
-    [&received, &mgr, this, &ecm](const msgs::PerformerAffinities &_req,
-      msgs::PerformerAffinities &/*_resp*/) -> bool
-    {
-      for (int ii = 0; ii < _req.affinity_size(); ++ii)
-      {
-        const auto &affinityMsg = _req.affinity(ii);
-        const auto &entityId = affinityMsg.entity().id();
-
-        auto pid = ecm.Component<components::ParentEntity>(entityId);
-
-        ecm.CreateComponent(entityId,
-          components::PerformerAffinity(affinityMsg.secondary_prefix()));
-
-        auto isStatic = ecm.Component<components::Static>(pid->Data());
-        auto isActive = ecm.Component<components::PerformerActive>(entityId);
-
-        if (affinityMsg.secondary_prefix() == mgr->Namespace())
-        {
-          this->performers.insert(entityId);
-          *isStatic = components::Static(false);
-          *isActive = components::PerformerActive(true);
-          igndbg << "Secondary [" << mgr->Namespace()
-                 << "] assigned affinity to performer [" << entityId << "]."
-                 << std::endl;
-        }
-        else
-        {
-          *isStatic = components::Static(true);
-          *isActive = components::PerformerActive(false);
-        }
-      }
-      received = true;
-      return true;
-    };
-
-  this->node.Advertise(topic, fcn);
-
-  igndbg << "Secondary [" << mgr->Namespace()
-         << "] waiting for affinity assignment." << std::endl;
-  while (!received && !this->runner->stopReceived)
+/////////////////////////////////////////////////
+bool SyncManagerSecondary::AffinityService(const private_msgs::PerformerAffinities &_req,
+    private_msgs::PerformerAffinities &)
+{
+  for (int i = 0; i < _req.affinity_size(); ++i)
   {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    const auto &affinityMsg = _req.affinity(i);
+    const auto &entityId = affinityMsg.entity().id();
+
+    auto pid = this->ecm->Component<components::ParentEntity>(entityId);
+
+    this->ecm->CreateComponent(entityId,
+      components::PerformerAffinity(affinityMsg.secondary_prefix()));
+
+    auto isStatic = this->ecm->Component<components::Static>(pid->Data());
+    auto isActive = this->ecm->Component<components::PerformerActive>(entityId);
+
+    if (affinityMsg.secondary_prefix() == this->networkManager->Namespace())
+    {
+      this->performers.insert(entityId);
+      *isStatic = components::Static(false);
+      *isActive = components::PerformerActive(true);
+      igndbg << "Secondary [" << this->networkManager->Namespace()
+             << "] assigned affinity to performer [" << entityId << "]."
+             << std::endl;
+    }
+    else
+    {
+      *isStatic = components::Static(true);
+      *isActive = components::PerformerActive(false);
+    }
   }
+
+  this->initialized = true;
+  return true;
 }
 
 /////////////////////////////////////////////////
@@ -111,16 +94,14 @@ bool SyncManagerSecondary::Sync()
 {
   IGN_PROFILE("SyncManagerSecondary::Sync");
 
-  auto & ecm = this->runner->entityCompMgr;
-
   // Get all the performer's models
   std::unordered_set<Entity> models;
   for (const auto &perf : this->performers)
   {
-    models.insert(ecm.Component<components::ParentEntity>(perf)->Data());
+    models.insert(this->ecm->Component<components::ParentEntity>(perf)->Data());
   }
 
-  auto msg = ecm.State(models);
+  auto msg = this->ecm->State(models);
   this->statePub.Publish(msg);
 
   return true;

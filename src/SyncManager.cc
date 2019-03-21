@@ -16,14 +16,21 @@
  */
 
 #include "SyncManager.hh"
-#include "SimulationRunner.hh"
 
 using namespace ignition;
 using namespace gazebo;
 
 /////////////////////////////////////////////////
-SyncManager::SyncManager(SimulationRunner *_runner)
-  : runner(_runner)
+SyncManager::SyncManager(EntityComponentManager &_ecm,
+    NetworkManager *_networkManager)
+  : networkManager(_networkManager)
 {
+  this->ecm = &_ecm;
+}
+
+/////////////////////////////////////////////////
+bool SyncManager::Initialized() const
+{
+  return this->initialized;
 }
 

@@ -37,69 +37,58 @@ using namespace ignition;
 using namespace gazebo;
 
 /////////////////////////////////////////////////
-SyncManagerPrimary::SyncManagerPrimary(SimulationRunner *_runner)
-  : SyncManager(_runner)
+SyncManagerPrimary::SyncManagerPrimary(EntityComponentManager &_ecm,
+    NetworkManager *_networkManager)
+  : SyncManager(_ecm, _networkManager)
 {
-  if (!this->runner->networkMgr)
-  {
-    ignerr << "Cannot start distributed simulation. " <<
-      "Server was given --distributed flag, " <<
-      "but invalid configuration detected." << std::endl;
-    return;
-  }
-
   this->node.Subscribe("state_update", &SyncManagerPrimary::OnState, this);
 }
 
 /////////////////////////////////////////////////
-void SyncManagerPrimary::DistributePerformers()
+void SyncManagerPrimary::Initialize()
 {
-  auto mgr = dynamic_cast<NetworkManagerPrimary *>(
-      this->runner->networkMgr.get());
+  auto mgrPrimary = dynamic_cast<NetworkManagerPrimary *>(
+      this->networkManager);
+  auto secondaryIt = mgrPrimary->Secondaries().begin();
 
-  auto &secondaries = mgr->Secondaries();
-  auto secondaryIt = secondaries.begin();
-  auto &ecm = this->runner->entityCompMgr;
+  private_msgs::PerformerAffinities msg;
 
-  msgs::PerformerAffinities msg;
-
-  this->runner->entityCompMgr.Each<components::Performer,
-                                   components::ParentEntity>(
+  this->ecm->Each<components::Performer, components::ParentEntity>(
     [&](const Entity &_entity,
         const components::Performer *,
         const components::ParentEntity *_parent) -> bool
     {
       auto pid = _parent->Data();
       auto parentName =
-        this->runner->entityCompMgr.Component<components::Name>(pid);
+        this->ecm->Component<components::Name>(pid);
 
       auto affinityMsg = msg.add_affinity();
       affinityMsg->mutable_entity()->set_name(parentName->Data());
       affinityMsg->mutable_entity()->set_id(_entity);
       affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
 
-      auto isStatic = ecm.Component<components::Static>(pid);
+      auto isStatic = this->ecm->Component<components::Static>(pid);
       *isStatic = components::Static(false);
 
-      auto isActive = ecm.Component<components::PerformerActive>(_entity);
+      auto isActive = this->ecm->Component<components::PerformerActive>(_entity);
       *isActive = components::PerformerActive(true);
 
-      this->runner->entityCompMgr.CreateComponent(_entity,
+      this->ecm->CreateComponent(_entity,
           components::PerformerAffinity(secondaryIt->second->prefix));
 
       secondaryIt++;
-      if (secondaryIt == secondaries.end())
+      if (secondaryIt == mgrPrimary->Secondaries().end())
       {
-        secondaryIt = secondaries.begin();
+        secondaryIt = mgrPrimary->Secondaries().begin();
       }
 
       return true;
     });
 
-  for (auto &secondary : secondaries)
+  for (auto &secondary : mgrPrimary->Secondaries())
   {
     bool result;
-    msgs::PerformerAffinities resp;
+    private_msgs::PerformerAffinities resp;
 
     std::string topic {secondary.second->prefix + "/affinity"};
     unsigned int timeout = 5000;
@@ -121,6 +110,8 @@ void SyncManagerPrimary::DistributePerformers()
         std::endl;
     }
   }
+
+  this->initialized = true;
 }
 
 /////////////////////////////////////////////////
@@ -135,12 +126,10 @@ bool SyncManagerPrimary::Sync()
 {
   IGN_PROFILE("SyncManagerPrimary::Sync");
 
-  auto &ecm = this->runner->entityCompMgr;
-
   std::lock_guard<std::mutex> lock(this->msgMutex);
   for (const auto &msg : this->stateMsgs)
   {
-    ecm.SetState(msg);
+    this->ecm->SetState(msg);
   }
   this->stateMsgs.clear();
 

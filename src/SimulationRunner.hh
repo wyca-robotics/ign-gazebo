@@ -383,9 +383,6 @@ namespace ignition
       public: ServerConfig serverConfig;
 
       friend class LevelManager;
-      friend class SyncManager;
-      friend class SyncManagerPrimary;
-      friend class SyncManagerSecondary;
     };
     }
   }

@@ -28,6 +28,7 @@
 #include "ignition/transport/Node.hh"
 
 #include "SyncManager.hh"
+#include "msgs/performer_affinity.pb.h"
 
 namespace ignition
 {
@@ -45,15 +46,19 @@ namespace ignition
     {
       /// \brief Constructor
       /// \param[in] _runner A pointer to the simulationrunner that owns this
-      public: explicit SyncManagerSecondary(SimulationRunner *_runner);
+      public: SyncManagerSecondary(EntityComponentManager &_ecm,
+          NetworkManager *_networkManager);
 
       /// \brief Distribute performer affinity to the secondaries in the
       /// distributed simulation environment.
-      public: void DistributePerformers() override;
+      public: void Initialize() override;
 
       /// \brief Syncronize state between primary and secondary
       /// EntityComponentManagers
       public: bool Sync() override;
+
+      private: bool AffinityService(const private_msgs::PerformerAffinities &_req,
+          private_msgs::PerformerAffinities &);
 
       /// \brief Ignition transport communication node
       private: ignition::transport::Node node;
