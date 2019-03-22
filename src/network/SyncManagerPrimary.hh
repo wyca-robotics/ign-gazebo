@@ -32,7 +32,7 @@ namespace ignition
     inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
     //
     /// \brief Used to manage syncronization between simulation primary and
-    /// simulation secondaries.
+    /// simulation secondaries, from the primary's side.
     class IGNITION_GAZEBO_VISIBLE SyncManagerPrimary : public SyncManager
     {
       /// \brief Constructor

@@ -22,7 +22,6 @@
 #include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/Performer.hh"
 #include "ignition/gazebo/components/PerformerAffinity.hh"
-#include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/Static.hh"
 
 #include "components/PerformerActive.hh"
@@ -65,6 +64,8 @@ void SyncManagerPrimary::Initialize()
       affinityMsg->mutable_entity()->set_id(_entity);
       affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
 
+      // TODO(louise) No need to set to static on primary because it doesn't
+      // have physics anyway
       auto isStatic = this->ecm->Component<components::Static>(pid);
       *isStatic = components::Static(false);
 

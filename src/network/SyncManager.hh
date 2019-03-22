@@ -39,15 +39,27 @@ namespace ignition
     /// simulation primary does not have any performers of itself, but
     /// purely manages the distribution of performers to the secondaries.
     ///
+    /// ## Primary - Secondary communication
+    ///
+    /// * The primary notifies secondaries of affinity changes using each
+    /// secondary's `/<namespace>/affinity` service.
+    ///
+    /// * Each secondary sends the state update of its performers via the
+    /// /state_update topic.
+    ///
+    /// ## Components
+    ///
     /// The SyncManager will also attach components to the performer entity to
-    /// manage the distribution. The first is PerformerAffinity, to note the
-    /// secondary that each performer is associated with. The second is
-    /// PerformerActive, which marks whether the performer is active on this
-    /// secondary.
+    /// manage the distribution:
+    /// * PerformerAffinity: notes the secondary that each performer is
+    /// associated with.
+    /// * PerformerActive: marks whether the performer is active on this
+    /// secondary - so it isn't really transferable simulation state.
     class SyncManager
     {
       /// \brief Constructor
-      /// \param[in] _runner A pointer to the simulationrunner that owns this
+      /// \param[in] _ecm The entity-component manager.
+      /// \param[in] _networkManager Pointer to network manager.
       public: explicit SyncManager(EntityComponentManager &_ecm,
           NetworkManager *_networkManager);
 
@@ -55,19 +67,21 @@ namespace ignition
       /// distributed simulation environment.
       public: virtual void Initialize() = 0;
 
-      /// \brief Distribute performer affinity to the secondaries in the
-      /// distributed simulation environment.
-      public: bool Initialized() const;
-
       /// \brief Syncronize state between primary and secondary
       /// EntityComponentManagers
       public: virtual bool Sync() = 0;
 
-      /// \brief Pointer to the simulation runner associated with the sync
-      /// manager.
-      protected: EntityComponentManager *ecm;
-      protected: NetworkManager *networkManager;
+      /// \brief Distribute performer affinity to the secondaries in the
+      /// distributed simulation environment.
+      public: bool Initialized() const;
 
+      /// \brief Pointer to entity component manager.
+      protected: EntityComponentManager *ecm{nullptr};
+
+      /// \brief Pointer to network manager.
+      protected: NetworkManager *networkManager{nullptr};
+
+      /// \brief Whether it's been initialized.
       protected: bool initialized{false};
     };
     }

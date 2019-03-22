@@ -38,9 +38,6 @@ SyncManagerSecondary::SyncManagerSecondary(EntityComponentManager &_ecm,
 
   this->node.Advertise(topic, &SyncManagerSecondary::AffinityService, this);
 
-  igndbg << "Secondary [" << this->networkManager->Namespace()
-         << "] waiting for affinity assignment." << std::endl;
-
   this->statePub = this->node.Advertise<ignition::msgs::SerializedState>(
       "state_update");
 }
@@ -48,10 +45,13 @@ SyncManagerSecondary::SyncManagerSecondary(EntityComponentManager &_ecm,
 /////////////////////////////////////////////////
 void SyncManagerSecondary::Initialize()
 {
+  igndbg << "Secondary [" << this->networkManager->Namespace()
+         << "] waiting for affinity assignment." << std::endl;
 }
 
 /////////////////////////////////////////////////
-bool SyncManagerSecondary::AffinityService(const private_msgs::PerformerAffinities &_req,
+bool SyncManagerSecondary::AffinityService(
+    const private_msgs::PerformerAffinities &_req,
     private_msgs::PerformerAffinities &)
 {
   for (int i = 0; i < _req.affinity_size(); ++i)
@@ -64,6 +64,8 @@ bool SyncManagerSecondary::AffinityService(const private_msgs::PerformerAffiniti
     this->ecm->CreateComponent(entityId,
       components::PerformerAffinity(affinityMsg.secondary_prefix()));
 
+    // TODO(louise) Remove instead of setting static, and then
+    // PerformerActive is not needed
     auto isStatic = this->ecm->Component<components::Static>(pid->Data());
     auto isActive = this->ecm->Component<components::PerformerActive>(entityId);
 

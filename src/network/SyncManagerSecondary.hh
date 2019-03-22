@@ -18,9 +18,7 @@
 #ifndef IGNITION_GAZEBO_SYNCMANAGERSECONDARY_HH
 #define IGNITION_GAZEBO_SYNCMANAGERSECONDARY_HH
 
-#include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "ignition/gazebo/config.hh"
 #include "ignition/gazebo/Entity.hh"
@@ -41,7 +39,7 @@ namespace ignition
     class SimulationRunner;
 
     /// \brief Used to manage syncronization between simulation primary and
-    /// simulation secondaries.
+    /// simulation secondaries, from the secondary's side.
     class SyncManagerSecondary : public SyncManager
     {
       /// \brief Constructor
@@ -57,16 +55,19 @@ namespace ignition
       /// EntityComponentManagers
       public: bool Sync() override;
 
+      /// \brief Service which the primary can call to change affinities.
+      /// \param[in] _req
+      /// \param[out] _res
       private: bool AffinityService(const private_msgs::PerformerAffinities &_req,
-          private_msgs::PerformerAffinities &);
+          private_msgs::PerformerAffinities &_res);
 
-      /// \brief Ignition transport communication node
+      /// \brief Ignition transport communication node.
       private: ignition::transport::Node node;
 
-      /// \brief Publisher for managed perfomers
+      /// \brief Publisher for managed perfomers.
       private: ignition::transport::Node::Publisher statePub;
 
-      /// \brief Collection of performers associated with a secondary
+      /// \brief Collection of performers associated with this secondary.
       private: std::unordered_set<Entity> performers;
     };
     }

@@ -80,7 +80,7 @@ void NetworkManagerPrimary::Initialize()
     private_msgs::PeerControl req, resp;
     req.set_enable_sim(true);
 
-    auto sc = std::make_shared<SecondaryControl>();
+    auto sc = std::make_unique<SecondaryControl>();
     sc->id = peer;
     sc->prefix = peer.substr(0, 8);
 

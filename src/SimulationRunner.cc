@@ -354,12 +354,6 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-
-    // TODO(timeout)
-//    {
-//      this->running = false;
-//      return false;
-//    }
   }
 
   // Keep track of wall clock time. Only start the realTimeWatch if this
