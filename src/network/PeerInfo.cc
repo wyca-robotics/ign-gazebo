@@ -55,10 +55,12 @@ ignition::gazebo::private_msgs::PeerInfo ignition::gazebo::toProto(
       proto.set_role(ignition::gazebo::private_msgs::PeerInfo::READ_ONLY);
       break;
     case NetworkRole::SimulationPrimary:
-      proto.set_role(ignition::gazebo::private_msgs::PeerInfo::SIMULATION_PRIMARY);
+      proto.set_role(
+          ignition::gazebo::private_msgs::PeerInfo::SIMULATION_PRIMARY);
       break;
     case NetworkRole::SimulationSecondary:
-      proto.set_role(ignition::gazebo::private_msgs::PeerInfo::SIMULATION_SECONDARY);
+      proto.set_role(
+          ignition::gazebo::private_msgs::PeerInfo::SIMULATION_SECONDARY);
       break;
     case NetworkRole::None:
     default:

@@ -28,8 +28,10 @@ PeerTracker::PeerTracker(
   eventMgr(_eventMgr),
   node(_options)
 {
-  this->heartbeatPub = this->node.Advertise<private_msgs::PeerInfo>("heartbeat");
-  this->announcePub = this->node.Advertise<private_msgs::PeerAnnounce>("announce");
+  this->heartbeatPub =
+      this->node.Advertise<private_msgs::PeerInfo>("heartbeat");
+  this->announcePub =
+      this->node.Advertise<private_msgs::PeerAnnounce>("announce");
   this->node.Subscribe("heartbeat", &PeerTracker::OnPeerHeartbeat, this);
   this->node.Subscribe("announce", &PeerTracker::OnPeerAnnounce, this);
 
