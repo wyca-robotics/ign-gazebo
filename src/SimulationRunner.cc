@@ -119,19 +119,12 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
 
     if (this->networkMgr->IsPrimary())
     {
-      // Create the sync manager
-      this->syncMgr = std::make_unique<SyncManagerPrimary>(
-          this->entityCompMgr, this->networkMgr.get());
-
       ignmsg << "Network Primary, expects ["
              << this->networkMgr->Config().numSecondariesExpected
              << "] seondaries." << std::endl;
     }
     else if (this->networkMgr->IsSecondary())
     {
-      this->syncMgr = std::make_unique<SyncManagerSecondary>(
-          this->entityCompMgr, this->networkMgr.get());
-
       ignmsg << "Network Secondary, with namespace ["
              << this->networkMgr->Namespace() << "]." << std::endl;
     }
@@ -348,8 +341,25 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     // todo(mjcarroll) improve guard conditions around the busy loops.
     igndbg << "Initializing network configuration" << std::endl;
     this->networkMgr->Initialize();
-    this->syncMgr->Initialize();
 
+    // Create sync managers after successful network initialization
+    if (this->networkMgr->IsPrimary())
+    {
+      this->syncMgr = std::make_unique<SyncManagerPrimary>(
+          this->entityCompMgr, this->networkMgr.get());
+    }
+    else if (this->networkMgr->IsSecondary())
+    {
+      this->syncMgr = std::make_unique<SyncManagerSecondary>(
+          this->entityCompMgr, this->networkMgr.get());
+    }
+    else
+    {
+      ignerr << "Network manager isn't primary or secondary" << std::endl;
+      return;
+    }
+
+    // Wait for initial performer distribution
     while (!this->syncMgr->Initialized() && !this->stopReceived)
     {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -424,6 +434,8 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     if (this->networkMgr)
     {
       IGN_PROFILE("NetworkSync - SendStep");
+      // TODO(louise) Consolidate NetworkManager::Step and SyncManager::Sync
+      // into a single service call.
       // \todo(anyone) Replace busy loop with a condition.
       while (this->running && !this->networkMgr->Step(this->currentInfo))
       {
@@ -462,7 +474,7 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     this->entityCompMgr.ProcessRemoveEntityRequests();
 
 
-    if (this->networkMgr)
+    if (this->networkMgr && this->syncMgr)
     {
       IGN_PROFILE("NetworkSync - SecondaryAck");
 

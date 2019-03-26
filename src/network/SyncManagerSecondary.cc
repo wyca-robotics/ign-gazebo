@@ -40,17 +40,13 @@ SyncManagerSecondary::SyncManagerSecondary(EntityComponentManager &_ecm,
 
   this->statePub = this->node.Advertise<ignition::msgs::SerializedState>(
       "state_update");
+
+  igndbg << "Secondary [" << this->networkManager->Namespace()
+         << "] waiting for affinity assignment." << std::endl;
 }
 
 /////////////////////////////////////////////////
 SyncManagerSecondary::~SyncManagerSecondary() = default;
-
-/////////////////////////////////////////////////
-void SyncManagerSecondary::Initialize()
-{
-  igndbg << "Secondary [" << this->networkManager->Namespace()
-         << "] waiting for affinity assignment." << std::endl;
-}
 
 /////////////////////////////////////////////////
 bool SyncManagerSecondary::AffinityService(

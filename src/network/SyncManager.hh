@@ -45,7 +45,7 @@ namespace ignition
     /// secondary's `/<namespace>/affinity` service.
     ///
     /// * Each secondary sends the state update of its performers via the
-    /// /state_update topic.
+    /// `/state_update` topic.
     ///
     /// ## Components
     ///
@@ -64,10 +64,6 @@ namespace ignition
           NetworkManager *_networkManager);
 
       public: virtual ~SyncManager();
-
-      /// \brief Distribute performer affinity to the secondaries in the
-      /// distributed simulation environment.
-      public: virtual void Initialize() = 0;
 
       /// \brief Syncronize state between primary and secondary
       /// EntityComponentManagers

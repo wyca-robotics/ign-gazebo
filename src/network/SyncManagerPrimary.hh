@@ -40,15 +40,18 @@ namespace ignition
       public: explicit SyncManagerPrimary(EntityComponentManager &_ecm,
           NetworkManager *_networkManager);
 
-      public: virtual ~SyncManagerPrimary();
-
-      /// \brief Distribute performer affinity to the secondaries in the
-      /// distributed simulation environment.
-      public: void Initialize() override;
+      // Documentation inherited
+      public: ~SyncManagerPrimary() override;
 
       /// \brief Syncronize state between primary and secondary
       /// EntityComponentManagers
       public: bool Sync() override;
+
+      /// \brief
+      private: void SyncPerformers();
+
+      /// \brief
+      private: void SyncState();
 
       /// \brief Callback for when state syncronization is received.
       /// \param[in] _msg Message with incoming state updates.

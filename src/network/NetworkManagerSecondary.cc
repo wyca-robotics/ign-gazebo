@@ -69,7 +69,7 @@ NetworkManagerSecondary::NetworkManagerSecondary(
         [this](PeerInfo _info){
           if (_info.role == NetworkRole::SimulationPrimary)
           {
-            ignerr << "Primary removed, stopping simulation" << std::endl;
+            ignmsg << "Primary removed, stopping simulation" << std::endl;
             this->dataPtr->eventMgr->Emit<events::Stop>();
           }
     });
@@ -115,7 +115,8 @@ bool NetworkManagerSecondary::Step(UpdateInfo &_info)
       std::chrono::nanoseconds(100),
       [this](){return this->currentStep != nullptr;});
 
-  if (status) {
+  if (status)
+  {
     // Throttle the number of step messages going to the debug output.
     if (!this->currentStep->paused() &&
         this->currentStep->iteration() % 1000 == 0)
@@ -155,7 +156,6 @@ std::string NetworkManagerSecondary::Namespace() const
 bool NetworkManagerSecondary::OnControl(const private_msgs::PeerControl &_req,
                                         private_msgs::PeerControl& _resp)
 {
-  igndbg << "NetworkManagerSecondary::OnControl" << std::endl;
   this->enableSim = _req.enable_sim();
   _resp.set_enable_sim(this->enableSim);
   return true;

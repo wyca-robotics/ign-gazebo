@@ -39,42 +39,54 @@ SyncManagerPrimary::SyncManagerPrimary(EntityComponentManager &_ecm,
   : SyncManager(_ecm, _networkManager)
 {
   this->node.Subscribe("state_update", &SyncManagerPrimary::OnState, this);
+
+  this->SyncPerformers();
+  this->initialized = true;
 }
 
 /////////////////////////////////////////////////
 SyncManagerPrimary::~SyncManagerPrimary() = default;
 
 /////////////////////////////////////////////////
-void SyncManagerPrimary::Initialize()
+void SyncManagerPrimary::SyncPerformers()
 {
+  IGN_PROFILE("SyncManagerPrimary::SyncPerformers");
+
+  // TODO(louise) Remove shortcut once performers are distributed according
+  // to levels
+  if (this->initialized)
+    return;
+
   auto mgrPrimary = dynamic_cast<NetworkManagerPrimary *>(
       this->networkManager);
   auto secondaryIt = mgrPrimary->Secondaries().begin();
 
   private_msgs::PerformerAffinities msg;
 
+  // Go through performers and assign affinities
   this->ecm->Each<components::Performer, components::ParentEntity>(
     [&](const Entity &_entity,
         const components::Performer *,
         const components::ParentEntity *_parent) -> bool
     {
       auto pid = _parent->Data();
-      auto parentName =
-        this->ecm->Component<components::Name>(pid);
+      auto parentName = this->ecm->Component<components::Name>(pid);
+      if (!parentName)
+      {
+        ignerr << "Internal error: entity [" << _entity
+               << "]'s parent missing name." << std::endl;
+        return true;
+      }
 
       auto affinityMsg = msg.add_affinity();
       affinityMsg->mutable_entity()->set_name(parentName->Data());
       affinityMsg->mutable_entity()->set_id(_entity);
       affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
 
-      // TODO(louise) No need to set to static on primary because it doesn't
-      // have physics anyway
-      auto isStatic = this->ecm->Component<components::Static>(pid);
-      *isStatic = components::Static(false);
-
       auto isActive = this->ecm->Component<components::PerformerActive>(_entity);
       *isActive = components::PerformerActive(true);
 
+      // TODO(louise) Set affinity according to levels, not round-robin
       this->ecm->CreateComponent(_entity,
           components::PerformerAffinity(secondaryIt->second->prefix));
 
@@ -87,6 +99,7 @@ void SyncManagerPrimary::Initialize()
       return true;
     });
 
+  // Communicate affinities to all secondaries
   for (auto &secondary : mgrPrimary->Secondaries())
   {
     bool result;
@@ -112,8 +125,18 @@ void SyncManagerPrimary::Initialize()
         std::endl;
     }
   }
+}
 
-  this->initialized = true;
+/////////////////////////////////////////////////
+void SyncManagerPrimary::SyncState()
+{
+  IGN_PROFILE("SyncManagerPrimary::SyncState");
+  std::lock_guard<std::mutex> lock(this->msgMutex);
+  for (const auto &msg : this->stateMsgs)
+  {
+    this->ecm->SetState(msg);
+  }
+  this->stateMsgs.clear();
 }
 
 /////////////////////////////////////////////////
@@ -128,12 +151,8 @@ bool SyncManagerPrimary::Sync()
 {
   IGN_PROFILE("SyncManagerPrimary::Sync");
 
-  std::lock_guard<std::mutex> lock(this->msgMutex);
-  for (const auto &msg : this->stateMsgs)
-  {
-    this->ecm->SetState(msg);
-  }
-  this->stateMsgs.clear();
+  this->SyncPerformers();
+  this->SyncState();
 
   return true;
 }
