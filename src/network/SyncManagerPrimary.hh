@@ -40,6 +40,8 @@ namespace ignition
       public: explicit SyncManagerPrimary(EntityComponentManager &_ecm,
           NetworkManager *_networkManager);
 
+      public: virtual ~SyncManagerPrimary();
+
       /// \brief Distribute performer affinity to the secondaries in the
       /// distributed simulation environment.
       public: void Initialize() override;

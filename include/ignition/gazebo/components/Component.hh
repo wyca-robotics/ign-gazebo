@@ -279,11 +279,6 @@ namespace components
     /// Factory registration and is guaranteed to be the same across compilers
     /// and runs.
     public: virtual ComponentTypeId TypeId() const = 0;
-
-    /// \brief Returns the unique name for the component's type.
-    /// The name is manually chosen during Factory registration and is
-    /// guaranteed to be the same across compilers and runs.
-    public: virtual std::string TypeName() const = 0;
   };
 
   /// \brief A component type that wraps any data type. The intention is for
@@ -351,9 +346,6 @@ namespace components
 
     // Documentation inherited
     public: ComponentTypeId TypeId() const override;
-
-    // Documentation inherited
-    public: std::string TypeName() const override;
 
     // Documentation inherited
     public: void Serialize(std::ostream &_out) const override;
@@ -426,9 +418,6 @@ namespace components
 
     // Documentation inherited
     public: ComponentTypeId TypeId() const override;
-
-    // Documentation inherited
-    public: std::string TypeName() const override;
 
     /// \brief Unique ID for this component type. This is set through the
     /// Factory registration.
@@ -547,13 +536,6 @@ namespace components
   }
 
   //////////////////////////////////////////////////
-  template <typename DataType, typename Identifier>
-  std::string Component<DataType, Identifier>::TypeName() const
-  {
-    return typeName;
-  }
-
-  //////////////////////////////////////////////////
   template <typename Identifier>
   bool Component<NoData, Identifier>::operator==(
       const Component<NoData, Identifier> &) const
@@ -574,13 +556,6 @@ namespace components
   ComponentTypeId Component<NoData, Identifier>::TypeId() const
   {
     return typeId;
-  }
-
-  //////////////////////////////////////////////////
-  template <typename Identifier>
-  std::string Component<NoData, Identifier>::TypeName() const
-  {
-    return typeName;
   }
 }
 }

@@ -116,14 +116,36 @@ namespace components
 
       auto typeHash = ignition::common::hash64(_type);
 
-      // Initialize static member variable
+      // Initialize static member variable - we need to set these
+      // static members for every shared lib that uses the component, but we
+      // only add them to the maps below once.
       ComponentTypeT::typeId = typeHash;
       ComponentTypeT::typeName = _type;
+
+      // Check if component has already been registered by another library
+      auto runtimeName = typeid(ComponentTypeT).name();
+      auto runtimeNameIt = this->runtimeNamesById.find(typeHash);
+      if (runtimeNameIt != this->runtimeNamesById.end())
+      {
+        // Warn user if type was previously registered with a different name.
+        // We're leaving the ID set in case this is a false difference across
+        // libraries.
+        if (runtimeNameIt->second != runtimeName)
+        {
+          std::cerr
+            << "Registered components of different types with same name: type ["
+            << runtimeNameIt->second << "] and type [" << runtimeName
+            << "] with name [" << _type << "]. Second type will not work."
+            << std::endl;
+        }
+        return;
+      }
 
       // Keep track of all types
       this->compsById[ComponentTypeT::typeId] = _compDesc;
       this->storagesById[ComponentTypeT::typeId] = _storageDesc;
-      this->idsToNames[ComponentTypeT::typeId] = ComponentTypeT::typeName;
+      namesById[ComponentTypeT::typeId] = ComponentTypeT::typeName;
+      runtimeNamesById[ComponentTypeT::typeId] = runtimeName;
     }
 
     /// \brief Unregister a component so that the factory can't create instances
@@ -132,14 +154,27 @@ namespace components
     public: template<typename ComponentTypeT>
     void Unregister()
     {
+      this->Unregister(ComponentTypeT::typeId);
+
+      ComponentTypeT::typeId = 0;
+    }
+
+    /// \brief Unregister a component so that the factory can't create instances
+    /// of the component or its storage anymore.
+    /// \detail This function will not reset the `typeId` static variable within
+    /// the component type itself. Prefer using the templated `Unregister`
+    /// function when possible.
+    /// \param[in] _typeId Type of component to unregister.
+    public: void Unregister(ComponentTypeId _typeId)
+    {
       // Not registered
-      if (ComponentTypeT::typeId == 0)
+      if (_typeId == 0)
       {
         return;
       }
 
       {
-        auto it = this->compsById.find(ComponentTypeT::typeId);
+        auto it = this->compsById.find(_typeId);
         if (it != this->compsById.end())
         {
           delete it->second;
@@ -148,7 +183,7 @@ namespace components
       }
 
       {
-        auto it = this->storagesById.find(ComponentTypeT::typeId);
+        auto it = this->storagesById.find(_typeId);
         if (it != this->storagesById.end())
         {
           delete it->second;
@@ -156,7 +191,21 @@ namespace components
         }
       }
 
-      ComponentTypeT::typeId = 0;
+      {
+        auto it = namesById.find(_typeId);
+        if (it != namesById.end())
+        {
+          namesById.erase(it);
+        }
+      }
+
+      {
+        auto it = runtimeNamesById.find(_typeId);
+        if (it != runtimeNamesById.end())
+        {
+          runtimeNamesById.erase(it);
+        }
+      }
     }
 
     /// \brief Create a new instance of a component.
@@ -216,10 +265,10 @@ namespace components
 
     /// \brief Get a component's type name given its type ID.
     /// return Unique component name.
-    public: std::string NameById(ComponentTypeId _typeId) const
+    public: std::string Name(ComponentTypeId _typeId) const
     {
-      if (this->idsToNames.find(_typeId) != this->idsToNames.end())
-        return this->idsToNames.at(_typeId);
+      if (namesById.find(_typeId) != namesById.end())
+        return namesById.at(_typeId);
 
       return "";
     }
@@ -244,7 +293,14 @@ namespace components
     private: std::map<ComponentTypeId, StorageDescriptorBase *> storagesById;
 
     /// \brief A list of IDs and their equivalent names.
-    private: std::map<ComponentTypeId, std::string> idsToNames;
+    /// \detail Make it non-static on version 2.0.
+    public: inline static std::map<ComponentTypeId, std::string> namesById;
+
+    /// \brief Keep track of the runtime names for types and warn the user if
+    /// they try to register different types with the same typeName.
+    /// \detail Make it non-static on version 2.0.
+    public: inline static std::map<ComponentTypeId, std::string>
+        runtimeNamesById;
   };
 
   /// \brief Static component registration macro.

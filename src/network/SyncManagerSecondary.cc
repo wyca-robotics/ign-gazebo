@@ -43,6 +43,9 @@ SyncManagerSecondary::SyncManagerSecondary(EntityComponentManager &_ecm,
 }
 
 /////////////////////////////////////////////////
+SyncManagerSecondary::~SyncManagerSecondary() = default;
+
+/////////////////////////////////////////////////
 void SyncManagerSecondary::Initialize()
 {
   igndbg << "Secondary [" << this->networkManager->Namespace()

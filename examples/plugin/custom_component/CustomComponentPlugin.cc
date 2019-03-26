@@ -13,27 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- */
+*/
+#include "CustomComponentPlugin.hh"
 
-#include "SyncManager.hh"
+#include <ignition/plugin/Register.hh>
 
-using namespace ignition;
-using namespace gazebo;
-
-/////////////////////////////////////////////////
-SyncManager::SyncManager(EntityComponentManager &_ecm,
-    NetworkManager *_networkManager)
-  : networkManager(_networkManager)
-{
-  this->ecm = &_ecm;
-}
-
-/////////////////////////////////////////////////
-SyncManager::~SyncManager() = default;
-
-/////////////////////////////////////////////////
-bool SyncManager::Initialized() const
-{
-  return this->initialized;
-}
+IGNITION_ADD_PLUGIN(examples::CustomComponentPlugin,
+    ignition::gazebo::System,
+    examples::CustomComponentPlugin::ISystemConfigure)
 

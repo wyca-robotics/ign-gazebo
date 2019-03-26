@@ -42,6 +42,9 @@ SyncManagerPrimary::SyncManagerPrimary(EntityComponentManager &_ecm,
 }
 
 /////////////////////////////////////////////////
+SyncManagerPrimary::~SyncManagerPrimary() = default;
+
+/////////////////////////////////////////////////
 void SyncManagerPrimary::Initialize()
 {
   auto mgrPrimary = dynamic_cast<NetworkManagerPrimary *>(
