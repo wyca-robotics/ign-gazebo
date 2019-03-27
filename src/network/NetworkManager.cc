@@ -55,7 +55,7 @@ bool validateConfig(const NetworkConfig &_config)
 
 //////////////////////////////////////////////////
 std::unique_ptr<NetworkManager> NetworkManager::Create(
-    std::function<void()> _stepFunction,
+    std::function<void(UpdateInfo &_info)> _stepFunction,
     EventManager *_eventMgr, const NetworkConfig &_config,
     const NodeOptions &_options)
 {
@@ -91,7 +91,8 @@ std::unique_ptr<NetworkManager> NetworkManager::Create(
 
 //////////////////////////////////////////////////
 NetworkManager::NetworkManager(
-    std::function<void()> _stepFunction, EventManager *_eventMgr,
+    std::function<void(UpdateInfo &_info)> _stepFunction,
+    EventManager *_eventMgr,
     const NetworkConfig &_config, const NodeOptions &_options):
   dataPtr(new NetworkManagerPrivate)
 {

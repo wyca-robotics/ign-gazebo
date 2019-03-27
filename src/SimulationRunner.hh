@@ -123,7 +123,7 @@ namespace ignition
       public: bool Run(const uint64_t _iterations);
 
       /// \brief Step
-      public: void Step();
+      public: void Step(UpdateInfo _info);
 
       /// \brief Add system after the simulation runner has been instantiated
       /// \param[in] _system System to be added

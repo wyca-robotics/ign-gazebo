@@ -116,7 +116,8 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
   if (_config.UseDistributedSimulation())
   {
     this->networkMgr = NetworkManager::Create(
-        std::bind(&SimulationRunner::Step, this), &this->eventMgr);
+        std::bind(&SimulationRunner::Step, this, std::placeholders::_1),
+        &this->eventMgr);
 
     if (this->networkMgr->IsPrimary())
     {
@@ -424,11 +425,22 @@ bool SimulationRunner::Run(const uint64_t _iterations)
       std::chrono::duration_cast<std::chrono::nanoseconds>(
           (actualSleep - sleepTime) * 0.01 + this->sleepOffset * 0.99);
 
-    // if network, wait for network step, otherwise do our own step
+    // Update time information. This will update the iteration count, RTF,
+    // and other values.
+    this->UpdateCurrentInfo();
+
+    // If network, wait for network step, otherwise do our own step
     if (this->networkMgr)
-      this->networkMgr->Step();
+    {
+      if (!this->networkMgr->Step(this->currentInfo, this->entityCompMgr))
+      {
+        ignerr << "Failed to step network manager" << std::endl;
+      }
+    }
     else
-      this->Step();
+    {
+      this->Step(this->currentInfo);
+    }
   }
 
   this->running = false;
@@ -436,22 +448,9 @@ bool SimulationRunner::Run(const uint64_t _iterations)
 }
 
 /////////////////////////////////////////////////
-void SimulationRunner::Step()
+void SimulationRunner::Step(UpdateInfo _info)
 {
-  // Update time information. This will update the iteration count, RTF,
-  // and other values.
-  this->UpdateCurrentInfo();
-
-  if (this->networkMgr)
-  {
-    IGN_PROFILE("NetworkSync - SendStep");
-    // TODO(louise) Consolidate NetworkManager::Step and SyncManager::Sync
-    // into a single service call.
-    // \todo(anyone) Replace busy loop with a condition.
-    while (this->running && !this->networkMgr->Step(this->currentInfo))
-    {
-    }
-  }
+  this->currentInfo = _info;
 
   // Publish info
   this->PublishStats();
@@ -489,13 +488,8 @@ void SimulationRunner::Step()
   {
     IGN_PROFILE("NetworkSync - SecondaryAck");
 
+    // TODO: move state sync to net manager
     this->syncMgr->Sync();
-
-    // \todo(anyone) Replace busy loop with a condition.
-    while (this->running && !this->networkMgr->StepAck(
-          this->currentInfo.iterations))
-    {
-    }
   }
 }
 
