@@ -115,7 +115,8 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
   // If the configuration is invalid, then networkMgr will be `nullptr`.
   if (_config.UseDistributedSimulation())
   {
-    this->networkMgr = NetworkManager::Create(&this->eventMgr);
+    this->networkMgr = NetworkManager::Create(
+        std::bind(&SimulationRunner::Step, this), &this->eventMgr);
 
     if (this->networkMgr->IsPrimary())
     {
@@ -148,6 +149,15 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
   this->node = std::make_unique<transport::Node>(opts);
 
   this->node->Advertise("control", &SimulationRunner::OnWorldControl, this);
+
+  // Create the world statistics publisher.
+  transport::AdvertiseMessageOptions advertOpts;
+  advertOpts.SetMsgsPerSec(5);
+  this->statsPub = this->node->Advertise<ignition::msgs::WorldStatistics>(
+      "stats", advertOpts);
+
+  // Create the clock publisher.
+  this->clockPub = this->node->Advertise<ignition::msgs::Clock>("clock");
 
   // Publish empty GUI messages for worlds that have no GUI in the beginning.
   // In the future, support modifying GUI from the server at runtime.
@@ -356,7 +366,7 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     else
     {
       ignerr << "Network manager isn't primary or secondary" << std::endl;
-      return;
+      return false;
     }
 
     // Wait for initial performer distribution
@@ -377,19 +387,6 @@ bool SimulationRunner::Run(const uint64_t _iterations)
   std::chrono::steady_clock::duration actualSleep;
 
   this->running = true;
-
-  // Create the world statistics publisher.
-  if (!this->statsPub.Valid())
-  {
-    transport::AdvertiseMessageOptions advertOpts;
-    advertOpts.SetMsgsPerSec(5);
-    this->statsPub = this->node->Advertise<ignition::msgs::WorldStatistics>(
-        "stats", advertOpts);
-  }
-
-  // Create the clock publisher.
-  if (!this->clockPub.Valid())
-    this->clockPub = this->node->Advertise<ignition::msgs::Clock>("clock");
 
   // Execute all the systems until we are told to stop, or the number of
   // iterations is reached.
@@ -427,69 +424,79 @@ bool SimulationRunner::Run(const uint64_t _iterations)
       std::chrono::duration_cast<std::chrono::nanoseconds>(
           (actualSleep - sleepTime) * 0.01 + this->sleepOffset * 0.99);
 
-    // Update time information. This will update the iteration count, RTF,
-    // and other values.
-    this->UpdateCurrentInfo();
-
+    // if network, wait for network step, otherwise do our own step
     if (this->networkMgr)
-    {
-      IGN_PROFILE("NetworkSync - SendStep");
-      // TODO(louise) Consolidate NetworkManager::Step and SyncManager::Sync
-      // into a single service call.
-      // \todo(anyone) Replace busy loop with a condition.
-      while (this->running && !this->networkMgr->Step(this->currentInfo))
-      {
-      }
-    }
-
-    // Publish info
-    this->PublishStats();
-
-    // Record when the update step starts.
-    this->prevUpdateRealTime = std::chrono::steady_clock::now();
-
-    this->levelMgr->UpdateLevelsState();
-
-    // Update all the systems.
-    this->UpdateSystems();
-
-    if (!this->Paused() && this->pendingSimIterations > 0)
-    {
-      // Decrement the pending sim iterations, if there are any.
-      --this->pendingSimIterations;
-      // If this is was the last sim iterations, then re-pause simulation.
-      if (this->pendingSimIterations <= 0)
-      {
-        this->SetPaused(true);
-      }
-    }
-
-    // Process world control messages.
-    this->ProcessMessages();
-
-    // Clear all new entities
-    this->entityCompMgr.ClearNewlyCreatedEntities();
-
-    // Process entity removals.
-    this->entityCompMgr.ProcessRemoveEntityRequests();
-
-
-    if (this->networkMgr && this->syncMgr)
-    {
-      IGN_PROFILE("NetworkSync - SecondaryAck");
-
-      this->syncMgr->Sync();
-
-      // \todo(anyone) Replace busy loop with a condition.
-      while (this->running && !this->networkMgr->StepAck(
-            this->currentInfo.iterations))
-      {
-      }
-    }
+      this->networkMgr->Step();
+    else
+      this->Step();
   }
 
   this->running = false;
   return true;
+}
+
+/////////////////////////////////////////////////
+void SimulationRunner::Step()
+{
+  // Update time information. This will update the iteration count, RTF,
+  // and other values.
+  this->UpdateCurrentInfo();
+
+  if (this->networkMgr)
+  {
+    IGN_PROFILE("NetworkSync - SendStep");
+    // TODO(louise) Consolidate NetworkManager::Step and SyncManager::Sync
+    // into a single service call.
+    // \todo(anyone) Replace busy loop with a condition.
+    while (this->running && !this->networkMgr->Step(this->currentInfo))
+    {
+    }
+  }
+
+  // Publish info
+  this->PublishStats();
+
+  // Record when the update step starts.
+  this->prevUpdateRealTime = std::chrono::steady_clock::now();
+
+  this->levelMgr->UpdateLevelsState();
+
+  // Update all the systems.
+  this->UpdateSystems();
+
+  if (!this->Paused() && this->pendingSimIterations > 0)
+  {
+    // Decrement the pending sim iterations, if there are any.
+    --this->pendingSimIterations;
+    // If this is was the last sim iterations, then re-pause simulation.
+    if (this->pendingSimIterations <= 0)
+    {
+      this->SetPaused(true);
+    }
+  }
+
+  // Process world control messages.
+  this->ProcessMessages();
+
+  // Clear all new entities
+  this->entityCompMgr.ClearNewlyCreatedEntities();
+
+  // Process entity removals.
+  this->entityCompMgr.ProcessRemoveEntityRequests();
+
+
+  if (this->networkMgr && this->syncMgr)
+  {
+    IGN_PROFILE("NetworkSync - SecondaryAck");
+
+    this->syncMgr->Sync();
+
+    // \todo(anyone) Replace busy loop with a condition.
+    while (this->running && !this->networkMgr->StepAck(
+          this->currentInfo.iterations))
+    {
+    }
+  }
 }
 
 //////////////////////////////////////////////////

@@ -34,9 +34,9 @@ using namespace gazebo;
 
 //////////////////////////////////////////////////
 NetworkManagerPrimary::NetworkManagerPrimary(
-    EventManager *_eventMgr, const NetworkConfig &_config,
-    const NodeOptions &_options):
-  NetworkManager(_eventMgr, _config, _options),
+    std::function<void()> _stepFunction, EventManager *_eventMgr,
+    const NetworkConfig &_config, const NodeOptions &_options):
+  NetworkManager(_stepFunction, _eventMgr, _config, _options),
   node(_options)
 {
   this->simStepPub = this->node.Advertise<private_msgs::SimulationStep>("step");
@@ -206,3 +206,19 @@ NetworkManagerPrimary::Secondaries()
 {
   return this->secondaries;
 }
+
+//////////////////////////////////////////////////
+bool NetworkManagerPrimary::Step()
+{
+  // Send time + affinities + new performer states to secondaries
+
+  // Block until all secondaries are done
+
+  // Assemble state updates received from secondaries
+
+  // Update global state and let level manager recalculate affinities
+  this->dataPtr->stepFunction();
+
+  return true;
+}
+

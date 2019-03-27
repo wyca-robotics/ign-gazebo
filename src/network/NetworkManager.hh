@@ -56,6 +56,7 @@ namespace ignition
       ///   configuration will be populated from environment variables.
       /// \param[in] _options Advanced options for underlying ign-transport
       public: static std::unique_ptr<NetworkManager> Create(
+                  std::function<void()> _stepFunction,
                   EventManager *_eventMgr = nullptr,
                   const NetworkConfig &_config = NetworkConfig::FromEnv(),
                   const NodeOptions &_options = NodeOptions());
@@ -65,9 +66,11 @@ namespace ignition
       /// NetworkManager
       /// \param[in] _config configuration object to use.
       /// \param[in] _options Advanced options for underlying ign-transport
-      protected: explicit NetworkManager(EventManager *_eventMgr,
-                                         const NetworkConfig &_config,
-                                         const NodeOptions &_options);
+      protected: explicit NetworkManager(
+                  std::function<void()> _stepFunction,
+                  EventManager *_eventMgr,
+                  const NetworkConfig &_config,
+                  const NodeOptions &_options);
 
       /// \brief Destructor.
       public: virtual ~NetworkManager() = 0;
@@ -87,6 +90,14 @@ namespace ignition
       /// The `Initialize` call will then set up any additional communications
       /// infrastructure required for distributed simulation to proceed.
       public: virtual void Initialize() = 0;
+
+      /// \brief Populate simulation step data
+      /// This method is called at the beginning of a simulation iteration.
+      /// It will populate the info argument with the appropriate values for
+      /// the simuation iteration.
+      /// \param[inout] _info current simulation update information
+      /// \return True if simulation step was successfully synced.
+      public: virtual bool Step() = 0;
 
       /// \brief Populate simulation step data
       /// This method is called at the beginning of a simulation iteration.

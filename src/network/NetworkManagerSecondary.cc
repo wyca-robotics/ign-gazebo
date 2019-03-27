@@ -33,9 +33,9 @@ using namespace gazebo;
 
 //////////////////////////////////////////////////
 NetworkManagerSecondary::NetworkManagerSecondary(
-    EventManager *_eventMgr, const NetworkConfig &_config,
-    const NodeOptions &_options):
-  NetworkManager(_eventMgr, _config, _options),
+    std::function<void()> _stepFunction, EventManager *_eventMgr,
+    const NetworkConfig &_config, const NodeOptions &_options):
+  NetworkManager(_stepFunction, _eventMgr, _config, _options),
   node(_options)
 {
   std::string topic { this->Namespace() + "/control" };
@@ -169,3 +169,29 @@ void NetworkManagerSecondary::OnStep(const private_msgs::SimulationStep &_msg)
   lock.unlock();
   this->stepCv.notify_all();
 }
+
+/////////////////////////////////////////////////
+bool NetworkManagerSecondary::StepService(
+    const private_msgs::SimulationStep &_req,
+    msgs::SerializedState &)
+{
+  // Update UpdateInfo
+
+  // Set state
+
+  // Step runner
+  return true;
+}
+
+//////////////////////////////////////////////////
+bool NetworkManagerSecondary::Step()
+{
+  // Wait for StepService to be executed once
+
+  // Move this to StepService
+  this->dataPtr->stepFunction();
+
+  return true;
+}
+
+

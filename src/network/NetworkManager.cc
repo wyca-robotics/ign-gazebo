@@ -55,6 +55,7 @@ bool validateConfig(const NetworkConfig &_config)
 
 //////////////////////////////////////////////////
 std::unique_ptr<NetworkManager> NetworkManager::Create(
+    std::function<void()> _stepFunction,
     EventManager *_eventMgr, const NetworkConfig &_config,
     const NodeOptions &_options)
 {
@@ -69,11 +70,11 @@ std::unique_ptr<NetworkManager> NetworkManager::Create(
   {
     case NetworkRole::SimulationPrimary:
       ret = std::make_unique<NetworkManagerPrimary>(
-          _eventMgr, _config, _options);
+          _stepFunction, _eventMgr, _config, _options);
       break;
     case NetworkRole::SimulationSecondary:
       ret = std::make_unique<NetworkManagerSecondary>(
-          _eventMgr, _config, _options);
+          _stepFunction, _eventMgr, _config, _options);
       break;
     case NetworkRole::ReadOnly:
       // \todo(mjcarroll): Enable ReadOnly
@@ -90,10 +91,11 @@ std::unique_ptr<NetworkManager> NetworkManager::Create(
 
 //////////////////////////////////////////////////
 NetworkManager::NetworkManager(
-    EventManager *_eventMgr, const NetworkConfig &_config,
-    const NodeOptions &_options):
+    std::function<void()> _stepFunction, EventManager *_eventMgr,
+    const NetworkConfig &_config, const NodeOptions &_options):
   dataPtr(new NetworkManagerPrivate)
 {
+  this->dataPtr->stepFunction = _stepFunction;
   this->dataPtr->config = _config;
   this->dataPtr->peerInfo = PeerInfo(this->dataPtr->config.role);
   this->dataPtr->eventMgr = _eventMgr;

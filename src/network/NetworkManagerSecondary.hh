@@ -44,6 +44,7 @@ namespace ignition
     {
       // Documentation inherited
       public: explicit NetworkManagerSecondary(
+                  std::function<void()> _stepFunction,
                   EventManager *_eventMgr,
                   const NetworkConfig &_config,
                   const NodeOptions &_options);
@@ -53,6 +54,8 @@ namespace ignition
 
       // Documentation inherited
       public: void Initialize() override;
+
+      public: bool Step() override;
 
       // Documentation inherited
       public: bool Step(UpdateInfo &_info) override;
@@ -66,6 +69,12 @@ namespace ignition
       /// \brief Callback for when PeerControl service request is received.
       public: bool OnControl(const private_msgs::PeerControl &_req,
                              private_msgs::PeerControl &_resp);
+
+      /// \brief Service which the primary calls to step simulation.
+      /// \param[in] _req
+      /// \param[out] _res
+      private: bool StepService(const private_msgs::SimulationStep &_req,
+          msgs::SerializedState &_res);
 
       /// \brief Callback for when SimulationStep message is received.
       public: void OnStep(const private_msgs::SimulationStep &_msg);

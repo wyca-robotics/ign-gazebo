@@ -71,15 +71,19 @@ namespace ignition
       public NetworkManager
     {
       // Documentation inherited
-      public: explicit NetworkManagerPrimary(EventManager *_eventMgr,
-                                             const NetworkConfig &_config,
-                                             const NodeOptions &_options);
+      public: explicit NetworkManagerPrimary(
+                  std::function<void()> _stepFunction,
+                  EventManager *_eventMgr,
+                  const NetworkConfig &_config,
+                  const NodeOptions &_options);
 
       // Documentation inherited
       public: void Initialize() override;
 
       // Documentation inherited
       public: bool Ready() const override;
+
+      public: bool Step() override;
 
       /// \brief Populate simulation step data.
       /// On the network primary, the argument will be used to distribute

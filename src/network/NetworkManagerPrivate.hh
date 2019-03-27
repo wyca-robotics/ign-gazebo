@@ -17,6 +17,7 @@
 #ifndef IGNITION_GAZEBO_NETWORK_NETWORKMANAGERPRIVATE_HH_
 #define IGNITION_GAZEBO_NETWORK_NETWORKMANAGERPRIVATE_HH_
 
+#include <functional>
 #include <memory>
 
 #include <ignition/gazebo/config.hh>
@@ -52,6 +53,8 @@ namespace ignition
 
       /// \brief Traack connection to "PeerStale" Event
       public: ignition::common::ConnectionPtr peerStaleConn;
+
+      public: std::function<void()> stepFunction;
     };
     }
   }  // namespace gazebo
