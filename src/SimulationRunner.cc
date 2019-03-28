@@ -121,7 +121,7 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
     {
       ignmsg << "Network Primary, expects ["
              << this->networkMgr->Config().numSecondariesExpected
-             << "] seondaries." << std::endl;
+             << "] secondaries." << std::endl;
     }
     else if (this->networkMgr->IsSecondary())
     {
