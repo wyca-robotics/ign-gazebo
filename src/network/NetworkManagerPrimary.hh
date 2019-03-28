@@ -73,7 +73,7 @@ namespace ignition
       // Documentation inherited
       public: explicit NetworkManagerPrimary(
                   std::function<void(UpdateInfo &_info)> _stepFunction,
-                  EventManager *_eventMgr,
+                  EntityComponentManager &_ecm, EventManager *_eventMgr,
                   const NetworkConfig &_config,
                   const NodeOptions &_options);
 
@@ -83,8 +83,7 @@ namespace ignition
       // Documentation inherited
       public: bool Ready() const override;
 
-      public: bool Step(UpdateInfo &_info, EntityComponentManager &_ecm)
-          override;
+      public: bool Step(UpdateInfo &_info) override;
 
       // Documentation inherited
       public: std::string Namespace() const override;

@@ -48,7 +48,6 @@
 #include "ignition/gazebo/Types.hh"
 
 #include "network/NetworkManager.hh"
-#include "network/SyncManager.hh"
 #include "LevelManager.hh"
 
 using namespace std::chrono_literals;
@@ -305,9 +304,6 @@ namespace ignition
 
       /// \brief Manager of distributing/receiving network work.
       private: std::unique_ptr<NetworkManager> networkMgr{nullptr};
-
-      /// \brief Manager of network sync.
-      private: std::unique_ptr<SyncManager> syncMgr{nullptr};
 
       /// \brief A pool of worker threads.
       private: common::WorkerPool workerPool{2};

@@ -57,7 +57,7 @@ namespace ignition
       /// \param[in] _options Advanced options for underlying ign-transport
       public: static std::unique_ptr<NetworkManager> Create(
                   std::function<void(UpdateInfo &_info)> _stepFunction,
-                  EventManager *_eventMgr = nullptr,
+                  EntityComponentManager &_ecm, EventManager *_eventMgr = nullptr,
                   const NetworkConfig &_config = NetworkConfig::FromEnv(),
                   const NodeOptions &_options = NodeOptions());
 
@@ -68,7 +68,7 @@ namespace ignition
       /// \param[in] _options Advanced options for underlying ign-transport
       protected: explicit NetworkManager(
                   std::function<void(UpdateInfo &_info)> _stepFunction,
-                  EventManager *_eventMgr,
+                  EntityComponentManager &_ecm, EventManager *_eventMgr,
                   const NetworkConfig &_config,
                   const NodeOptions &_options);
 
@@ -97,8 +97,7 @@ namespace ignition
       /// the simuation iteration.
       /// \param[inout] _info current simulation update information
       /// \return True if simulation step was successfully synced.
-      public: virtual bool Step(UpdateInfo &_info,
-          EntityComponentManager &_ecm) = 0;
+      public: virtual bool Step(UpdateInfo &_info) = 0;
 
       /// \brief Get a unique namespace for this runner
       public: virtual std::string Namespace() const = 0;

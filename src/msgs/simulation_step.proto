@@ -42,6 +42,6 @@ message SimulationStep
   bool paused = 4;
 
   /// \brief Updated performer affinities
-  PerformerAffinities affinities = 5;
+  repeated PerformerAffinity affinity = 5;
 }
 

@@ -21,9 +21,6 @@ set(network_sources
   network/NetworkManagerSecondary.cc
   network/PeerInfo.cc
   network/PeerTracker.cc
-  network/SyncManager.cc
-  network/SyncManagerPrimary.cc
-  network/SyncManagerSecondary.cc
 )
 
 set(gui_sources

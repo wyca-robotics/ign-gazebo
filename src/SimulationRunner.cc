@@ -16,8 +16,6 @@
 */
 
 #include "SimulationRunner.hh"
-#include "network/SyncManagerPrimary.hh"
-#include "network/SyncManagerSecondary.hh"
 
 #include "ignition/common/Profiler.hh"
 
@@ -117,7 +115,7 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
   {
     this->networkMgr = NetworkManager::Create(
         std::bind(&SimulationRunner::Step, this, std::placeholders::_1),
-        &this->eventMgr);
+        this->entityCompMgr, &this->eventMgr);
 
     if (this->networkMgr->IsPrimary())
     {
@@ -352,29 +350,6 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     // todo(mjcarroll) improve guard conditions around the busy loops.
     igndbg << "Initializing network configuration" << std::endl;
     this->networkMgr->Initialize();
-
-    // Create sync managers after successful network initialization
-    if (this->networkMgr->IsPrimary())
-    {
-      this->syncMgr = std::make_unique<SyncManagerPrimary>(
-          this->entityCompMgr, this->networkMgr.get());
-    }
-    else if (this->networkMgr->IsSecondary())
-    {
-      this->syncMgr = std::make_unique<SyncManagerSecondary>(
-          this->entityCompMgr, this->networkMgr.get());
-    }
-    else
-    {
-      ignerr << "Network manager isn't primary or secondary" << std::endl;
-      return false;
-    }
-
-    // Wait for initial performer distribution
-    while (!this->syncMgr->Initialized() && !this->stopReceived)
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
   }
 
   // Keep track of wall clock time. Only start the realTimeWatch if this
@@ -432,9 +407,9 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     // If network, wait for network step, otherwise do our own step
     if (this->networkMgr)
     {
-      if (!this->networkMgr->Step(this->currentInfo, this->entityCompMgr))
+      if (!this->networkMgr->Step(this->currentInfo))
       {
-        ignerr << "Failed to step network manager" << std::endl;
+        // Do smth?
       }
     }
     else
@@ -482,15 +457,6 @@ void SimulationRunner::Step(UpdateInfo _info)
 
   // Process entity removals.
   this->entityCompMgr.ProcessRemoveEntityRequests();
-
-
-  if (this->networkMgr && this->syncMgr)
-  {
-    IGN_PROFILE("NetworkSync - SecondaryAck");
-
-    // TODO: move state sync to net manager
-    this->syncMgr->Sync();
-  }
 }
 
 //////////////////////////////////////////////////

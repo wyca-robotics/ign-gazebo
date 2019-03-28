@@ -45,7 +45,7 @@ namespace ignition
       // Documentation inherited
       public: explicit NetworkManagerSecondary(
                   std::function<void(UpdateInfo &_info)> _stepFunction,
-                  EventManager *_eventMgr,
+                  EntityComponentManager &_ecm, EventManager *_eventMgr,
                   const NetworkConfig &_config,
                   const NodeOptions &_options);
 
@@ -56,7 +56,7 @@ namespace ignition
       public: void Initialize() override;
 
       // Documentation inherited
-      public: bool Step(UpdateInfo &_info, EntityComponentManager &_ecm) override;
+      public: bool Step(UpdateInfo &_info) override;
 
       // Documentation inherited
       public: std::string Namespace() const override;
@@ -96,6 +96,9 @@ namespace ignition
       private: ignition::transport::Node node;
 
       private: bool stepComplete{true};
+
+      /// \brief Collection of performers associated with this secondary.
+      private: std::unordered_set<Entity> performers;
     };
     }
   }  // namespace gazebo

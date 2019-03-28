@@ -23,6 +23,7 @@
 #include <ignition/gazebo/config.hh>
 #include <ignition/gazebo/Export.hh>
 
+#include "NetworkConfig.hh"
 #include "PeerInfo.hh"
 #include "PeerTracker.hh"
 
@@ -55,6 +56,8 @@ namespace ignition
       public: ignition::common::ConnectionPtr peerStaleConn;
 
       public: std::function<void(UpdateInfo &_info)> stepFunction;
+
+      public: EntityComponentManager *ecm;
     };
     }
   }  // namespace gazebo
