@@ -50,8 +50,6 @@ NetworkManagerPrimary::NetworkManagerPrimary(
   NetworkManager(_stepFunction, _ecm, _eventMgr, _config, _options),
   node(_options)
 {
-  this->simStepPub = this->node.Advertise<private_msgs::SimulationStep>("step");
-
   auto eventMgr = this->dataPtr->eventMgr;
   if (eventMgr)
   {
@@ -181,11 +179,14 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
   // Affinities that changed this step
   auto secondaryIt = this->Secondaries().begin();
 
-  // Go through performers and assign affinities
+  // TOOD(louise) Asign affinities according to level changes instead of
+  // round-robin
   static bool tmpShortCut{false};
-
   if (!tmpShortCut)
   {
+  tmpShortCut = true;
+
+  // Go through performers and assign affinities
   this->dataPtr->ecm->Each<components::Performer, components::ParentEntity>(
     [&](const Entity &_entity,
         const components::Performer *,
@@ -221,10 +222,10 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
       return true;
     });
   }
-  tmpShortCut = true;
 
   // TODO: send performer states for new affinities
 
+  // Send step to all secondaries in parallel
   this->secondaryStates.clear();
   for (const auto &secondary : this->secondaries)
   {
@@ -238,13 +239,12 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
     std::this_thread::sleep_for(std::chrono::nanoseconds(1));
   }
 
-  // Assemble state updates received from secondaries
+  // Update global state with states received from secondaries
   for (const auto &msg : this->secondaryStates)
   {
     this->dataPtr->ecm->SetState(msg);
   }
   this->secondaryStates.clear();
-
 
   // Update global state and let level manager recalculate affinities
   this->dataPtr->stepFunction(_info);
