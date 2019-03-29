@@ -124,6 +124,30 @@ void NetworkManagerSecondary::Handshake()
 }
 
 //////////////////////////////////////////////////
+bool NetworkManagerSecondary::Step(UpdateInfo &)
+{
+  IGN_PROFILE("NetworkManagerSecondary::Step");
+  if (!this->enableSim || this->stopReceived)
+  {
+    return false;
+  }
+
+  std::unique_lock<std::mutex> lock(this->stepMutex);
+  this->stepComplete = false;
+  auto status = this->stepCv.wait_for(lock, std::chrono::seconds(5), [this]()
+  {
+    return this->stepComplete;
+  });
+
+  if (!status)
+  {
+    ignerr << "Timed out waiting for step to complete." << std::endl;
+  }
+
+  return status;
+}
+
+//////////////////////////////////////////////////
 std::string NetworkManagerSecondary::Namespace() const
 {
   return this->dataPtr->peerInfo.id.substr(0, 8);
@@ -226,29 +250,5 @@ bool NetworkManagerSecondary::StepService(
   }
 
   return true;
-}
-
-//////////////////////////////////////////////////
-bool NetworkManagerSecondary::Step(UpdateInfo &)
-{
-  IGN_PROFILE("NetworkManagerSecondary::Step");
-  if (!this->enableSim || this->stopReceived)
-  {
-    return false;
-  }
-
-  std::unique_lock<std::mutex> lock(this->stepMutex);
-  this->stepComplete = false;
-  auto status = this->stepCv.wait_for(lock, std::chrono::seconds(5), [this]()
-  {
-    return this->stepComplete;
-  });
-
-  if (!status)
-  {
-    ignerr << "Timed out waiting for step to complete." << std::endl;
-  }
-
-  return status;
 }
 

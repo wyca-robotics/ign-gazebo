@@ -134,27 +134,6 @@ bool NetworkManagerPrimary::Ready() const
 }
 
 //////////////////////////////////////////////////
-std::string NetworkManagerPrimary::Namespace() const
-{
-  return "";
-}
-
-//////////////////////////////////////////////////
-std::map<std::string, SecondaryControl::Ptr>
-    &NetworkManagerPrimary::Secondaries()
-{
-  return this->secondaries;
-}
-
-//////////////////////////////////////////////////
-void NetworkManagerPrimary::OnStepResponse(
-    const msgs::SerializedState &_res, const bool _result)
-{
-  if (_result)
-    this->secondaryStates.push_back(_res);
-}
-
-//////////////////////////////////////////////////
 bool NetworkManagerPrimary::Step(UpdateInfo &_info)
 {
   IGN_PROFILE("NetworkManagerPrimary::Step");
@@ -263,5 +242,26 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
   this->dataPtr->stepFunction(_info);
 
   return true;
+}
+
+//////////////////////////////////////////////////
+std::string NetworkManagerPrimary::Namespace() const
+{
+  return "";
+}
+
+//////////////////////////////////////////////////
+std::map<std::string, SecondaryControl::Ptr>
+    &NetworkManagerPrimary::Secondaries()
+{
+  return this->secondaries;
+}
+
+//////////////////////////////////////////////////
+void NetworkManagerPrimary::OnStepResponse(
+    const msgs::SerializedState &_res, const bool _result)
+{
+  if (_result)
+    this->secondaryStates.push_back(_res);
 }
 
