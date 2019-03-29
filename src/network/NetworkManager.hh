@@ -89,7 +89,7 @@ namespace ignition
       ///
       /// The `Initialize` call will then set up any additional communications
       /// infrastructure required for distributed simulation to proceed.
-      public: virtual void Initialize() = 0;
+      public: virtual void Handshake() = 0;
 
       /// \brief Populate simulation step data
       /// This method is called at the beginning of a simulation iteration.

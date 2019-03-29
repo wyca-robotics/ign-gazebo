@@ -367,7 +367,7 @@ bool SimulationRunner::Run(const uint64_t _iterations)
   {
     // todo(mjcarroll) improve guard conditions around the busy loops.
     igndbg << "Initializing network configuration" << std::endl;
-    this->networkMgr->Initialize();
+    this->networkMgr->Handshake();
   }
 
   // Keep track of wall clock time. Only start the realTimeWatch if this
@@ -443,6 +443,7 @@ bool SimulationRunner::Run(const uint64_t _iterations)
 /////////////////////////////////////////////////
 void SimulationRunner::Step(UpdateInfo _info)
 {
+  IGN_PROFILE("SimulationRunner::Step");
   this->currentInfo = _info;
 
   // Publish info
@@ -453,8 +454,8 @@ void SimulationRunner::Step(UpdateInfo _info)
 
   this->levelMgr->UpdateLevelsState();
 
-    // Handle pending systems
-    this->ProcessSystemQueue();
+  // Handle pending systems
+  this->ProcessSystemQueue();
 
   // Update all the systems.
   this->UpdateSystems();
@@ -463,6 +464,7 @@ void SimulationRunner::Step(UpdateInfo _info)
   {
     // Decrement the pending sim iterations, if there are any.
     --this->pendingSimIterations;
+
     // If this is was the last sim iterations, then re-pause simulation.
     if (this->pendingSimIterations <= 0)
     {

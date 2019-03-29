@@ -53,7 +53,7 @@ namespace ignition
       public: bool Ready() const override;
 
       // Documentation inherited
-      public: void Initialize() override;
+      public: void Handshake() override;
 
       // Documentation inherited
       public: bool Step(UpdateInfo &_info) override;
@@ -71,9 +71,6 @@ namespace ignition
       private: bool StepService(const private_msgs::SimulationStep &_req,
           msgs::SerializedState &_res);
 
-      /// \brief Callback for when SimulationStep message is received.
-      public: void OnStep(const private_msgs::SimulationStep &_msg);
-
       /// \brief Mutex to protect currentStep data.
       private: std::mutex stepMutex;
 
@@ -88,9 +85,6 @@ namespace ignition
 
       /// \brief Flag to control enabling/disabling simulation secondary.
       private: std::atomic<bool> enableSim {false};
-
-      /// \brief Flag to control pausing/unpausing simulation secondary.
-      private: std::atomic<bool> pauseSim {true};
 
       /// \brief Transport node used for communication with simulation graph.
       private: ignition::transport::Node node;

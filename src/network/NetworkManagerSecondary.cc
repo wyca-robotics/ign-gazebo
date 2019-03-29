@@ -81,7 +81,7 @@ NetworkManagerSecondary::NetworkManagerSecondary(
     this->stoppingConn = eventMgr->Connect<events::Stop>(
         [this]()
     {
-          this->stopReceived = true;
+      this->stopReceived = true;
     });
 
     this->dataPtr->peerRemovedConn = eventMgr->Connect<PeerRemoved>(
@@ -115,7 +115,7 @@ bool NetworkManagerSecondary::Ready() const
 }
 
 //////////////////////////////////////////////////
-void NetworkManagerSecondary::Initialize()
+void NetworkManagerSecondary::Handshake()
 {
   while (!this->enableSim && !this->stopReceived)
   {
@@ -174,8 +174,10 @@ bool NetworkManagerSecondary::StepService(
 
     // TODO(louise) Remove instead of setting static, and then
     // PerformerActive is not needed
-    auto isStatic = this->dataPtr->ecm->Component<components::Static>(pid->Data());
-    auto isActive = this->dataPtr->ecm->Component<components::PerformerActive>(entityId);
+    auto isStatic =
+        this->dataPtr->ecm->Component<components::Static>(pid->Data());
+    auto isActive =
+        this->dataPtr->ecm->Component<components::PerformerActive>(entityId);
 
     if (affinityMsg.secondary_prefix() == this->Namespace())
     {
@@ -216,10 +218,12 @@ bool NetworkManagerSecondary::StepService(
   this->dataPtr->stepFunction(info);
 
   // Finish step
-  std::unique_lock<std::mutex> lock(this->stepMutex);
-  this->stepComplete = true;
-  lock.unlock();
-  this->stepCv.notify_all();
+  {
+    std::unique_lock<std::mutex> lock(this->stepMutex);
+    this->stepComplete = false;
+    lock.unlock();
+    this->stepCv.notify_all();
+  }
 
   return true;
 }
@@ -227,6 +231,7 @@ bool NetworkManagerSecondary::StepService(
 //////////////////////////////////////////////////
 bool NetworkManagerSecondary::Step(UpdateInfo &)
 {
+  IGN_PROFILE("NetworkManagerSecondary::Step");
   if (!this->enableSim || this->stopReceived)
   {
     return false;
@@ -234,13 +239,16 @@ bool NetworkManagerSecondary::Step(UpdateInfo &)
 
   std::unique_lock<std::mutex> lock(this->stepMutex);
   this->stepComplete = false;
-  auto status = this->stepCv.wait_for(lock, std::chrono::seconds(3),
-      [this]()
+  auto status = this->stepCv.wait_for(lock, std::chrono::seconds(5), [this]()
   {
     return this->stepComplete;
   });
 
+  if (!status)
+  {
+    ignerr << "Timed out waiting for step to complete." << std::endl;
+  }
+
   return status;
 }
-
 

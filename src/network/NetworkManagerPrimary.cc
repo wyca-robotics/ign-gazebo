@@ -23,6 +23,7 @@
 
 #include <ignition/common/Console.hh>
 #include <ignition/common/Util.hh>
+#include <ignition/common/Profiler.hh>
 
 #include "ignition/gazebo/components/Name.hh"
 #include "ignition/gazebo/components/ParentEntity.hh"
@@ -81,7 +82,7 @@ NetworkManagerPrimary::NetworkManagerPrimary(
 }
 
 //////////////////////////////////////////////////
-void NetworkManagerPrimary::Initialize()
+void NetworkManagerPrimary::Handshake()
 {
   auto peers = this->dataPtr->tracker->SecondaryPeers();
   for (const auto &peer : peers)
@@ -97,7 +98,7 @@ void NetworkManagerPrimary::Initialize()
     std::string topic {sc->prefix + "/control"};
     unsigned int timeout = 5000;
 
-    igndbg << "Attempting to register secondary [" << topic << "]" << std::endl;
+    igndbg << "Registering secondary [" << topic << "]" << std::endl;
     bool executed = this->node.Request(topic, req, timeout, resp, result);
 
     if (executed)
@@ -109,14 +110,14 @@ void NetworkManagerPrimary::Initialize()
       }
       else
       {
-        igndbg << "Peer service call failed [" << sc->prefix << "]"
+        ignerr << "Peer service call failed [" << sc->prefix << "]"
           << std::endl;
       }
     }
     else
     {
-      igndbg << "Peer service call timed out [" << sc->prefix << "]"
-        << std::endl;
+      ignerr << "Peer service call timed out [" << sc->prefix << "], waited "
+             << timeout << " ms" << std::endl;
     }
 
     this->secondaries[sc->prefix] = std::move(sc);
@@ -139,8 +140,8 @@ std::string NetworkManagerPrimary::Namespace() const
 }
 
 //////////////////////////////////////////////////
-std::map<std::string, SecondaryControl::Ptr>&
-NetworkManagerPrimary::Secondaries()
+std::map<std::string, SecondaryControl::Ptr>
+    &NetworkManagerPrimary::Secondaries()
 {
   return this->secondaries;
 }
@@ -156,6 +157,7 @@ void NetworkManagerPrimary::OnStepResponse(
 //////////////////////////////////////////////////
 bool NetworkManagerPrimary::Step(UpdateInfo &_info)
 {
+  IGN_PROFILE("NetworkManagerPrimary::Step");
   // Check all secondaries have been registered
   bool ready = true;
   for (const auto &secondary : this->secondaries)
@@ -164,7 +166,11 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
   }
 
   if (!ready)
+  {
+    ignerr << "Trying to step network primary before all peers are ready."
+           << std::endl;
     return false;
+  }
 
   private_msgs::SimulationStep step;
 
@@ -177,9 +183,9 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
   step.set_stepsize(stepSizeSecNsec.second);
 
   // Affinities that changed this step
-  auto secondaryIt = this->Secondaries().begin();
+  auto secondaryIt = this->secondaries.begin();
 
-  // TOOD(louise) Asign affinities according to level changes instead of
+  // TODO(louise) Asign affinities according to level changes instead of
   // round-robin
   static bool tmpShortCut{false};
   if (!tmpShortCut)
@@ -206,7 +212,8 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
       affinityMsg->mutable_entity()->set_id(_entity);
       affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
 
-      auto isActive = this->dataPtr->ecm->Component<components::PerformerActive>(_entity);
+      auto isActive =
+          this->dataPtr->ecm->Component<components::PerformerActive>(_entity);
       *isActive = components::PerformerActive(true);
 
       // TODO(louise) Set affinity according to levels, not round-robin
@@ -214,16 +221,16 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
           components::PerformerAffinity(secondaryIt->second->prefix));
 
       secondaryIt++;
-      if (secondaryIt == this->Secondaries().end())
+      if (secondaryIt == this->secondaries.end())
       {
-        secondaryIt = this->Secondaries().begin();
+        secondaryIt = this->secondaries.begin();
       }
 
       return true;
     });
   }
 
-  // TODO: send performer states for new affinities
+  // TODO(louise): send performer states for new affinities
 
   // Send step to all secondaries in parallel
   this->secondaryStates.clear();
@@ -234,19 +241,25 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
   }
 
   // Block until all secondaries are done
-  while (this->secondaryStates.size() < this->secondaries.size())
   {
-    std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+    IGN_PROFILE("Waiting for secondaries");
+    while (this->secondaryStates.size() < this->secondaries.size())
+    {
+      std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+    }
   }
 
-  // Update global state with states received from secondaries
-  for (const auto &msg : this->secondaryStates)
+  // Update primary state with states received from secondaries
   {
-    this->dataPtr->ecm->SetState(msg);
+    IGN_PROFILE("Updating primary state");
+    for (const auto &msg : this->secondaryStates)
+    {
+      this->dataPtr->ecm->SetState(msg);
+    }
+    this->secondaryStates.clear();
   }
-  this->secondaryStates.clear();
 
-  // Update global state and let level manager recalculate affinities
+  // Step all systems
   this->dataPtr->stepFunction(_info);
 
   return true;

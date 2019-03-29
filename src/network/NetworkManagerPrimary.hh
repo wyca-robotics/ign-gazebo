@@ -40,25 +40,13 @@ namespace ignition
     struct SecondaryControl
     {
       /// \brief indicate if the secondary is ready to execute
-      std::atomic<bool> ready {false};
-
-      /// \brief acknowledge received flag
-      std::atomic<bool> recvStepAck {false};
-
-      /// \brief last acknowledged iteration from secondary peer.
-      std::atomic<uint64_t> recvIter {0};
+      std::atomic<bool> ready{false};
 
       /// \brief id of the secondary peer
       std::string id;
 
       /// \brief prefix namespace of the secondary peer
       std::string prefix;
-
-      /// \brief string identification of associated performers to this peer
-      std::vector<std::string> performers;
-
-      /// \brief entity identification of associated performers to this peer
-      std::vector<Entity> performerIds;
 
       /// \brief Convenience alias for unique_ptr.
       using Ptr = std::unique_ptr<SecondaryControl>;
@@ -78,11 +66,12 @@ namespace ignition
                   const NodeOptions &_options);
 
       // Documentation inherited
-      public: void Initialize() override;
+      public: void Handshake() override;
 
       // Documentation inherited
       public: bool Ready() const override;
 
+      // Documentation inherited
       public: bool Step(UpdateInfo &_info) override;
 
       // Documentation inherited
@@ -92,6 +81,9 @@ namespace ignition
       /// peers.
       public: std::map<std::string, SecondaryControl::Ptr>& Secondaries();
 
+      /// \brief Callback for service stepping secondaries.
+      /// \param[in] _res Response containing secondary's updated state.
+      /// \param[in] _result False if failed.
       private: void OnStepResponse(const msgs::SerializedState &_res,
           const bool _result);
 
@@ -101,9 +93,10 @@ namespace ignition
       /// \brief Transport node
       private: ignition::transport::Node node;
 
-      /// \brief Publisher for network clock sync
+      /// \brief Publisher for network step sync
       private: ignition::transport::Node::Publisher simStepPub;
 
+      /// \brief Keep track of states received from secondaries.
       private: std::vector<msgs::SerializedState> secondaryStates;
     };
     }
