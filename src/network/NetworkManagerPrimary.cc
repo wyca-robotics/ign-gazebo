@@ -29,7 +29,6 @@
 #include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/Performer.hh"
 #include "ignition/gazebo/components/PerformerAffinity.hh"
-#include "ignition/gazebo/components/Static.hh"
 #include "ignition/gazebo/Conversions.hh"
 #include "ignition/gazebo/Entity.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
@@ -38,7 +37,6 @@
 #include "NetworkManagerPrimary.hh"
 #include "NetworkManagerPrivate.hh"
 #include "PeerTracker.hh"
-#include "components/PerformerActive.hh"
 
 using namespace ignition;
 using namespace gazebo;
@@ -162,54 +160,7 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
   step.set_stepsize(stepSizeSecNsec.second);
 
   // Affinities that changed this step
-  auto secondaryIt = this->secondaries.begin();
-
-  // TODO(louise) Asign affinities according to level changes instead of
-  // round-robin
-  static bool tmpShortCut{false};
-  if (!tmpShortCut)
-  {
-  tmpShortCut = true;
-
-  // Go through performers and assign affinities
-  this->dataPtr->ecm->Each<components::Performer, components::ParentEntity>(
-    [&](const Entity &_entity,
-        const components::Performer *,
-        const components::ParentEntity *_parent) -> bool
-    {
-      auto pid = _parent->Data();
-      auto parentName = this->dataPtr->ecm->Component<components::Name>(pid);
-      if (!parentName)
-      {
-        ignerr << "Internal error: entity [" << _entity
-               << "]'s parent missing name." << std::endl;
-        return true;
-      }
-
-      auto affinityMsg = step.add_affinity();
-      affinityMsg->mutable_entity()->set_name(parentName->Data());
-      affinityMsg->mutable_entity()->set_id(_entity);
-      affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
-
-      auto isActive =
-          this->dataPtr->ecm->Component<components::PerformerActive>(_entity);
-      *isActive = components::PerformerActive(true);
-
-      // TODO(louise) Set affinity according to levels, not round-robin
-      this->dataPtr->ecm->CreateComponent(_entity,
-          components::PerformerAffinity(secondaryIt->second->prefix));
-
-      secondaryIt++;
-      if (secondaryIt == this->secondaries.end())
-      {
-        secondaryIt = this->secondaries.begin();
-      }
-
-      return true;
-    });
-  }
-
-  // TODO(louise): send performer states for new affinities
+  this->PopulateAffinities(step);
 
   // Check all secondaries are ready to receive steps - only do this once at
   // startup
@@ -306,3 +257,51 @@ bool NetworkManagerPrimary::SecondariesCanStep() const
   return true;
 }
 
+//////////////////////////////////////////////////
+void NetworkManagerPrimary::PopulateAffinities(
+    private_msgs::SimulationStep &_msg)
+{
+  auto secondaryIt = this->secondaries.begin();
+
+  // TODO(louise) Asign affinities according to level changes instead of
+  // round-robin
+  static bool tmpShortCut{false};
+  if (tmpShortCut)
+    return;
+  tmpShortCut = true;
+
+  // Go through performers and assign affinities
+  this->dataPtr->ecm->Each<components::Performer, components::ParentEntity>(
+    [&](const Entity &_entity,
+        const components::Performer *,
+        const components::ParentEntity *_parent) -> bool
+    {
+      auto pid = _parent->Data();
+      auto parentName = this->dataPtr->ecm->Component<components::Name>(pid);
+      if (!parentName)
+      {
+        ignerr << "Internal error: entity [" << _entity
+               << "]'s parent missing name." << std::endl;
+        return true;
+      }
+
+      auto affinityMsg = _msg.add_affinity();
+      affinityMsg->mutable_entity()->set_name(parentName->Data());
+      affinityMsg->mutable_entity()->set_id(_entity);
+      affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
+
+      // TODO(louise) Set affinity according to levels, not round-robin
+      this->dataPtr->ecm->CreateComponent(_entity,
+          components::PerformerAffinity(secondaryIt->second->prefix));
+
+      secondaryIt++;
+      if (secondaryIt == this->secondaries.end())
+      {
+        secondaryIt = this->secondaries.begin();
+      }
+
+      return true;
+    });
+
+  // TODO(louise): send performer states for new affinities
+}

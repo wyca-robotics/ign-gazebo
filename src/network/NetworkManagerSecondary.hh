@@ -71,6 +71,8 @@ namespace ignition
       private: bool StepService(const private_msgs::SimulationStep &_req,
           msgs::SerializedState &_res);
 
+      private: void HandleAffinities(const private_msgs::SimulationStep &_req);
+
       /// \brief Mutex to protect currentStep data.
       private: std::mutex stepMutex;
 

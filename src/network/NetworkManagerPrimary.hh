@@ -88,6 +88,7 @@ namespace ignition
           const bool _result);
 
       private: bool SecondariesCanStep() const;
+      private: void PopulateAffinities(private_msgs::SimulationStep &_msg);
 
       /// \brief Container of currently used secondary peers
       private: std::map<std::string, SecondaryControl::Ptr> secondaries;

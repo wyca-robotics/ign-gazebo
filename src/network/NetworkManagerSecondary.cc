@@ -26,7 +26,6 @@
 
 #include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/PerformerAffinity.hh"
-#include "ignition/gazebo/components/Static.hh"
 #include "ignition/gazebo/Entity.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
 #include "ignition/gazebo/Events.hh"
@@ -34,7 +33,6 @@
 #include "NetworkManagerPrivate.hh"
 #include "NetworkManagerSecondary.hh"
 #include "PeerTracker.hh"
-#include "components/PerformerActive.hh"
 
 using namespace ignition;
 using namespace gazebo;
@@ -184,36 +182,25 @@ bool NetworkManagerSecondary::StepService(
   }
 
   // Update affinities
+  // TODO(louise) Make PerformerAffinity message incremental instead of absolute
   for (int i = 0; i < _req.affinity_size(); ++i)
   {
     const auto &affinityMsg = _req.affinity(i);
     const auto &entityId = affinityMsg.entity().id();
 
-    auto pid = this->dataPtr->ecm->Component<components::ParentEntity>(entityId);
-
     this->dataPtr->ecm->CreateComponent(entityId,
       components::PerformerAffinity(affinityMsg.secondary_prefix()));
-
-    // TODO(louise) Remove instead of setting static, and then
-    // PerformerActive is not needed
-    auto isStatic =
-        this->dataPtr->ecm->Component<components::Static>(pid->Data());
-    auto isActive =
-        this->dataPtr->ecm->Component<components::PerformerActive>(entityId);
 
     if (affinityMsg.secondary_prefix() == this->Namespace())
     {
       this->performers.insert(entityId);
-      *isStatic = components::Static(false);
-      *isActive = components::PerformerActive(true);
       igndbg << "Secondary [" << this->Namespace()
              << "] assigned affinity to performer [" << entityId << "]."
              << std::endl;
     }
     else
     {
-      *isStatic = components::Static(true);
-      *isActive = components::PerformerActive(false);
+      this->dataPtr->ecm->RequestRemoveEntity(entityId);
     }
   }
 
