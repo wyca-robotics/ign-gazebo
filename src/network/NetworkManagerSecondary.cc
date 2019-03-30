@@ -82,6 +82,7 @@ NetworkManagerSecondary::NetworkManagerSecondary(
         [this]()
     {
       this->stopReceived = true;
+      this->stepComplete = true;
     });
 
     this->dataPtr->peerRemovedConn = eventMgr->Connect<PeerRemoved>(
@@ -137,7 +138,7 @@ bool NetworkManagerSecondary::Step(UpdateInfo &)
   auto timeout = std::chrono::system_clock::now() + std::chrono::seconds(5);
   auto status = this->stepCv.wait_until(lock, timeout, [this]()
   {
-    return this->stepComplete;
+    return this->stepComplete == true;
   });
 
   if (!status)
@@ -170,13 +171,9 @@ bool NetworkManagerSecondary::StepService(
 {
   IGN_PROFILE("NetworkManagerSecondary::StepService");
 
-  // Wait for previous step to complete first
+  // Wait for previous step to complete first ?
+//  while (this->stepComplete)
 //  {
-//    std::unique_lock<std::mutex> lock(this->stepMutex);
-//    if (this->stepComplete)
-//    {
-//      ignerr << "Step complete before starting" << std::endl;
-//    }
 //  }
 
   // Throttle the number of step messages going to the debug output.
@@ -245,7 +242,7 @@ bool NetworkManagerSecondary::StepService(
   // Finish step
   {
     std::unique_lock<std::mutex> lock(this->stepMutex);
-    this->stepComplete = false;
+    this->stepComplete = true;
     lock.unlock();
     this->stepCv.notify_all();
   }

@@ -89,7 +89,7 @@ namespace ignition
       /// \brief Transport node used for communication with simulation graph.
       private: ignition::transport::Node node;
 
-      private: bool stepComplete{true};
+      private: std::atomic<bool> stepComplete{true};
 
       /// \brief Collection of performers associated with this secondary.
       private: std::unordered_set<Entity> performers;
