@@ -134,7 +134,8 @@ bool NetworkManagerSecondary::Step(UpdateInfo &)
 
   std::unique_lock<std::mutex> lock(this->stepMutex);
   this->stepComplete = false;
-  auto status = this->stepCv.wait_for(lock, std::chrono::seconds(5), [this]()
+  auto timeout = std::chrono::system_clock::now() + std::chrono::seconds(5);
+  auto status = this->stepCv.wait_until(lock, timeout, [this]()
   {
     return this->stepComplete;
   });

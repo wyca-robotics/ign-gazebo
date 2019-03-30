@@ -211,6 +211,13 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
 
   // TODO(louise): send performer states for new affinities
 
+  // Check all secondaries are ready to receive steps - only do this once at
+  // startup
+  if (!this->SecondariesCanStep())
+  {
+    return false;
+  }
+
   // Send step to all secondaries in parallel
   this->secondaryStates.clear();
   for (const auto &secondary : this->secondaries)
@@ -263,5 +270,39 @@ void NetworkManagerPrimary::OnStepResponse(
 {
   if (_result)
     this->secondaryStates.push_back(_res);
+}
+
+//////////////////////////////////////////////////
+bool NetworkManagerPrimary::SecondariesCanStep() const
+{
+  static bool allAvailable{false};
+
+  // Only check until it's true
+  if (allAvailable)
+    return true;
+
+  for (const auto &secondary : this->secondaries)
+  {
+    std::string service{secondary.second->prefix + "/step"};
+
+    std::vector<transport::ServicePublisher> publishers;
+    for (size_t i = 0; i < 50; ++i)
+    {
+      this->node.ServiceInfo(service, publishers);
+      if (!publishers.empty())
+        break;
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    if (publishers.empty())
+    {
+      ignwarn << "Can't step, service [" << service << "] not available."
+              << std::endl;
+      return false;
+    }
+  }
+
+  allAvailable = true;
+  return true;
 }
 

@@ -87,6 +87,8 @@ namespace ignition
       private: void OnStepResponse(const msgs::SerializedState &_res,
           const bool _result);
 
+      private: bool SecondariesCanStep() const;
+
       /// \brief Container of currently used secondary peers
       private: std::map<std::string, SecondaryControl::Ptr> secondaries;
 
