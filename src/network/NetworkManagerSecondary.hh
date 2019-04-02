@@ -72,6 +72,9 @@ namespace ignition
           msgs::SerializedState &_res);
       private: void OnStep(const private_msgs::SimulationStep &_req);
 
+      private: bool Step(const private_msgs::SimulationStep &_in,
+          msgs::SerializedState &_out);
+
       private: void HandleAffinities(const private_msgs::SimulationStep &_req);
 
       /// \brief Mutex to protect currentStep data.
@@ -92,7 +95,6 @@ namespace ignition
       /// \brief Transport node used for communication with simulation graph.
       private: ignition::transport::Node node;
 
-      private: std::atomic<bool> stepComplete{true};
       private: ignition::transport::Node::Publisher stepAckPub;
 
       /// \brief Collection of performers associated with this secondary.

@@ -64,18 +64,18 @@ NetworkManagerSecondary::NetworkManagerSecondary(
   this->node.Subscribe("step", &NetworkManagerSecondary::OnStep, this);
 
 
-//  std::string stepService{this->Namespace() + "/step"};
-//  if (!this->node.Advertise(stepService, &NetworkManagerSecondary::StepService,
-//      this))
-//  {
-//    ignerr << "Error advertising Step service [" << stepService
-//           << "]" << std::endl;
-//  }
-//  else
-//  {
-//    igndbg << "Advertised Step service on [" << stepService << "]"
-//      << std::endl;
-//  }
+  std::string stepService{this->Namespace() + "/step"};
+  if (!this->node.Advertise(stepService, &NetworkManagerSecondary::StepService,
+      this))
+  {
+    ignerr << "Error advertising Step service [" << stepService
+           << "]" << std::endl;
+  }
+  else
+  {
+    igndbg << "Advertised Step service on [" << stepService << "]"
+      << std::endl;
+  }
 
   auto eventMgr = this->dataPtr->eventMgr;
   if (eventMgr)
@@ -85,7 +85,6 @@ NetworkManagerSecondary::NetworkManagerSecondary(
         [this]()
     {
       this->stopReceived = true;
-      this->stepComplete = true;
     });
 
     this->dataPtr->peerRemovedConn = eventMgr->Connect<PeerRemoved>(
@@ -137,19 +136,13 @@ bool NetworkManagerSecondary::Step(UpdateInfo &)
   }
 
   std::unique_lock<std::mutex> lock(this->stepMutex);
-  this->stepComplete = false;
-  auto timeout = std::chrono::system_clock::now() + std::chrono::seconds(5);
-  auto status = this->stepCv.wait_until(lock, timeout, [this]()
-  {
-    return this->stepComplete == true;
-  });
-
-  if (!status)
+  auto status = this->stepCv.wait_for(lock, std::chrono::seconds(5));
+  if (status == std::cv_status::timeout)
   {
     ignerr << "Timed out waiting for step to complete." << std::endl;
   }
 
-  return status;
+  return status == std::cv_status::no_timeout;
 }
 
 //////////////////////////////////////////////////
@@ -171,72 +164,9 @@ bool NetworkManagerSecondary::OnControl(const private_msgs::PeerControl &_req,
 void NetworkManagerSecondary::OnStep(
     const private_msgs::SimulationStep &_msg)
 {
-  IGN_PROFILE("NetworkManagerSecondary::OnStep");
-
-  // Wait for previous step to complete first ?
-//  while (this->stepComplete)
-//  {
-//  }
-
-  // Throttle the number of step messages going to the debug output.
-  if (!_msg.paused() && _msg.iteration() % 1000 == 0)
-  {
-    igndbg << "Network iterations: " << _msg.iteration()
-           << std::endl;
-  }
-
-  // Update affinities
-  // TODO(louise) Make PerformerAffinity message incremental instead of absolute
-  for (int i = 0; i < _msg.affinity_size(); ++i)
-  {
-    const auto &affinityMsg = _msg.affinity(i);
-    const auto &entityId = affinityMsg.entity().id();
-
-    this->dataPtr->ecm->CreateComponent(entityId,
-      components::PerformerAffinity(affinityMsg.secondary_prefix()));
-
-    if (affinityMsg.secondary_prefix() == this->Namespace())
-    {
-      this->performers.insert(entityId);
-      igndbg << "Secondary [" << this->Namespace()
-             << "] assigned affinity to performer [" << entityId << "]."
-             << std::endl;
-    }
-    else
-    {
-      this->dataPtr->ecm->RequestRemoveEntity(entityId);
-    }
-  }
-
-  // Update info
-  UpdateInfo info;
-  info.iterations = _msg.iteration();
-  info.paused = _msg.paused();
-  info.dt = std::chrono::steady_clock::duration(
-      std::chrono::nanoseconds(_msg.stepsize()));
-  info.simTime = std::chrono::steady_clock::duration(
-      std::chrono::seconds(_msg.simtime().sec()) +
-      std::chrono::nanoseconds(_msg.simtime().nsec()));
-
-  // Step runner
-  this->dataPtr->stepFunction(info);
-
-  // Update state with all the performer's models
-  std::unordered_set<Entity> models;
-  for (const auto &perf : this->performers)
-  {
-    models.insert(
-        this->dataPtr->ecm->Component<components::ParentEntity>(perf)->Data());
-  }
-  this->stepAckPub.Publish(this->dataPtr->ecm->State(models));
-
-  // Finish step
-  {
-    std::unique_lock<std::mutex> lock(this->stepMutex);
-    this->stepComplete = true;
-    lock.unlock();
-    this->stepCv.notify_all();
-  }
+  msgs::SerializedState out;
+  this->Step(_msg, out);
+  this->stepAckPub.Publish(out);
 }
 
 /////////////////////////////////////////////////
@@ -244,25 +174,28 @@ bool NetworkManagerSecondary::StepService(
     const private_msgs::SimulationStep &_req,
     msgs::SerializedState &_res)
 {
+  return this->Step(_req, _res);
+}
+
+/////////////////////////////////////////////////
+bool NetworkManagerSecondary::Step(
+    const private_msgs::SimulationStep &_in,
+    msgs::SerializedState &_out)
+{
   IGN_PROFILE("NetworkManagerSecondary::StepService");
 
-  // Wait for previous step to complete first ?
-//  while (this->stepComplete)
-//  {
-//  }
-
   // Throttle the number of step messages going to the debug output.
-  if (!_req.paused() && _req.iteration() % 1000 == 0)
+  if (!_in.paused() && _in.iteration() % 1000 == 0)
   {
-    igndbg << "Network iterations: " << _req.iteration()
+    igndbg << "Network iterations: " << _in.iteration()
            << std::endl;
   }
 
   // Update affinities
   // TODO(louise) Make PerformerAffinity message incremental instead of absolute
-  for (int i = 0; i < _req.affinity_size(); ++i)
+  for (int i = 0; i < _in.affinity_size(); ++i)
   {
-    const auto &affinityMsg = _req.affinity(i);
+    const auto &affinityMsg = _in.affinity(i);
     const auto &entityId = affinityMsg.entity().id();
 
     this->dataPtr->ecm->CreateComponent(entityId,
@@ -283,13 +216,16 @@ bool NetworkManagerSecondary::StepService(
 
   // Update info
   UpdateInfo info;
-  info.iterations = _req.iteration();
-  info.paused = _req.paused();
+  info.iterations = _in.iteration();
+  info.paused = _in.paused();
   info.dt = std::chrono::steady_clock::duration(
-      std::chrono::nanoseconds(_req.stepsize()));
+      std::chrono::nanoseconds(_in.stepsize()));
   info.simTime = std::chrono::steady_clock::duration(
-      std::chrono::seconds(_req.simtime().sec()) +
-      std::chrono::nanoseconds(_req.simtime().nsec()));
+      std::chrono::seconds(_in.simtime().sec()) +
+      std::chrono::nanoseconds(_in.simtime().nsec()));
+
+  // Step runner
+  this->dataPtr->stepFunction(info);
 
   // Update state with all the performer's models
   std::unordered_set<Entity> models;
@@ -298,15 +234,11 @@ bool NetworkManagerSecondary::StepService(
     models.insert(
         this->dataPtr->ecm->Component<components::ParentEntity>(perf)->Data());
   }
-  _res = this->dataPtr->ecm->State(models);
-
-  // Step runner
-  this->dataPtr->stepFunction(info);
+  _out = this->dataPtr->ecm->State(models);
 
   // Finish step
   {
     std::unique_lock<std::mutex> lock(this->stepMutex);
-    this->stepComplete = true;
     lock.unlock();
     this->stepCv.notify_all();
   }
