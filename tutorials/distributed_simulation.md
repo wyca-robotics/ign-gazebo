@@ -76,7 +76,7 @@ The secondary instances will only read the role command line option
 
 **WARNING:** Environment variables for distributed simulation configuration
 is deprecated in version 2.x.x of Ignition Gazebo. Please use the
-command-line options instead. 
+command-line options instead.
 
 The primary instance will read several environment variables to dictate its behavior.
 
