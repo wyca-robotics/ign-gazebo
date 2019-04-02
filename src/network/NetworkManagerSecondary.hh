@@ -70,6 +70,7 @@ namespace ignition
       /// \param[out] _res
       private: bool StepService(const private_msgs::SimulationStep &_req,
           msgs::SerializedState &_res);
+      private: void OnStep(const private_msgs::SimulationStep &_req);
 
       private: void HandleAffinities(const private_msgs::SimulationStep &_req);
 
@@ -92,6 +93,7 @@ namespace ignition
       private: ignition::transport::Node node;
 
       private: std::atomic<bool> stepComplete{true};
+      private: ignition::transport::Node::Publisher stepAckPub;
 
       /// \brief Collection of performers associated with this secondary.
       private: std::unordered_set<Entity> performers;

@@ -86,6 +86,7 @@ namespace ignition
       /// \param[in] _result False if failed.
       private: void OnStepResponse(const msgs::SerializedState &_res,
           const bool _result);
+      private: void OnStepAck(const msgs::SerializedState &_res);
 
       private: bool SecondariesCanStep() const;
       private: void PopulateAffinities(private_msgs::SimulationStep &_msg);

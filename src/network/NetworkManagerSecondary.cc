@@ -59,18 +59,23 @@ NetworkManagerSecondary::NetworkManagerSecondary(
       << std::endl;
   }
 
-  std::string stepService{this->Namespace() + "/step"};
-  if (!this->node.Advertise(stepService, &NetworkManagerSecondary::StepService,
-      this))
-  {
-    ignerr << "Error advertising Step service [" << stepService
-           << "]" << std::endl;
-  }
-  else
-  {
-    igndbg << "Advertised Step service on [" << stepService << "]"
-      << std::endl;
-  }
+  this->stepAckPub = this->node.Advertise<msgs::SerializedState>("step_ack");
+
+  this->node.Subscribe("step", &NetworkManagerSecondary::OnStep, this);
+
+
+//  std::string stepService{this->Namespace() + "/step"};
+//  if (!this->node.Advertise(stepService, &NetworkManagerSecondary::StepService,
+//      this))
+//  {
+//    ignerr << "Error advertising Step service [" << stepService
+//           << "]" << std::endl;
+//  }
+//  else
+//  {
+//    igndbg << "Advertised Step service on [" << stepService << "]"
+//      << std::endl;
+//  }
 
   auto eventMgr = this->dataPtr->eventMgr;
   if (eventMgr)
@@ -160,6 +165,78 @@ bool NetworkManagerSecondary::OnControl(const private_msgs::PeerControl &_req,
   this->enableSim = _req.enable_sim();
   _resp.set_enable_sim(this->enableSim);
   return true;
+}
+
+/////////////////////////////////////////////////
+void NetworkManagerSecondary::OnStep(
+    const private_msgs::SimulationStep &_msg)
+{
+  IGN_PROFILE("NetworkManagerSecondary::OnStep");
+
+  // Wait for previous step to complete first ?
+//  while (this->stepComplete)
+//  {
+//  }
+
+  // Throttle the number of step messages going to the debug output.
+  if (!_msg.paused() && _msg.iteration() % 1000 == 0)
+  {
+    igndbg << "Network iterations: " << _msg.iteration()
+           << std::endl;
+  }
+
+  // Update affinities
+  // TODO(louise) Make PerformerAffinity message incremental instead of absolute
+  for (int i = 0; i < _msg.affinity_size(); ++i)
+  {
+    const auto &affinityMsg = _msg.affinity(i);
+    const auto &entityId = affinityMsg.entity().id();
+
+    this->dataPtr->ecm->CreateComponent(entityId,
+      components::PerformerAffinity(affinityMsg.secondary_prefix()));
+
+    if (affinityMsg.secondary_prefix() == this->Namespace())
+    {
+      this->performers.insert(entityId);
+      igndbg << "Secondary [" << this->Namespace()
+             << "] assigned affinity to performer [" << entityId << "]."
+             << std::endl;
+    }
+    else
+    {
+      this->dataPtr->ecm->RequestRemoveEntity(entityId);
+    }
+  }
+
+  // Update info
+  UpdateInfo info;
+  info.iterations = _msg.iteration();
+  info.paused = _msg.paused();
+  info.dt = std::chrono::steady_clock::duration(
+      std::chrono::nanoseconds(_msg.stepsize()));
+  info.simTime = std::chrono::steady_clock::duration(
+      std::chrono::seconds(_msg.simtime().sec()) +
+      std::chrono::nanoseconds(_msg.simtime().nsec()));
+
+  // Step runner
+  this->dataPtr->stepFunction(info);
+
+  // Update state with all the performer's models
+  std::unordered_set<Entity> models;
+  for (const auto &perf : this->performers)
+  {
+    models.insert(
+        this->dataPtr->ecm->Component<components::ParentEntity>(perf)->Data());
+  }
+  this->stepAckPub.Publish(this->dataPtr->ecm->State(models));
+
+  // Finish step
+  {
+    std::unique_lock<std::mutex> lock(this->stepMutex);
+    this->stepComplete = true;
+    lock.unlock();
+    this->stepCv.notify_all();
+  }
 }
 
 /////////////////////////////////////////////////

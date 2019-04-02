@@ -49,6 +49,10 @@ NetworkManagerPrimary::NetworkManagerPrimary(
   NetworkManager(_stepFunction, _ecm, _eventMgr, _config, _options),
   node(_options)
 {
+  this->simStepPub = this->node.Advertise<private_msgs::SimulationStep>("step");
+
+  this->node.Subscribe("step_ack", &NetworkManagerPrimary::OnStepAck, this);
+
   auto eventMgr = this->dataPtr->eventMgr;
   if (eventMgr)
   {
@@ -171,11 +175,12 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
 
   // Send step to all secondaries in parallel
   this->secondaryStates.clear();
-  for (const auto &secondary : this->secondaries)
-  {
-    this->node.Request(secondary.second->prefix + "/step", step,
-        &NetworkManagerPrimary::OnStepResponse, this);
-  }
+//  for (const auto &secondary : this->secondaries)
+//  {
+//    this->node.Request(secondary.second->prefix + "/step", step,
+//        &NetworkManagerPrimary::OnStepResponse, this);
+//  }
+    this->simStepPub.Publish(step);
 
   // Block until all secondaries are done
   {
@@ -216,6 +221,13 @@ std::map<std::string, SecondaryControl::Ptr>
 }
 
 //////////////////////////////////////////////////
+void NetworkManagerPrimary::OnStepAck(
+    const msgs::SerializedState &_msg)
+{
+  this->secondaryStates.push_back(_msg);
+}
+
+//////////////////////////////////////////////////
 void NetworkManagerPrimary::OnStepResponse(
     const msgs::SerializedState &_res, const bool _result)
 {
@@ -232,26 +244,26 @@ bool NetworkManagerPrimary::SecondariesCanStep() const
   if (allAvailable)
     return true;
 
-  for (const auto &secondary : this->secondaries)
-  {
-    std::string service{secondary.second->prefix + "/step"};
-
-    std::vector<transport::ServicePublisher> publishers;
-    for (size_t i = 0; i < 50; ++i)
-    {
-      this->node.ServiceInfo(service, publishers);
-      if (!publishers.empty())
-        break;
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-
-    if (publishers.empty())
-    {
-      ignwarn << "Can't step, service [" << service << "] not available."
-              << std::endl;
-      return false;
-    }
-  }
+//  for (const auto &secondary : this->secondaries)
+//  {
+//    std::string service{secondary.second->prefix + "/step"};
+//
+//    std::vector<transport::ServicePublisher> publishers;
+//    for (size_t i = 0; i < 50; ++i)
+//    {
+//      this->node.ServiceInfo(service, publishers);
+//      if (!publishers.empty())
+//        break;
+//      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//    }
+//
+//    if (publishers.empty())
+//    {
+//      ignwarn << "Can't step, service [" << service << "] not available."
+//              << std::endl;
+//      return false;
+//    }
+//  }
 
   allAvailable = true;
   return true;
