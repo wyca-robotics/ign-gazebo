@@ -32,23 +32,6 @@ using namespace std::chrono_literals;
 uint64_t kIterations;
 
 /////////////////////////////////////////////////
-// Send a world control message.
-void worldControl(bool _paused, uint64_t _steps)
-{
-  std::function<void(const ignition::msgs::Boolean &, const bool)> cb =
-      [&](const ignition::msgs::Boolean &/*_rep*/, const bool _result)
-  {
-    EXPECT_TRUE(_result);
-  };
-
-  ignition::msgs::WorldControl req;
-  req.set_pause(_paused);
-  req.set_multi_step(_steps);
-  transport::Node node;
-  node.Request("/world/default/control", req, cb);
-}
-
-/////////////////////////////////////////////////
 // Get the current paused state from the world stats message
 uint64_t testPaused(bool _paused)
 {
@@ -69,38 +52,24 @@ uint64_t testPaused(bool _paused)
 
   std::unique_lock<std::mutex> lock(mutex);
   node.Subscribe("/world/default/stats", cb);
-  condition.wait(lock);
+  auto success = condition.wait_for(lock, std::chrono::seconds(1));
+  EXPECT_EQ(std::cv_status::no_timeout, success);
   EXPECT_EQ(_paused, paused);
   return iterations;
 }
 
 /////////////////////////////////////////////////
-// Get the current iteration count from the world stats message
-uint64_t iterations()
+class NetworkHandshake : public ::testing::Test
 {
-  std::condition_variable condition;
-  std::mutex mutex;
-  transport::Node node;
-  uint64_t iterations = 0;
-
-  std::function<void(const ignition::msgs::WorldStatistics &)> cb =
-      [&](const ignition::msgs::WorldStatistics &_msg)
+  // Documentation inherited
+  protected: void SetUp() override
   {
-    std::unique_lock<std::mutex> lock(mutex);
-    iterations = _msg.iterations();
-    condition.notify_all();
-  };
-
-  std::unique_lock<std::mutex> lock(mutex);
-  node.Subscribe("/world/default/stats", cb);
-  condition.wait(lock);
-  return iterations;
-}
+    common::Console::SetVerbosity(4);
+  }
+};
 
 /////////////////////////////////////////////////
-// Only on Linux for the moment
-#ifdef  __linux__
-TEST(NetworkHandshake, Handshake)
+TEST_F(NetworkHandshake, Handshake)
 {
   ServerConfig serverConfig;
   serverConfig.SetSdfString(TestWorldSansPhysics::World());
@@ -121,7 +90,8 @@ TEST(NetworkHandshake, Handshake)
 
   auto testFcn = [&](Server *_server)
   {
-    _server->Run(false);
+    // Run for a finite number of iterations
+    _server->Run(false, 10, true);
 
     // The server should start paused.
     uint64_t iterations = testPaused(true);
@@ -150,10 +120,8 @@ TEST(NetworkHandshake, Handshake)
 }
 
 /////////////////////////////////////////////////
-TEST(NetworkHandshake, Updates)
+TEST_F(NetworkHandshake, Updates)
 {
-  common::Console::SetVerbosity(4);
-
   auto pluginElem = std::make_shared<sdf::Element>();
   pluginElem->SetName("plugin");
   pluginElem->AddAttribute("name", "string", "required_but_ignored", true);
@@ -242,7 +210,9 @@ TEST(NetworkHandshake, Updates)
 
   // Check model was falling (physics simulated by secondary)
   if (zPos.size() >= 100u)
+  {
     EXPECT_GT(zPos[0], zPos[99]);
+  }
 
   // Finish server threads
   testRunning = false;
@@ -253,4 +223,3 @@ TEST(NetworkHandshake, Updates)
   serverPrimary.reset();
   serverSecondary1.reset();
 }
-#endif  // __linux__
