@@ -74,6 +74,16 @@ ign_find_package (Qt5
 
 #--------------------------------------
 # Find ignition-physics
+# problems compiling dart on Windows. Workaround to be able to
+# compile the software until dartsim is fixed.
+if(WIN32)
+ign_find_package(ignition-physics1
+  COMPONENTS
+    mesh
+    sdf
+  REQUIRED
+  VERSION 1.1)
+else()
 ign_find_package(ignition-physics1
   COMPONENTS
     mesh
@@ -82,6 +92,7 @@ ign_find_package(ignition-physics1
     dartsim-plugin
   REQUIRED
   VERSION 1.1)
+endif()
 set(IGN_PHYSICS_VER ${ignition-physics1_VERSION_MAJOR})
 
 #--------------------------------------
