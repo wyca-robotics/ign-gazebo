@@ -90,6 +90,7 @@ namespace ignition
 
       private: bool SecondariesCanStep() const;
       private: void PopulateAffinities(private_msgs::SimulationStep &_msg);
+      private: std::unordered_set<Entity> Descendants(Entity _entity);
 
       /// \brief Container of currently used secondary peers
       private: std::map<std::string, SecondaryControl::Ptr> secondaries;

@@ -25,7 +25,6 @@
 #include <ignition/common/Profiler.hh>
 
 #include "ignition/gazebo/components/ParentEntity.hh"
-#include "ignition/gazebo/components/PerformerAffinity.hh"
 #include "ignition/gazebo/Entity.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
 #include "ignition/gazebo/Events.hh"
@@ -192,28 +191,26 @@ bool NetworkManagerSecondary::Step(
   }
 
   // Update affinities
-  // TODO(louise) Make PerformerAffinity message incremental instead of absolute
   for (int i = 0; i < _in.affinity_size(); ++i)
   {
     const auto &affinityMsg = _in.affinity(i);
     const auto &entityId = affinityMsg.entity().id();
 
-    this->dataPtr->ecm->CreateComponent(entityId,
-      components::PerformerAffinity(affinityMsg.secondary_prefix()));
-
     if (affinityMsg.secondary_prefix() == this->Namespace())
     {
       this->performers.insert(entityId);
+
+      this->dataPtr->ecm->SetState(affinityMsg.state());
+
       igndbg << "Secondary [" << this->Namespace()
              << "] assigned affinity to performer [" << entityId << "]."
              << std::endl;
-
-      // TODO(louise) Create new performer entity using SDF file + state
-      // received
     }
+    // If performer has been assigned to another secondary, remove it
     else
     {
       this->dataPtr->ecm->RequestRemoveEntity(entityId);
+      this->performers.erase(entityId);
     }
   }
 

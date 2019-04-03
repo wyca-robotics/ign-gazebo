@@ -20,16 +20,20 @@ syntax = "proto3";
 package ignition.gazebo.private_msgs;
 
 import "ignition/msgs/entity.proto";
+import "ignition/msgs/serialized.proto";
 
 /// \brief Message to contain information about one performer's distributed
 /// simulation affinity.
 message PerformerAffinity
 {
-  /// \brief Information about the performer entity.
+  /// \brief Performer entity
   ignition.msgs.Entity entity = 1;
 
   /// \brief Prefix used to communicate with the secondary.
   string secondary_prefix = 2;
+
+  /// \brief State of performer model and all its child entities.
+  ignition.msgs.SerializedState state = 3;
 }
 
 /// \brief Message containing an array of performer affinities.
