@@ -207,6 +207,9 @@ bool NetworkManagerSecondary::Step(
       igndbg << "Secondary [" << this->Namespace()
              << "] assigned affinity to performer [" << entityId << "]."
              << std::endl;
+
+      // TODO(louise) Create new performer entity using SDF file + state
+      // received
     }
     else
     {
@@ -231,8 +234,15 @@ bool NetworkManagerSecondary::Step(
   std::unordered_set<Entity> models;
   for (const auto &perf : this->performers)
   {
-    models.insert(
-        this->dataPtr->ecm->Component<components::ParentEntity>(perf)->Data());
+    auto parent = this->dataPtr->ecm->Component<components::ParentEntity>(perf);
+    if (parent == nullptr)
+    {
+      ignerr << "Failed to get parent for performer [" << perf << "]"
+             << std::endl;
+      continue;
+    }
+
+    models.insert(parent->Data());
   }
   _out = this->dataPtr->ecm->State(models);
 

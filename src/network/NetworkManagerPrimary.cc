@@ -34,6 +34,7 @@
 #include "ignition/gazebo/EntityComponentManager.hh"
 #include "ignition/gazebo/Events.hh"
 
+#include "../components/PerformerLevels.hh"
 #include "NetworkManagerPrimary.hh"
 #include "NetworkManagerPrivate.hh"
 #include "PeerTracker.hh"
@@ -281,47 +282,167 @@ bool NetworkManagerPrimary::SecondariesCanStep() const
 void NetworkManagerPrimary::PopulateAffinities(
     private_msgs::SimulationStep &_msg)
 {
-  auto secondaryIt = this->secondaries.begin();
+  // p: performer
+  // l: level
+  // s: secondary
 
-  // TODO(louise) Asign affinities according to level changes instead of
-  // round-robin
-  static bool tmpShortCut{false};
-  if (tmpShortCut)
-    return;
-  tmpShortCut = true;
+
+  // Group performers per level
+  std::map<Entity, std::vector<Entity>> lToPNew;
+
+  // Current performer to secondary mapping
+  std::map<Entity, std::string> pToSPrevious;
+
+  // Current level to secondary result
+  std::map<Entity, std::vector<std::string>> lToSNew;
+
+  std::vector<Entity> performers;
 
   // Go through performers and assign affinities
-  this->dataPtr->ecm->Each<components::Performer, components::ParentEntity>(
+  this->dataPtr->ecm->Each<
+        components::Performer,
+        components::PerformerLevels>(
     [&](const Entity &_entity,
         const components::Performer *,
-        const components::ParentEntity *_parent) -> bool
+        const components::PerformerLevels *_perfLevels) -> bool
     {
-      auto pid = _parent->Data();
-      auto parentName = this->dataPtr->ecm->Component<components::Name>(pid);
-      if (!parentName)
+      performers.push_back(_entity);
+
+      // Get current affinity
+      auto currentAffinityComp =
+          this->dataPtr->ecm->Component<components::PerformerAffinity>(_entity);
+      if (currentAffinityComp)
       {
-        ignerr << "Internal error: entity [" << _entity
-               << "]'s parent missing name." << std::endl;
-        return true;
+        pToSPrevious[_entity] = currentAffinityComp->Data();
       }
 
-      auto affinityMsg = _msg.add_affinity();
-      affinityMsg->mutable_entity()->set_name(parentName->Data());
-      affinityMsg->mutable_entity()->set_id(_entity);
-      affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
+      for (const auto &level : _perfLevels->Data())
+      {
+        lToPNew[level].push_back(_entity);
+        if (currentAffinityComp)
+        {
+          lToSNew[level].push_back(currentAffinityComp->Data());
+        }
+      }
 
-      // TODO(louise) Set affinity according to levels, not round-robin
-      this->dataPtr->ecm->CreateComponent(_entity,
-          components::PerformerAffinity(secondaryIt->second->prefix));
+      return true;
+    });
 
+  // First assignment: distribute levels evenly across secondaries
+  if (pToSPrevious.empty())
+  {
+    std::vector<Entity> assignedPerformers;
+    auto secondaryIt = this->secondaries.begin();
+    for (auto [level, performers] : lToPNew)
+    {
+      for (const auto &performer : performers)
+      {
+        // Add to message
+        auto affinityMsg = _msg.add_affinity();
+        affinityMsg->mutable_entity()->set_id(performer);
+        affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
+
+        // Set component
+        this->dataPtr->ecm->CreateComponent(performer,
+            components::PerformerAffinity(secondaryIt->second->prefix));
+
+        assignedPerformers.push_back(performer);
+      }
+
+      // Round-robin levels
       secondaryIt++;
       if (secondaryIt == this->secondaries.end())
       {
         secondaryIt = this->secondaries.begin();
       }
+    }
 
-      return true;
-    });
+    // Also assign level-less performers
+    for (auto performer : performers)
+    {
+      if (std::find(assignedPerformers.begin(), assignedPerformers.end(), performer) != assignedPerformers.end())
+        continue;
+
+      // Add to message
+      auto affinityMsg = _msg.add_affinity();
+      affinityMsg->mutable_entity()->set_id(performer);
+      affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
+
+      // Set component
+      this->dataPtr->ecm->CreateComponent(performer,
+          components::PerformerAffinity(secondaryIt->second->prefix));
+
+      // Round-robin levels
+      secondaryIt++;
+      if (secondaryIt == this->secondaries.end())
+      {
+        secondaryIt = this->secondaries.begin();
+      }
+    }
+    return;
+  }
+
+  if (pToSPrevious.size() != performers.size())
+  {
+    ignerr << "There are [" << performers.size()
+           << "] performers in total, but [" << pToSPrevious.size()
+           << "] performers have been assigned secondaries." << std::endl;
+    return;
+  }
+
+  // Check for level changes
+  for (auto [level, secondaries] : lToSNew)
+  {
+    // Level is only in one secondary, all good
+    if (secondaries.size() <= 1)
+      continue;
+
+    igndbg << "Level [" << level << "] is in multiple secondaries" << std::endl;
+
+    // Count how many performers in this level are already in each secondary
+    std::map<std::string, int> secondaryCounts;
+    for (auto performer : lToPNew[level])
+    {
+      secondaryCounts[pToSPrevious[performer]]++;
+    }
+
+    // Choose to keep the level in the secondary with the most performers.
+    // If the numbers are the same, any can be chosen.
+    std::string chosenSecondary;
+    int maxCount{0};
+    for (auto [secondary, count] : secondaryCounts)
+    {
+      if (count > maxCount)
+      {
+        chosenSecondary = secondary;
+        maxCount = count;
+      }
+    }
+
+    // For each performer in this level, move them to the chosen secondary if
+    // not there yet.
+    for (auto performer : lToPNew[level])
+    {
+      auto prevSecondary = pToSPrevious[performer];
+      if (prevSecondary == chosenSecondary)
+        continue;
+
+      igndbg << "Reassigning performer [" << performer << "] from secondary ["
+             << prevSecondary << "] to secondary [" << chosenSecondary << "]"
+             << std::endl;
+
+      // Add new affinity
+      auto affinityMsg = _msg.add_affinity();
+      affinityMsg->mutable_entity()->set_id(performer);
+      affinityMsg->set_secondary_prefix(chosenSecondary);
+
+      // TODO(louise) Remove previous affinity - must change message
+
+      // Set component
+      this->dataPtr->ecm->CreateComponent(performer,
+          components::PerformerAffinity(chosenSecondary));
+    }
+  }
 
   // TODO(louise): send performer states for new affinities
 }
