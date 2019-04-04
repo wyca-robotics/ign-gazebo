@@ -114,8 +114,7 @@ SimulationRunner::SimulationRunner(const sdf::World *_world,
   {
     if (_config.NetworkRole().empty())
     {
-      /// \todo(nkoenig) Add deprecation warning in ign-gazebo2, and remove
-      /// part of the 'if' statement in ign-gazebo3.
+      /// \todo(nkoenig) Remove part of the 'if' statement in ign-gazebo3.
       this->networkMgr = NetworkManager::Create(
           std::bind(&SimulationRunner::Step, this, std::placeholders::_1),
           this->entityCompMgr, &this->eventMgr);
