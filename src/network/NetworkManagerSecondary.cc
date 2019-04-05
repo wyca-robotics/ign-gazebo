@@ -200,8 +200,6 @@ bool NetworkManagerSecondary::Step(
     {
       this->performers.insert(entityId);
 
-igndbg << affinityMsg.state().DebugString() << std::endl;
-
       this->dataPtr->ecm->SetState(affinityMsg.state());
 
       igndbg << "Secondary [" << this->Namespace()
@@ -211,8 +209,17 @@ igndbg << affinityMsg.state().DebugString() << std::endl;
     // If performer has been assigned to another secondary, remove it
     else
     {
-      this->dataPtr->ecm->RequestRemoveEntity(entityId);
-      this->performers.erase(entityId);
+      auto parent =
+          this->dataPtr->ecm->Component<components::ParentEntity>(entityId);
+      this->dataPtr->ecm->RequestRemoveEntity(parent->Data());
+
+      if (this->performers.find(entityId) != this->performers.end())
+      {
+        igndbg << "Secondary [" << this->Namespace()
+               << "] unassigned affinity to performer [" << entityId << "]."
+               << std::endl;
+        this->performers.erase(entityId);
+      }
     }
   }
 

@@ -276,7 +276,7 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
   _ecm.EachNew<components::Model, components::Name, components::Pose,
             components::ParentEntity>(
       [&](const Entity &_entity,
-          const components::Model * /* _model */,
+          const components::Model *,
           const components::Name *_name,
           const components::Pose *_pose,
           const components::ParentEntity *_parent)->bool
