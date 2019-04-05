@@ -200,6 +200,8 @@ bool NetworkManagerSecondary::Step(
     {
       this->performers.insert(entityId);
 
+igndbg << affinityMsg.state().DebugString() << std::endl;
+
       this->dataPtr->ecm->SetState(affinityMsg.state());
 
       igndbg << "Secondary [" << this->Namespace()
