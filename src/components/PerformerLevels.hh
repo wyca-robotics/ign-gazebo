@@ -14,11 +14,9 @@
  * limitations under the License.
  *
  */
-#ifndef IGNITION_GAZEBO_COMPONENTS_LEVELENTITYNAMES_HH_
-#define IGNITION_GAZEBO_COMPONENTS_LEVELENTITYNAMES_HH_
+#ifndef IGNITION_GAZEBO_COMPONENTS_PERFORMERLEVELS_HH_
+#define IGNITION_GAZEBO_COMPONENTS_PERFORMERLEVELS_HH_
 
-#include <iterator>
-#include <string>
 #include <set>
 #include <ignition/gazebo/config.hh>
 #include <ignition/gazebo/Export.hh>
@@ -34,33 +32,30 @@ namespace gazebo
 inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
 namespace components
 {
-  /// \brief A derived class `LevelEntityNames` is used below so that the
-  /// `*Serialize` functions can be overridden. An alternative would be to
-  /// create custom stream operators.
-  using LevelEntityNamesBase =
-      Component<std::set<std::string>, class LevelEntityNamesTag>;
+  /// \brief Base class which can be extended to add serialization
+  using PerformerLevelsBase =
+      Component<std::set<Entity>, class PerformerLevelsTag>;
 
-  /// \brief A component that holds a list of names of entities to be loaded in
-  /// a level.
-  class LevelEntityNames : public LevelEntityNamesBase
+  /// \brief This component holds an entity's geometry.
+  class PerformerLevels : public PerformerLevelsBase
   {
     // Documentation inherited
-    public: LevelEntityNames() : LevelEntityNamesBase()
+    public: PerformerLevels() : PerformerLevelsBase()
     {
     }
 
     // Documentation inherited
-    public: explicit LevelEntityNames(const std::set<std::string> &_data)
-      : LevelEntityNamesBase(_data)
+    public: explicit PerformerLevels(const std::set<Entity> &_data)
+      : PerformerLevelsBase(_data)
     {
     }
 
     // Documentation inherited
     public: void Serialize(std::ostream &_out) const override
     {
-      for (const auto &entity : this->Data())
+      for (const auto &level : this->Data())
       {
-        _out << entity << " ";
+        _out << level << " ";
       }
     }
 
@@ -71,15 +66,15 @@ namespace components
 
       this->Data().clear();
 
-      for (auto it = std::istream_iterator<std::string>(_in);
-          it != std::istream_iterator<std::string>(); ++it)
+      for (auto it = std::istream_iterator<Entity>(_in);
+          it != std::istream_iterator<Entity>(); ++it)
       {
         this->Data().insert(*it);
       }
     }
   };
-  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.LevelEntityNames",
-      LevelEntityNames)
+  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.PerformerLevels",
+      PerformerLevels)
 }
 }
 }

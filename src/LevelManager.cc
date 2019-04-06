@@ -374,7 +374,7 @@ void LevelManager::UpdateLevelsState()
              pose->Data().Pos() - perfBox->Size() / 2,
              pose->Data().Pos() + perfBox->Size() / 2};
 
-        std::vector<Entity> newPerfLevels;
+        std::set<Entity> newPerfLevels;
 
         // loop through levels and check for intersections
         // Add all levels with inersections to the levelsToLoad even if they
@@ -402,7 +402,7 @@ void LevelManager::UpdateLevelsState()
 
                 if (region.Intersects(performerVolume))
                 {
-                  newPerfLevels.push_back(_entity);
+                  newPerfLevels.insert(_entity);
                   levelsToLoad.push_back(_entity);
                 }
                 else
@@ -413,7 +413,7 @@ void LevelManager::UpdateLevelsState()
                   {
                     if (outerRegion.Intersects(performerVolume))
                     {
-                      newPerfLevels.push_back(_entity);
+                      newPerfLevels.insert(_entity);
                       levelsToLoad.push_back(_entity);
                       return true;
                     }
@@ -505,6 +505,7 @@ void LevelManager::UpdateLevelsState()
   {
     if (!this->IsLevelActive(level))
     {
+      ignmsg << "Loaded level [" << level << "]" << std::endl;
       this->activeLevels.push_back(level);
     }
   }

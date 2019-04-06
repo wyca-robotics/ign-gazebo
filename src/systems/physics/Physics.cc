@@ -290,6 +290,8 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
           return true;
         }
 
+        // TODO(anyone) Don't load models unless they have collisions
+
         // Check if parent world exists
         // TODO(louise): Support nested models, see
         // https://bitbucket.org/ignitionrobotics/ign-physics/issues/10
@@ -334,6 +336,8 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
                   << std::endl;
           return true;
         }
+
+        // TODO(anyone) Don't load links unless they have collisions
 
         // Check if parent model exists
         if (this->entityModelMap.find(_parent->Data())
@@ -586,6 +590,8 @@ void PhysicsPrivate::Step(const std::chrono::steady_clock::duration &_dt)
 void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
 {
   IGN_PROFILE("PhysicsPrivate::UpdateSim");
+
+  // local pose
   _ecm.Each<components::Link, components::Pose, components::ParentEntity>(
       [&](const Entity &_entity, components::Link * /*_link*/,
           components::Pose *_pose, components::ParentEntity *_parent)->bool

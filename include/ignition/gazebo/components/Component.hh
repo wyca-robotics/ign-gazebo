@@ -212,6 +212,7 @@ namespace components
     public: friend std::ostream &operator<<(
                 std::ostream &_out, const BaseComponent &_component)
     {
+      // TODO(louise) This skips custom operators when using BaseComponent
       _component.Serialize(_out);
       return _out;
     }
@@ -403,6 +404,7 @@ namespace components
     public: friend std::ostream &operator<<(std::ostream &_out,
         const Component<NoData, Identifier> &)
     {
+      _out << "-";
       return _out;
     }
 
@@ -415,6 +417,12 @@ namespace components
     {
       return _in;
     }
+
+    // Documentation inherited
+    public: void Serialize(std::ostream &_out) const override;
+
+    // Documentation inherited
+    public: void Deserialize(std::istream &_in) override;
 
     // Documentation inherited
     public: ComponentTypeId TypeId() const override;
@@ -556,6 +564,19 @@ namespace components
   ComponentTypeId Component<NoData, Identifier>::TypeId() const
   {
     return typeId;
+  }
+
+  //////////////////////////////////////////////////
+  template <typename Identifier>
+  void Component<NoData, Identifier>::Serialize(std::ostream &_out) const
+  {
+    _out << "-";
+  }
+
+  //////////////////////////////////////////////////
+  template <typename Identifier>
+  void Component<NoData, Identifier>::Deserialize(std::istream &)
+  {
   }
 }
 }

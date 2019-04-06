@@ -108,7 +108,7 @@ void NetworkManagerPrimary::Handshake()
     {
       if (result)
       {
-        igndbg << "Peer initialized [" << sc->prefix << "]" << std::endl;
+        ignmsg << "Peer initialized [" << sc->prefix << "]" << std::endl;
         sc->ready = true;
       }
       else
@@ -167,16 +167,17 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
   // Affinities that changed this step
   this->PopulateAffinities(step);
 
+  auto useService{false};
+
   // Check all secondaries are ready to receive steps - only do this once at
   // startup
-  if (!this->SecondariesCanStep())
+  if (useService && !this->SecondariesCanStep())
   {
     return false;
   }
 
   // Send step to all secondaries in parallel
   this->secondaryStates.clear();
-  auto useService{false};
 
   if (useService)
   {
@@ -288,15 +289,15 @@ void NetworkManagerPrimary::PopulateAffinities(
 
 
   // Group performers per level
-  std::map<Entity, std::vector<Entity>> lToPNew;
+  std::map<Entity, std::set<Entity>> lToPNew;
 
   // Current performer to secondary mapping
   std::map<Entity, std::string> pToSPrevious;
 
   // Current level to secondary result
-  std::map<Entity, std::vector<std::string>> lToSNew;
+  std::map<Entity, std::set<std::string>> lToSNew;
 
-  std::vector<Entity> performers;
+  std::set<Entity> performers;
 
   // Go through performers and assign affinities
   this->dataPtr->ecm->Each<
@@ -306,7 +307,7 @@ void NetworkManagerPrimary::PopulateAffinities(
         const components::Performer *,
         const components::PerformerLevels *_perfLevels) -> bool
     {
-      performers.push_back(_entity);
+      performers.insert(_entity);
 
       // Get current affinity
       auto currentAffinityComp =
@@ -318,10 +319,10 @@ void NetworkManagerPrimary::PopulateAffinities(
 
       for (const auto &level : _perfLevels->Data())
       {
-        lToPNew[level].push_back(_entity);
+        lToPNew[level].insert(_entity);
         if (currentAffinityComp)
         {
-          lToSNew[level].push_back(currentAffinityComp->Data());
+          lToSNew[level].insert(currentAffinityComp->Data());
         }
       }
 
@@ -331,29 +332,15 @@ void NetworkManagerPrimary::PopulateAffinities(
   // First assignment: distribute levels evenly across secondaries
   if (pToSPrevious.empty())
   {
-    std::vector<Entity> assignedPerformers;
+    std::set<Entity> assignedPerformers;
     auto secondaryIt = this->secondaries.begin();
     for (auto [level, performers] : lToPNew)
     {
       for (const auto &performer : performers)
       {
-        // Get performer model entity and all its children
-        auto parentModel = this->dataPtr->ecm->Component<components::ParentEntity>(
-            performer)->Data();
-        auto entities = this->Descendants(parentModel);
-
-        // Add to message
-        auto affinityMsg = _msg.add_affinity();
-        affinityMsg->mutable_entity()->set_id(performer);
-        affinityMsg->mutable_state()->CopyFrom(
-            this->dataPtr->ecm->State(entities));
-        affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
-
-        // Set component
-        this->dataPtr->ecm->CreateComponent(performer,
-            components::PerformerAffinity(secondaryIt->second->prefix));
-
-        assignedPerformers.push_back(performer);
+        this->SetAffinity(performer, secondaryIt->second->prefix,
+            _msg.add_affinity());
+        assignedPerformers.insert(performer);
       }
 
       // Round-robin levels
@@ -367,24 +354,13 @@ void NetworkManagerPrimary::PopulateAffinities(
     // Also assign level-less performers
     for (auto performer : performers)
     {
-      if (std::find(assignedPerformers.begin(), assignedPerformers.end(), performer) != assignedPerformers.end())
+      if (std::find(assignedPerformers.begin(), assignedPerformers.end(),
+          performer) != assignedPerformers.end())
+      {
         continue;
+      }
 
-      // Get performer model entity and all its children
-      auto parentModel = this->dataPtr->ecm->Component<components::ParentEntity>(
-          performer)->Data();
-      auto entities = this->Descendants(parentModel);
-
-      // Add to message
-      auto affinityMsg = _msg.add_affinity();
-      affinityMsg->mutable_entity()->set_id(performer);
-      affinityMsg->mutable_state()->CopyFrom(
-          this->dataPtr->ecm->State(entities));
-      affinityMsg->set_secondary_prefix(secondaryIt->second->prefix);
-
-      // Set component
-      this->dataPtr->ecm->CreateComponent(performer,
-          components::PerformerAffinity(secondaryIt->second->prefix));
+      this->SetAffinity(performer, secondaryIt->second->prefix, _msg.add_affinity());
 
       // Round-robin levels
       secondaryIt++;
@@ -411,7 +387,11 @@ void NetworkManagerPrimary::PopulateAffinities(
     if (secondaries.size() <= 1)
       continue;
 
-    igndbg << "Level [" << level << "] is in multiple secondaries" << std::endl;
+    ignmsg << "Level [" << level << "] is in [" << secondaries.size()
+           << "] secondaries:";
+    for (auto s : secondaries)
+      std::cout << " [" << s << "] ";
+    std::cout << std::endl;
 
     // Count how many performers in this level are already in each secondary
     std::map<std::string, int> secondaryCounts;
@@ -441,37 +421,35 @@ void NetworkManagerPrimary::PopulateAffinities(
       if (prevSecondary == chosenSecondary)
         continue;
 
-      igndbg << "Reassigning performer [" << performer << "] from secondary ["
+      ignmsg << "Reassigning performer [" << performer << "] from secondary ["
              << prevSecondary << "] to secondary [" << chosenSecondary << "]"
              << std::endl;
 
-      // Get performer model entity and all its children
-      auto parentModel = this->dataPtr->ecm->Component<components::ParentEntity>(
-          performer)->Data();
-      auto entities = this->Descendants(parentModel);
-
       // Add new affinity
-      auto affinityMsg = _msg.add_affinity();
-      affinityMsg->mutable_entity()->set_id(performer);
-      affinityMsg->mutable_state()->CopyFrom(
-          this->dataPtr->ecm->State(entities));
-      affinityMsg->set_secondary_prefix(chosenSecondary);
-
-      // Set component
-      auto newAffinity = components::PerformerAffinity(chosenSecondary);
-      auto previousAffinity =
-          this->dataPtr->ecm->Component<components::PerformerAffinity>(
-          performer);
-      if (!previousAffinity)
-      {
-        this->dataPtr->ecm->CreateComponent(performer, newAffinity);
-      }
-      else
-      {
-        *previousAffinity = newAffinity;
-      }
+      this->SetAffinity(performer, chosenSecondary, _msg.add_affinity());
     }
   }
+}
+
+//////////////////////////////////////////////////
+void NetworkManagerPrimary::SetAffinity(Entity _performer,
+    const std::string &_secondary, private_msgs::PerformerAffinity *_msg)
+{
+  // Get performer model entity and all its children
+  auto parentModel = this->dataPtr->ecm->Component<components::ParentEntity>(
+      _performer)->Data();
+  auto entities = this->Descendants(parentModel);
+
+  // Populate message
+  _msg->mutable_entity()->set_id(_performer);
+  _msg->mutable_state()->CopyFrom(this->dataPtr->ecm->State(entities));
+  _msg->set_secondary_prefix(_secondary);
+
+  // Set component
+  this->dataPtr->ecm->RemoveComponent<components::PerformerAffinity>(_performer);
+
+  auto newAffinity = components::PerformerAffinity(_secondary);
+  this->dataPtr->ecm->CreateComponent(_performer, newAffinity);
 }
 
 //////////////////////////////////////////////////

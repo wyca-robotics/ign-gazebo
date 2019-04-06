@@ -62,19 +62,18 @@ NetworkManagerSecondary::NetworkManagerSecondary(
 
   this->node.Subscribe("step", &NetworkManagerSecondary::OnStep, this);
 
-
-  std::string stepService{this->Namespace() + "/step"};
-  if (!this->node.Advertise(stepService, &NetworkManagerSecondary::StepService,
-      this))
-  {
-    ignerr << "Error advertising Step service [" << stepService
-           << "]" << std::endl;
-  }
-  else
-  {
-    igndbg << "Advertised Step service on [" << stepService << "]"
-      << std::endl;
-  }
+//  std::string stepService{this->Namespace() + "/step"};
+//  if (!this->node.Advertise(stepService, &NetworkManagerSecondary::StepService,
+//      this))
+//  {
+//    ignerr << "Error advertising Step service [" << stepService
+//           << "]" << std::endl;
+//  }
+//  else
+//  {
+//    igndbg << "Advertised Step service on [" << stepService << "]"
+//      << std::endl;
+//  }
 
   auto eventMgr = this->dataPtr->eventMgr;
   if (eventMgr)
@@ -202,7 +201,7 @@ bool NetworkManagerSecondary::Step(
 
       this->dataPtr->ecm->SetState(affinityMsg.state());
 
-      igndbg << "Secondary [" << this->Namespace()
+      ignmsg << "Secondary [" << this->Namespace()
              << "] assigned affinity to performer [" << entityId << "]."
              << std::endl;
     }
@@ -215,7 +214,7 @@ bool NetworkManagerSecondary::Step(
 
       if (this->performers.find(entityId) != this->performers.end())
       {
-        igndbg << "Secondary [" << this->Namespace()
+        ignmsg << "Secondary [" << this->Namespace()
                << "] unassigned affinity to performer [" << entityId << "]."
                << std::endl;
         this->performers.erase(entityId);
@@ -250,7 +249,8 @@ bool NetworkManagerSecondary::Step(
 
     models.insert(parent->Data());
   }
-  _out = this->dataPtr->ecm->State(models);
+  if (!models.empty())
+    _out = this->dataPtr->ecm->State(models);
 
   // Finish step
   {

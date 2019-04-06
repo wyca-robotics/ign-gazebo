@@ -163,6 +163,7 @@ template<>
 msgs::Material ignition::gazebo::convert(const sdf::Material &_in)
 {
   msgs::Material out;
+  out.set_lighting(_in.Lighting());
   msgs::Set(out.mutable_ambient(), _in.Ambient());
   msgs::Set(out.mutable_diffuse(), _in.Diffuse());
   msgs::Set(out.mutable_specular(), _in.Specular());
@@ -175,6 +176,7 @@ template<>
 sdf::Material ignition::gazebo::convert(const msgs::Material &_in)
 {
   sdf::Material out;
+  out.SetLighting(_in.lighting());
   out.SetAmbient(msgs::Convert(_in.ambient()));
   out.SetDiffuse(msgs::Convert(_in.diffuse()));
   out.SetSpecular(msgs::Convert(_in.specular()));
