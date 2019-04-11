@@ -44,7 +44,7 @@ using namespace gazebo;
 
 //////////////////////////////////////////////////
 NetworkManagerPrimary::NetworkManagerPrimary(
-    std::function<void(UpdateInfo &_info)> _stepFunction,
+    std::function<void(const UpdateInfo &_info)> _stepFunction,
     EntityComponentManager &_ecm, EventManager *_eventMgr,
     const NetworkConfig &_config, const NodeOptions &_options):
   NetworkManager(_stepFunction, _ecm, _eventMgr, _config, _options),
@@ -137,9 +137,10 @@ bool NetworkManagerPrimary::Ready() const
 }
 
 //////////////////////////////////////////////////
-bool NetworkManagerPrimary::Step(UpdateInfo &_info)
+bool NetworkManagerPrimary::Step(const UpdateInfo &_info)
 {
   IGN_PROFILE("NetworkManagerPrimary::Step");
+
   // Check all secondaries have been registered
   bool ready = true;
   for (const auto &secondary : this->secondaries)
@@ -147,6 +148,7 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
     ready &= secondary.second->ready;
   }
 
+  // TODO(louise) Wait for peers to be ready in a loop?
   if (!ready)
   {
     ignerr << "Trying to step network primary before all peers are ready."
@@ -167,30 +169,16 @@ bool NetworkManagerPrimary::Step(UpdateInfo &_info)
   // Affinities that changed this step
   this->PopulateAffinities(step);
 
-  auto useService{false};
-
   // Check all secondaries are ready to receive steps - only do this once at
   // startup
-  if (useService && !this->SecondariesCanStep())
+  if (!this->SecondariesCanStep())
   {
     return false;
   }
 
-  // Send step to all secondaries in parallel
+  // Send step to all secondaries
   this->secondaryStates.clear();
-
-  if (useService)
-  {
-    for (const auto &secondary : this->secondaries)
-    {
-      this->node.Request(secondary.second->prefix + "/step", step,
-          &NetworkManagerPrimary::OnStepResponse, this);
-    }
-  }
-  else
-  {
-    this->simStepPub.Publish(step);
-  }
+  this->simStepPub.Publish(step);
 
   // Block until all secondaries are done
   {
@@ -238,42 +226,32 @@ void NetworkManagerPrimary::OnStepAck(
 }
 
 //////////////////////////////////////////////////
-void NetworkManagerPrimary::OnStepResponse(
-    const msgs::SerializedState &_res, const bool _result)
-{
-  if (_result)
-    this->secondaryStates.push_back(_res);
-}
-
-//////////////////////////////////////////////////
 bool NetworkManagerPrimary::SecondariesCanStep() const
 {
+  IGN_PROFILE("NetworkManagerPrimary::SecondariesCanStep");
+
   static bool allAvailable{false};
 
   // Only check until it's true
   if (allAvailable)
     return true;
 
-  for (const auto &secondary : this->secondaries)
-  {
-    std::string service{secondary.second->prefix + "/step"};
-
-    std::vector<transport::ServicePublisher> publishers;
-    for (size_t i = 0; i < 50; ++i)
-    {
-      this->node.ServiceInfo(service, publishers);
-      if (!publishers.empty())
-        break;
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-
-    if (publishers.empty())
-    {
-      ignwarn << "Can't step, service [" << service << "] not available."
-              << std::endl;
-      return false;
-    }
-  }
+//  std::vector<transport::Subscriber> subscribers;
+//  for (size_t i = 0; i < 50; ++i)
+//  {
+//    this->node.TopicInfo("step", subscribers);
+//    if (!subscribers.empty())
+//      break;
+//    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//  }
+//
+//  if (subscribers.size() < this->secondaries.size())
+//  {
+//    ignwarn << "Can't step, found only [" << subscribers.size()
+//            << "] subscribers to /step; expected [" << this->secondaries.size()
+//            << "]." << std::endl;
+//    return false;
+//  }
 
   allAvailable = true;
   return true;
@@ -283,33 +261,33 @@ bool NetworkManagerPrimary::SecondariesCanStep() const
 void NetworkManagerPrimary::PopulateAffinities(
     private_msgs::SimulationStep &_msg)
 {
+  IGN_PROFILE("NetworkManagerPrimary::PopulateAffinities");
+
   // p: performer
   // l: level
   // s: secondary
 
-
-  // Group performers per level
-  std::map<Entity, std::set<Entity>> lToPNew;
-
-  // Current performer to secondary mapping
+  // Previous performer-to-secondary mapping - may need updating
   std::map<Entity, std::string> pToSPrevious;
+
+  // Updated performer-to-level mapping - used to update affinities
+  std::map<Entity, std::set<Entity>> lToPNew;
 
   // Current level to secondary result
   std::map<Entity, std::set<std::string>> lToSNew;
 
-  std::set<Entity> performers;
+  // All performers
+  std::set<Entity> allPerformers;
 
   // Go through performers and assign affinities
   this->dataPtr->ecm->Each<
-        components::Performer,
         components::PerformerLevels>(
     [&](const Entity &_entity,
-        const components::Performer *,
         const components::PerformerLevels *_perfLevels) -> bool
     {
-      performers.insert(_entity);
+      allPerformers.insert(_entity);
 
-      // Get current affinity
+      // Previous affinity
       auto currentAffinityComp =
           this->dataPtr->ecm->Component<components::PerformerAffinity>(_entity);
       if (currentAffinityComp)
@@ -317,6 +295,7 @@ void NetworkManagerPrimary::PopulateAffinities(
         pToSPrevious[_entity] = currentAffinityComp->Data();
       }
 
+      // New levels
       for (const auto &level : _perfLevels->Data())
       {
         lToPNew[level].insert(_entity);
@@ -332,15 +311,17 @@ void NetworkManagerPrimary::PopulateAffinities(
   // First assignment: distribute levels evenly across secondaries
   if (pToSPrevious.empty())
   {
-    std::set<Entity> assignedPerformers;
     auto secondaryIt = this->secondaries.begin();
+
     for (auto [level, performers] : lToPNew)
     {
       for (const auto &performer : performers)
       {
         this->SetAffinity(performer, secondaryIt->second->prefix,
             _msg.add_affinity());
-        assignedPerformers.insert(performer);
+
+        // Remove performers as they are assigned
+        allPerformers.erase(performer);
       }
 
       // Round-robin levels
@@ -352,17 +333,12 @@ void NetworkManagerPrimary::PopulateAffinities(
     }
 
     // Also assign level-less performers
-    for (auto performer : performers)
+    for (auto performer : allPerformers)
     {
-      if (std::find(assignedPerformers.begin(), assignedPerformers.end(),
-          performer) != assignedPerformers.end())
-      {
-        continue;
-      }
+      this->SetAffinity(performer, secondaryIt->second->prefix,
+          _msg.add_affinity());
 
-      this->SetAffinity(performer, secondaryIt->second->prefix, _msg.add_affinity());
-
-      // Round-robin levels
+      // Round-robin performers
       secondaryIt++;
       if (secondaryIt == this->secondaries.end())
       {
@@ -372,24 +348,24 @@ void NetworkManagerPrimary::PopulateAffinities(
     return;
   }
 
-  if (pToSPrevious.size() != performers.size())
+  if (pToSPrevious.size() != allPerformers.size())
   {
-    ignerr << "There are [" << performers.size()
+    ignerr << "There are [" << allPerformers.size()
            << "] performers in total, but [" << pToSPrevious.size()
            << "] performers have been assigned secondaries." << std::endl;
     return;
   }
 
   // Check for level changes
-  for (auto [level, secondaries] : lToSNew)
+  for (auto [level, secs] : lToSNew)
   {
     // Level is only in one secondary, all good
-    if (secondaries.size() <= 1)
+    if (secs.size() <= 1)
       continue;
 
-    ignmsg << "Level [" << level << "] is in [" << secondaries.size()
+    ignmsg << "Level [" << level << "] is in [" << secs.size()
            << "] secondaries:";
-    for (auto s : secondaries)
+    for (auto s : secs)
       std::cout << " [" << s << "] ";
     std::cout << std::endl;
 

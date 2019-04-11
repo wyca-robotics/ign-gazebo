@@ -25,6 +25,7 @@
 #include <ignition/common/Profiler.hh>
 
 #include "ignition/gazebo/components/ParentEntity.hh"
+#include "ignition/gazebo/Conversions.hh"
 #include "ignition/gazebo/Entity.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
 #include "ignition/gazebo/Events.hh"
@@ -38,7 +39,7 @@ using namespace gazebo;
 
 //////////////////////////////////////////////////
 NetworkManagerSecondary::NetworkManagerSecondary(
-    std::function<void(UpdateInfo &_info)> _stepFunction,
+    std::function<void(const UpdateInfo &_info)> _stepFunction,
     EntityComponentManager &_ecm,
     EventManager *_eventMgr,
     const NetworkConfig &_config, const NodeOptions &_options):
@@ -58,22 +59,9 @@ NetworkManagerSecondary::NetworkManagerSecondary(
       << std::endl;
   }
 
-  this->stepAckPub = this->node.Advertise<msgs::SerializedState>("step_ack");
-
   this->node.Subscribe("step", &NetworkManagerSecondary::OnStep, this);
 
-//  std::string stepService{this->Namespace() + "/step"};
-//  if (!this->node.Advertise(stepService, &NetworkManagerSecondary::StepService,
-//      this))
-//  {
-//    ignerr << "Error advertising Step service [" << stepService
-//           << "]" << std::endl;
-//  }
-//  else
-//  {
-//    igndbg << "Advertised Step service on [" << stepService << "]"
-//      << std::endl;
-//  }
+  this->stepAckPub = this->node.Advertise<msgs::SerializedState>("step_ack");
 
   auto eventMgr = this->dataPtr->eventMgr;
   if (eventMgr)
@@ -88,21 +76,21 @@ NetworkManagerSecondary::NetworkManagerSecondary(
     this->dataPtr->peerRemovedConn = eventMgr->Connect<PeerRemoved>(
         [this](PeerInfo _info)
     {
-          if (_info.role == NetworkRole::SimulationPrimary)
-          {
-            ignmsg << "Primary removed, stopping simulation" << std::endl;
-            this->dataPtr->eventMgr->Emit<events::Stop>();
-          }
+      if (_info.role == NetworkRole::SimulationPrimary)
+      {
+        ignmsg << "Primary removed, stopping simulation" << std::endl;
+        this->dataPtr->eventMgr->Emit<events::Stop>();
+      }
     });
 
     this->dataPtr->peerStaleConn = eventMgr->Connect<PeerStale>(
         [this](PeerInfo _info)
     {
-          if (_info.role == NetworkRole::SimulationPrimary)
-          {
-            ignerr << "Primary went stale, stopping simulation" << std::endl;
-            this->dataPtr->eventMgr->Emit<events::Stop>();
-          }
+      if (_info.role == NetworkRole::SimulationPrimary)
+      {
+        ignerr << "Primary went stale, stopping simulation" << std::endl;
+        this->dataPtr->eventMgr->Emit<events::Stop>();
+      }
     });
   }
 }
@@ -125,25 +113,6 @@ void NetworkManagerSecondary::Handshake()
 }
 
 //////////////////////////////////////////////////
-bool NetworkManagerSecondary::Step(UpdateInfo &)
-{
-  IGN_PROFILE("NetworkManagerSecondary::Step");
-  if (!this->enableSim || this->stopReceived)
-  {
-    return false;
-  }
-
-  std::unique_lock<std::mutex> lock(this->stepMutex);
-  auto status = this->stepCv.wait_for(lock, std::chrono::seconds(5));
-  if (status == std::cv_status::timeout)
-  {
-    ignerr << "Timed out waiting for step to complete." << std::endl;
-  }
-
-  return status == std::cv_status::no_timeout;
-}
-
-//////////////////////////////////////////////////
 std::string NetworkManagerSecondary::Namespace() const
 {
   return this->dataPtr->peerInfo.id.substr(0, 8);
@@ -162,37 +131,19 @@ bool NetworkManagerSecondary::OnControl(const private_msgs::PeerControl &_req,
 void NetworkManagerSecondary::OnStep(
     const private_msgs::SimulationStep &_msg)
 {
-  msgs::SerializedState out;
-  this->Step(_msg, out);
-  this->stepAckPub.Publish(out);
-}
-
-/////////////////////////////////////////////////
-bool NetworkManagerSecondary::StepService(
-    const private_msgs::SimulationStep &_req,
-    msgs::SerializedState &_res)
-{
-  return this->Step(_req, _res);
-}
-
-/////////////////////////////////////////////////
-bool NetworkManagerSecondary::Step(
-    const private_msgs::SimulationStep &_in,
-    msgs::SerializedState &_out)
-{
-  IGN_PROFILE("NetworkManagerSecondary::StepService");
+  IGN_PROFILE("NetworkManagerSecondary::OnStep");
 
   // Throttle the number of step messages going to the debug output.
-  if (!_in.paused() && _in.iteration() % 1000 == 0)
+  if (!_msg.paused() && _msg.iteration() % 1000 == 0)
   {
-    igndbg << "Network iterations: " << _in.iteration()
+    igndbg << "Network iterations: " << _msg.iteration()
            << std::endl;
   }
 
   // Update affinities
-  for (int i = 0; i < _in.affinity_size(); ++i)
+  for (int i = 0; i < _msg.affinity_size(); ++i)
   {
-    const auto &affinityMsg = _in.affinity(i);
+    const auto &affinityMsg = _msg.affinity(i);
     const auto &entityId = affinityMsg.entity().id();
 
     if (affinityMsg.secondary_prefix() == this->Namespace())
@@ -224,18 +175,17 @@ bool NetworkManagerSecondary::Step(
 
   // Update info
   UpdateInfo info;
-  info.iterations = _in.iteration();
-  info.paused = _in.paused();
+  info.iterations = _msg.iteration();
+  info.paused = _msg.paused();
   info.dt = std::chrono::steady_clock::duration(
-      std::chrono::nanoseconds(_in.stepsize()));
-  info.simTime = std::chrono::steady_clock::duration(
-      std::chrono::seconds(_in.simtime().sec()) +
-      std::chrono::nanoseconds(_in.simtime().nsec()));
+      std::chrono::nanoseconds(_msg.stepsize()));
+  info.simTime = convert<std::chrono::steady_clock::duration>(_msg.simtime());
 
   // Step runner
   this->dataPtr->stepFunction(info);
 
-  // Update state with all the performer's models
+  // Update state with all the performers
+  // TODO(louise) Get all descendants
   std::unordered_set<Entity> models;
   for (const auto &perf : this->performers)
   {
@@ -249,16 +199,11 @@ bool NetworkManagerSecondary::Step(
 
     models.insert(parent->Data());
   }
+
+  msgs::SerializedState stateMsg;
   if (!models.empty())
-    _out = this->dataPtr->ecm->State(models);
+    stateMsg = this->dataPtr->ecm->State(models);
 
-  // Finish step
-  {
-    std::unique_lock<std::mutex> lock(this->stepMutex);
-    lock.unlock();
-    this->stepCv.notify_all();
-  }
-
-  return true;
+  this->stepAckPub.Publish(stateMsg);
 }
 

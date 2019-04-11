@@ -60,7 +60,7 @@ namespace ignition
     {
       // Documentation inherited
       public: explicit NetworkManagerPrimary(
-                  std::function<void(UpdateInfo &_info)> _stepFunction,
+                  std::function<void(const UpdateInfo &_info)> _stepFunction,
                   EntityComponentManager &_ecm, EventManager *_eventMgr,
                   const NetworkConfig &_config,
                   const NodeOptions &_options);
@@ -71,8 +71,13 @@ namespace ignition
       // Documentation inherited
       public: bool Ready() const override;
 
-      // Documentation inherited
-      public: bool Step(UpdateInfo &_info) override;
+      /// \brief Populate simulation step data
+      /// This method is called at the beginning of a simulation iteration.
+      /// It will populate the info argument with the appropriate values for
+      /// the simuation iteration.
+      /// \param[inout] _info current simulation update information
+      /// \return True if simulation step was successfully synced.
+      public: bool Step(const UpdateInfo &_info);
 
       // Documentation inherited
       public: std::string Namespace() const override;

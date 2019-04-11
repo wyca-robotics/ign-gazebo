@@ -24,6 +24,7 @@
 #include "ignition/gazebo/components/World.hh"
 #include "ignition/gazebo/Events.hh"
 #include "ignition/gazebo/SdfEntityCreator.hh"
+#include "network/NetworkManagerPrimary.hh"
 
 using namespace ignition;
 using namespace gazebo;
@@ -367,9 +368,21 @@ bool SimulationRunner::Run(const uint64_t _iterations)
   // Initialize network communications.
   if (this->networkMgr)
   {
-    // todo(mjcarroll) improve guard conditions around the busy loops.
     igndbg << "Initializing network configuration" << std::endl;
     this->networkMgr->Handshake();
+
+    // Secondaries are stepped through the primary, just keep alive until
+    // simulation is over
+    if (this->networkMgr->IsSecondary())
+    {
+      igndbg << "Secondary running." << std::endl;
+      while(!this->stopReceived)
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+      igndbg << "Secondary finished run." << std::endl;
+      return true;
+    }
   }
 
   // Keep track of wall clock time. Only start the realTimeWatch if this
@@ -409,12 +422,9 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     sleepTime = 0ns;
     actualSleep = 0ns;
 
-    if (!this->networkMgr || this->networkMgr->IsPrimary())
-    {
-      sleepTime = std::max(0ns, this->prevUpdateRealTime +
-          this->updatePeriod - std::chrono::steady_clock::now() -
-          this->sleepOffset);
-    }
+    sleepTime = std::max(0ns, this->prevUpdateRealTime +
+        this->updatePeriod - std::chrono::steady_clock::now() -
+        this->sleepOffset);
 
     // Only sleep if needed.
     if (sleepTime > 0ns)
@@ -440,10 +450,8 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     // If network, wait for network step, otherwise do our own step
     if (this->networkMgr)
     {
-      if (!this->networkMgr->Step(this->currentInfo))
-      {
-        // Do smth?
-      }
+      auto netPrimary = dynamic_cast<NetworkManagerPrimary *>(this->networkMgr.get());
+      netPrimary->Step(this->currentInfo);
     }
     else
     {
@@ -456,7 +464,7 @@ bool SimulationRunner::Run(const uint64_t _iterations)
 }
 
 /////////////////////////////////////////////////
-void SimulationRunner::Step(UpdateInfo _info)
+void SimulationRunner::Step(const UpdateInfo &_info)
 {
   IGN_PROFILE("SimulationRunner::Step");
   this->currentInfo = _info;

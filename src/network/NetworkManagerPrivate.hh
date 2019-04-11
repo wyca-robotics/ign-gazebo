@@ -55,7 +55,7 @@ namespace ignition
       /// \brief Traack connection to "PeerStale" Event
       public: ignition::common::ConnectionPtr peerStaleConn;
 
-      public: std::function<void(UpdateInfo &_info)> stepFunction;
+      public: std::function<void(const UpdateInfo &_info)> stepFunction;
 
       public: EntityComponentManager *ecm;
     };

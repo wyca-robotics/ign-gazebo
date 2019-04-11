@@ -121,8 +121,12 @@ namespace ignition
       /// \return True if the operation completed successfully.
       public: bool Run(const uint64_t _iterations);
 
-      /// \brief Step
-      public: void Step(UpdateInfo _info);
+      /// \brief Perform a simulation step:
+      /// * Publish stats and process control messages
+      /// * Update levels and systems
+      /// * Process entity creation / removal
+      /// \param[in] _info Time information for the step.
+      public: void Step(const UpdateInfo &_info);
 
       /// \brief Add system after the simulation runner has been instantiated
       /// \note This actually adds system to a queue. The system is added to the
