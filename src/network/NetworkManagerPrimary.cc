@@ -33,6 +33,7 @@
 #include "ignition/gazebo/Entity.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
 #include "ignition/gazebo/Events.hh"
+#include "ignition/gazebo/Util.hh"
 
 #include "../components/PerformerLevels.hh"
 #include "NetworkManagerPrimary.hh"
@@ -414,7 +415,7 @@ void NetworkManagerPrimary::SetAffinity(Entity _performer,
   // Get performer model entity and all its children
   auto parentModel = this->dataPtr->ecm->Component<components::ParentEntity>(
       _performer)->Data();
-  auto entities = this->Descendants(parentModel);
+  auto entities = descendants(parentModel, *this->dataPtr->ecm);
 
   // Populate message
   _msg->mutable_entity()->set_id(_performer);
@@ -428,30 +429,3 @@ void NetworkManagerPrimary::SetAffinity(Entity _performer,
   this->dataPtr->ecm->CreateComponent(_performer, newAffinity);
 }
 
-//////////////////////////////////////////////////
-std::unordered_set<Entity> NetworkManagerPrimary::Descendants(Entity _entity)
-{
-  std::unordered_set<Entity> descendants;
-  descendants.insert(_entity);
-
-  auto adjacents = this->dataPtr->ecm->Entities().AdjacentsFrom(_entity);
-  auto current = adjacents.begin();
-  while (current != adjacents.end())
-  {
-    auto id = current->first;
-
-    // Store entity
-    descendants.insert(id);
-
-    // Add adjacents to set
-    for (auto adj : this->dataPtr->ecm->Entities().AdjacentsFrom(id))
-    {
-      adjacents.insert(adj);
-    }
-
-    // Remove from set
-    current = adjacents.erase(current);
-  }
-
-  return descendants;
-}

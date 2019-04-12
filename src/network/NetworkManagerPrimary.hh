@@ -95,7 +95,6 @@ namespace ignition
 
       private: bool SecondariesCanStep() const;
       private: void PopulateAffinities(private_msgs::SimulationStep &_msg);
-      private: std::unordered_set<Entity> Descendants(Entity _entity);
       private: void SetAffinity(Entity _performer,
           const std::string &_secondary, private_msgs::PerformerAffinity *_msg);
 

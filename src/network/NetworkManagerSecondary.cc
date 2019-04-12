@@ -29,6 +29,7 @@
 #include "ignition/gazebo/Entity.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
 #include "ignition/gazebo/Events.hh"
+#include "ignition/gazebo/Util.hh"
 
 #include "NetworkManagerPrivate.hh"
 #include "NetworkManagerSecondary.hh"
@@ -184,11 +185,11 @@ void NetworkManagerSecondary::OnStep(
   // Step runner
   this->dataPtr->stepFunction(info);
 
-  // Update state with all the performers
-  // TODO(louise) Get all descendants
-  std::unordered_set<Entity> models;
+  // Update state with all the performer's entities
+  std::unordered_set<Entity> entities;
   for (const auto &perf : this->performers)
   {
+    // Performer model
     auto parent = this->dataPtr->ecm->Component<components::ParentEntity>(perf);
     if (parent == nullptr)
     {
@@ -196,13 +197,15 @@ void NetworkManagerSecondary::OnStep(
              << std::endl;
       continue;
     }
+    auto modelEntity = parent->Data();
 
-    models.insert(parent->Data());
+    auto children = descendants(modelEntity, *this->dataPtr->ecm);
+    entities.insert(children.begin(), children.end());
   }
 
   msgs::SerializedState stateMsg;
-  if (!models.empty())
-    stateMsg = this->dataPtr->ecm->State(models);
+  if (!entities.empty())
+    stateMsg = this->dataPtr->ecm->State(entities);
 
   this->stepAckPub.Publish(stateMsg);
 }
