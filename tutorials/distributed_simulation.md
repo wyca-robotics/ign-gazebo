@@ -10,7 +10,7 @@
 
 ## High-Level design
 
-Each ign-gazebo instance has the ability to run with the `--distributed` flag.
+Each ign-gazebo instance has the ability to run with the `--network-role` flag.
 When the flag is present, the instance attempts to join a distributed simulation
 environment by utilizing `ign-transport`. Ign-transport is used to register and
 track available peers, as well as synchronize clock and state among multiple
@@ -27,8 +27,7 @@ Distributed environment participants can take one of the following roles.
 The distribution of simulation work utilizes the concept of performers in
 order to set where physics simulation will occur. A performer is an additional
 annotation in an SDF file which marks each model that will be a performer.
-
-There can be 0 to N performers being simulated in an instance at a time.
+There can be 0 to N performers being simulated at an instance at a time.
 Each level can only be simulated by one secondary at a time, so performers
 in the same level are always in the same instance. If there are more levels
 active than instances, multiple levels will be allocated to each secondary.
@@ -46,9 +45,6 @@ active than instances, multiple levels will be allocated to each secondary.
 * Fixed runners - all simulation runners have to be defined ahead of time.
   If a runner joins or leaves the graph after simulation has started, simulation
   will terminate.
-
-* Fixed performers - all performers are defined at startup and can't be added at
-  runtime.
 
 ## Execution flow
 
@@ -94,9 +90,9 @@ The secondary instances will only read the role environment variable
 ### Discovery
 
 Once the `ign-gazebo` instance is started, it will begin a process of
-discovering peers in the network. Each peer will send an announcement in the
-`/announce` topic when it joins or leaves the network, and also periodically
-sends a heartbeat on `/hearbeat`.
+discovering peers in the network. Each peer will send an announcement in
+the `/announce` topic when it joins or leaves the network, and also
+periodically sends a heartbeat on `/heartbeat`.
 
 Simulation is allowed to begin once each secondary has discovered the
 primary and the primary has discovered the correct number of secondaries.
@@ -113,33 +109,47 @@ duration. Both of these signals will cause the termination of the simulation.
 
 ### Distribution
 
-After discovery, the `NetworkManager` and `SyncManager` work to distribute
+After discovery, the `NetworkManager` works on the initial distribution of
 performers across the network graph according to the levels they're in. If
-there are more performers than secondaries, then some secondaries will
-receive multiple performers. On the other hand, if performers are located
-in less levels than secondaries, some secondaries will be left idle.
+there are more performers than secondaries, then some secondaries will receive
+multiple performers. On the other hand, if performers are located in less
+levels than secondaries, some secondaries will be left idle.
 
-Performers are assigned to secondaries through the `/<namespace>/affinity`
-topic.
-
-When a secondary is assigned a performer, the performer's state is transfered
-to the secondary. Performers not assigned to a secondary are removed from it.
-
-The primary performs no physics simulation at this point.
+As simulation proceeds and performers move across levels, their affinities will
+be updated as part of the message sent on the `/step` topic in order to
+avoid duplicate levels across secondaries. The primary, on the other hand,
+keeps all performers loaded, but performs no physics simulation.
 
 ### Stepping
 
-At the beginning of each simulation step, the simulation primary sends the
-current iteration, step size, and simulation clock time on the `/step` topic.
+Stepping happens in 2 stages: the primary update and the secondaries update,
+according to the diagram below:
 
-Each secondary then proceeds to simulate that iteration, and sends the results
-back to the simulation primary through the `pose_update` topic (temporary).
-Each secondary then sends an additional `ack` signal back to the simulation
-primary to indicate that the current iteration is done, this is done through
-topic `/<namespace>/stepAck`.
+<img src="https://bytebucket.org/ignitionrobotics/ign-gazebo/raw/default/tutorials/files/distributed_step.png"/>
 
-Once all secondary `ack` signals have been received, the primary allows
-simulation to continue to the next step.
+1. The primary publishes a `SimulationStep` message on the `/step` topic,
+containing:
+
+    * The current sim time, iteration, step size and paused state.
+    * The latest secondary-to-performer affinity changes.
+    * **Upcoming**: The updated state of all performers which are changing secondaries.
+
+1. Each secondary receives the step message, and:
+
+    * Loads / unloads performers according to the received affinities
+    * Runs one simulation update iteration
+    * Then publishes its updated  performer states on the `/step_ack` topic.
+
+1. The primary waits until it gets step acks from all secondaries.
+
+1. The primary runs a step update:
+
+    * Update its state with the states received from secondaries.
+    * The `LevelManager` checks for level changes according to these new states
+    * The `SceneBroadcaster` plugin publishes an updated scene to the GUI
+      for any level changes.
+
+1. The primary initiates a new iteration.
 
 ### Interaction
 

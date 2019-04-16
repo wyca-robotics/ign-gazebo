@@ -20,15 +20,16 @@
 #include <atomic>
 #include <memory>
 #include <string>
-
+#include <unordered_set>
 
 #include <ignition/gazebo/config.hh>
 #include <ignition/gazebo/Export.hh>
 #include <ignition/transport/Node.hh>
 
-#include "NetworkManager.hh"
 #include "msgs/simulation_step.pb.h"
 #include "msgs/peer_control.pb.h"
+
+#include "NetworkManager.hh"
 
 namespace ignition
 {
@@ -44,10 +45,10 @@ namespace ignition
     {
       // Documentation inherited
       public: explicit NetworkManagerSecondary(
-                  std::function<void(const UpdateInfo &_info)> _stepFunction,
-                  EntityComponentManager &_ecm, EventManager *_eventMgr,
-                  const NetworkConfig &_config,
-                  const NodeOptions &_options);
+          const std::function<void(const UpdateInfo &_info)> &_stepFunction,
+          EntityComponentManager &_ecm, EventManager *_eventMgr,
+          const NetworkConfig &_config,
+          const NodeOptions &_options);
 
       // Documentation inherited
       public: bool Ready() const override;
@@ -59,18 +60,15 @@ namespace ignition
       public: std::string Namespace() const override;
 
       /// \brief Callback for when PeerControl service request is received.
+      /// \param[in] _req Request
+      /// \param[in] _resp Response
+      /// \return True if successful.
       public: bool OnControl(const private_msgs::PeerControl &_req,
                              private_msgs::PeerControl &_resp);
 
       /// \brief Callback when step commands are received from the primary
       /// \param[in] _msg Step message.
       private: void OnStep(const private_msgs::SimulationStep &_msg);
-
-      /// \brief Track connection to "events::Stop" Event
-      public: ignition::common::ConnectionPtr stoppingConn;
-
-      /// \brief Flag to indicate if simulation server is stopping.
-      private: std::atomic<bool> stopReceived {false};
 
       /// \brief Flag to control enabling/disabling simulation secondary.
       private: std::atomic<bool> enableSim {false};

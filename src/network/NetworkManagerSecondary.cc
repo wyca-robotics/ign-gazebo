@@ -15,14 +15,14 @@
  *
 */
 
-#include "msgs/peer_control.pb.h"
-
 #include <algorithm>
 #include <string>
 
 #include <ignition/common/Console.hh>
 #include <ignition/common/Util.hh>
 #include <ignition/common/Profiler.hh>
+
+#include "msgs/peer_control.pb.h"
 
 #include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/Conversions.hh"
@@ -40,7 +40,7 @@ using namespace gazebo;
 
 //////////////////////////////////////////////////
 NetworkManagerSecondary::NetworkManagerSecondary(
-    std::function<void(const UpdateInfo &_info)> _stepFunction,
+    const std::function<void(const UpdateInfo &_info)> &_stepFunction,
     EntityComponentManager &_ecm,
     EventManager *_eventMgr,
     const NetworkConfig &_config, const NodeOptions &_options):
@@ -63,37 +63,6 @@ NetworkManagerSecondary::NetworkManagerSecondary(
   this->node.Subscribe("step", &NetworkManagerSecondary::OnStep, this);
 
   this->stepAckPub = this->node.Advertise<msgs::SerializedState>("step_ack");
-
-  auto eventMgr = this->dataPtr->eventMgr;
-  if (eventMgr)
-  {
-    // Set a flag when the executable is stopping to cleanly exit.
-    this->stoppingConn = eventMgr->Connect<events::Stop>(
-        [this]()
-    {
-      this->stopReceived = true;
-    });
-
-    this->dataPtr->peerRemovedConn = eventMgr->Connect<PeerRemoved>(
-        [this](PeerInfo _info)
-    {
-      if (_info.role == NetworkRole::SimulationPrimary)
-      {
-        ignmsg << "Primary removed, stopping simulation" << std::endl;
-        this->dataPtr->eventMgr->Emit<events::Stop>();
-      }
-    });
-
-    this->dataPtr->peerStaleConn = eventMgr->Connect<PeerStale>(
-        [this](PeerInfo _info)
-    {
-      if (_info.role == NetworkRole::SimulationPrimary)
-      {
-        ignerr << "Primary went stale, stopping simulation" << std::endl;
-        this->dataPtr->eventMgr->Emit<events::Stop>();
-      }
-    });
-  }
 }
 
 //////////////////////////////////////////////////
@@ -107,7 +76,7 @@ bool NetworkManagerSecondary::Ready() const
 //////////////////////////////////////////////////
 void NetworkManagerSecondary::Handshake()
 {
-  while (!this->enableSim && !this->stopReceived)
+  while (!this->enableSim && !this->dataPtr->stopReceived)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }

@@ -28,8 +28,9 @@
 #include <ignition/gazebo/Entity.hh>
 #include <ignition/transport/Node.hh>
 
-#include "NetworkManager.hh"
 #include "msgs/simulation_step.pb.h"
+
+#include "NetworkManager.hh"
 
 namespace ignition
 {
@@ -60,10 +61,10 @@ namespace ignition
     {
       // Documentation inherited
       public: explicit NetworkManagerPrimary(
-                  std::function<void(const UpdateInfo &_info)> _stepFunction,
-                  EntityComponentManager &_ecm, EventManager *_eventMgr,
-                  const NetworkConfig &_config,
-                  const NodeOptions &_options);
+          const std::function<void(const UpdateInfo &_info)> &_stepFunction,
+          EntityComponentManager &_ecm, EventManager *_eventMgr,
+          const NetworkConfig &_config,
+          const NodeOptions &_options);
 
       // Documentation inherited
       public: void Handshake() override;
@@ -86,15 +87,22 @@ namespace ignition
       /// peers.
       public: std::map<std::string, SecondaryControl::Ptr>& Secondaries();
 
-      /// \brief Callback for service stepping secondaries.
-      /// \param[in] _res Response containing secondary's updated state.
-      /// \param[in] _result False if failed.
-      private: void OnStepResponse(const msgs::SerializedState &_res,
-          const bool _result);
-      private: void OnStepAck(const msgs::SerializedState &_res);
+      /// \brief Callback for step ack messages.
+      /// \param[in] _msg Message containing secondary's updated state.
+      private: void OnStepAck(const msgs::SerializedState &_msg);
 
+      /// \brief Check if the step publisher has connections.
       private: bool SecondariesCanStep() const;
+
+      /// \brief Populate the step message with the latest affinities according
+      /// to levels.
+      /// \param[in] _msg Step message.
       private: void PopulateAffinities(private_msgs::SimulationStep &_msg);
+
+      /// \brief Set the performer to secondary affinity.
+      /// \param[in] _performer Performer entity.
+      /// \param[in] _secondary Secondary identifier.
+      /// \param[out] _msg Message to be populated.
       private: void SetAffinity(Entity _performer,
           const std::string &_secondary, private_msgs::PerformerAffinity *_msg);
 
