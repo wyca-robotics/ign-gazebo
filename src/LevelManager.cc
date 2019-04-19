@@ -40,7 +40,6 @@
 #include "ignition/gazebo/components/Pose.hh"
 #include "ignition/gazebo/components/World.hh"
 
-#include "components/PerformerLevels.hh"
 #include "LevelManager.hh"
 #include "SimulationRunner.hh"
 

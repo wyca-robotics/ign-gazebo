@@ -25,16 +25,13 @@
 #include "msgs/peer_control.pb.h"
 #include "msgs/simulation_step.pb.h"
 
-#include "ignition/gazebo/components/Name.hh"
 #include "ignition/gazebo/components/ParentEntity.hh"
-#include "ignition/gazebo/components/Performer.hh"
 #include "ignition/gazebo/components/PerformerAffinity.hh"
 #include "ignition/gazebo/components/PerformerLevels.hh"
 #include "ignition/gazebo/Conversions.hh"
 #include "ignition/gazebo/Entity.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
 #include "ignition/gazebo/Events.hh"
-#include "ignition/gazebo/Util.hh"
 
 #include "NetworkManagerPrimary.hh"
 #include "NetworkManagerPrivate.hh"
@@ -377,7 +374,7 @@ void NetworkManagerPrimary::SetAffinity(Entity _performer,
   // Get performer model entity and all its children
   auto parentModel = this->dataPtr->ecm->Component<components::ParentEntity>(
       _performer)->Data();
-  auto entities = descendants(parentModel, *this->dataPtr->ecm);
+  auto entities = this->dataPtr->ecm->Descendants(parentModel);
 
   // Populate message
   _msg->mutable_entity()->set_id(_performer);
