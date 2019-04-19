@@ -513,6 +513,7 @@ void LevelManager::UpdateLevelsState()
   auto pendingEnd = this->activeLevels.end();
   for (const auto &toUnload : levelsToUnload)
   {
+    ignmsg << "Unloaded level [" << toUnload << "]" << std::endl;
     pendingEnd = std::remove(this->activeLevels.begin(), pendingEnd, toUnload);
   }
   // Erase from vector

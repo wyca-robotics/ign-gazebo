@@ -323,11 +323,11 @@ void NetworkManagerPrimary::PopulateAffinities(
     if (secs.size() <= 1)
       continue;
 
-    ignmsg << "Level [" << level << "] is in [" << secs.size()
-           << "] secondaries:";
+    std::string msg{"Level [" + std::to_string(level) + "] is in [" +
+        std::to_string(secs.size()) + "] secondaries:"};
     for (auto s : secs)
-      std::cout << " [" << s << "] ";
-    std::cout << std::endl;
+      msg += " [" + s + "] ";
+    ignmsg << msg << std::endl;
 
     // Count how many performers in this level are already in each secondary
     std::map<std::string, int> secondaryCounts;

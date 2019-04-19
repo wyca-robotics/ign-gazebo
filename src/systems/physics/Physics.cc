@@ -372,14 +372,13 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
 
   // collisions
   _ecm.EachNew<components::Collision, components::Name, components::Pose,
-            components::Geometry, components::CollisionElement,
+            components::Geometry,
             components::ParentEntity>(
       [&](const Entity &  _entity,
-          const components::Collision * /* _collision */,
+          const components::Collision *,
           const components::Name *_name,
           const components::Pose *_pose,
           const components::Geometry *_geom,
-          const components::CollisionElement *_collElement,
           const components::ParentEntity *_parent) -> bool
       {
         if (this->entityCollisionMap.find(_entity) !=
@@ -402,7 +401,19 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
         auto linkPtrPhys = this->entityLinkMap.at(_parent->Data());
 
         sdf::Collision collision;
-        collision.Load(_collElement->Data());
+
+        // TODO(anyone) This component is used for friction, but doesn't get
+        // transmitted during distributed sim. We shold have an sdf::Surface
+        // class instead.
+        auto collElement = _ecm.Component<components::CollisionElement>(_entity);
+        if (collElement)
+        {
+          collision.Load(collElement->Data());
+        }
+
+        collision.SetName(_name->Data());
+        collision.SetPose(_pose->Data());
+        collision.SetGeom(_geom->Data());
 
         ShapePtrType collisionPtrPhys;
         if (_geom->Data().Type() == sdf::GeometryType::MESH)
