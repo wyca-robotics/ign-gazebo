@@ -4,6 +4,9 @@
   #
   # Command line options (usage erb [opt]=[arg]):
   # type: primary / secondary / standalone (not distributed)
+  # p: number of performer spheres
+  # s: seed for random number generator
+  # lv: 1 to generate level visuals
 
   ###############################################
   #                                             #
@@ -31,64 +34,170 @@
     end
   end
 
-  ###############################################
-  #                                             #
-  #                  MODELS                     #
-  #                                             #
-  ###############################################
+  performers = 0
+  if (defined? p)
+    performers = p.to_i
+  end
 
-  shapes =
-  [
-    {:name => 'green_sphere',
-     :color => '0 1 0 1',
-     :y_pos => '-1.5',
-     :geom => '<sphere><radius>0.2</radius></sphere>'},
-    {:name => 'yellow_box',
-     :color => '1 1 0 1',
-     :y_pos => '1.5',
-     :geom => '<box><size>1 1 1</size></box>'},
-  ]
+  level_visuals = 0
+  if (defined? lv)
+    level_visuals = 1
+  end
+
+  seed = rand(0..10000000)
+  if (defined? s)
+    seed = s.to_i
+  end
+  srand(seed)
+
+  ###############################################
+  #                                             #
+  #                  BLOCKS                     #
+  #                                             #
+  ###############################################
 
   block_width = 2.0
   block_length = 3.0
+  block_thickness = 0.1
   slope = Math::PI / 6
   level_height = 2.0
   level_buffer = 1.0
   total_steps = 6
+  total_columns = 20
 
   blocks = []
   (0..total_steps-1).each do |step|
-
-    sides =
-    [
-      {:sufix => 'A',
-       :y_pos => -1.5,
-       :width => 2.0},
-      {:sufix => 'B',
-       :y_pos => 1.5,
-       :width => 2.0}
-    ]
-
-    if step == 3
-      sides =
-      [
-        {:sufix => 'C',
-         :y_pos => 0,
-         :width => 5.0}
-      ]
-    end
-
-    for side in sides
-
+    (0..total_columns-1).each do |column|
       blocks.push(
       {
-        :name => 'block_' + step.to_s + '_' + side[:sufix],
+        :name => 'block_' + step.to_s + '_' + column.to_s,
         :x_pos => block_length * step * Math::cos(slope),
-        :y_pos => side[:y_pos],
-        :z_pos => -block_length * step * Math::sin(slope),
-        :width => side[:width],
+        :y_pos => block_width * column,
+        :z_pos => -block_length * step * Math::sin(slope)
       })
     end
+  end
+
+  ###############################################
+  #                                             #
+  #                PERFORMERS                   #
+  #                                             #
+  ###############################################
+
+  # Boundaries to spawn
+  x_min = 0
+  x_max = block_length * 0.5
+  y_min = 0
+  y_max = block_width * (total_columns - 0.5)
+  z_min = 0.5
+  z_max = 5
+
+  # Limit sizes
+  size_min = 0.1
+  size_max = 0.5
+
+  # Limit density
+  $density_min = 0.1
+  $density_max = 5.0
+
+  ###############################################
+  #                                             #
+  #             PRINT FUNCTIONS                 #
+  #                                             #
+  ###############################################
+
+  # Print inertia
+  # Parameters:
+  # _geom: box, cylinder or sphere
+  # _sizeX: X size
+  # _sizeY: Y size
+  # _sizeZ: Z size
+  def printInertia(_geom, _sizeX, _sizeY = 0, _sizeZ = 0)
+
+    density = rand($density_min..$density_max)
+    radius = _sizeX * 0.5
+
+    if (_geom == 'box')
+
+      mass = density * _sizeX * _sizeY * _sizeZ
+
+      ixx = 1.0 / 12 * mass * (_sizeY*_sizeY + _sizeZ*_sizeZ)
+      iyy = 1.0 / 12 * mass * (_sizeZ*_sizeZ + _sizeX*_sizeX)
+      izz = 1.0 / 12 * mass * (_sizeX*_sizeX + _sizeY*_sizeY)
+
+    elsif (_geom == 'sphere')
+
+      mass = density * 4.0 * Math::PI / 3.0 * radius**3
+
+      ixx = mass * 0.4 * radius**2
+      iyy = ixx
+      izz = ixx
+
+    elsif (_geom == 'cylinder')
+
+      mass = density * Math::PI * radius**2 * _sizeY
+
+      izz = mass * 0.5 * radius**2
+      ixx = (1.0/12.0) * mass * (3 * radius**2 + _sizeY**2)
+      iyy = ixx
+
+    else
+      return
+    end
+
+    "<inertial>\n"\
+    "      <mass>" + mass.to_s() + "</mass>\n"\
+    "      <inertia>\n"\
+    "        <ixx>" + ixx.to_s() + "</ixx>\n"\
+    "        <iyy>" + iyy.to_s() + "</iyy>\n"\
+    "        <izz>" + izz.to_s() + "</izz>\n"\
+    "        <ixy>0.0</ixy>\n"\
+    "        <ixz>0.0</ixz>\n"\
+    "        <iyz>0.0</iyz>\n"\
+    "      </inertia>\n"\
+    "    </inertial>\n"
+
+  end
+
+  # Print geometry
+  # Parameters:
+  # _geom: box, cylinder or sphere
+  # _sizeX: X size
+  # _sizeY: Y size
+  # _sizeZ: Z size
+  def printGeom(_geom, _sizeX, _sizeY = 0, _sizeZ = 0)
+
+    if (_geom == 'box')
+      "<geometry>\n"\
+      "       <box>\n"\
+      "         <size>\n"\
+      "           " + _sizeX.to_s() + "\n"\
+      "           " + _sizeY.to_s() + "\n"\
+      "           " + _sizeZ.to_s() + "\n"\
+      "         </size>\n"\
+      "        </box>\n"\
+      "      </geometry>\n"
+    elsif (_geom == 'sphere')
+      "<geometry>\n"\
+      "       <sphere>\n"\
+      "         <radius>\n"\
+      "           " + (_sizeX * 0.5).to_s() + "\n"\
+      "         </radius>\n"\
+      "        </sphere>\n"\
+      "      </geometry>\n"
+    elsif (_geom == 'cylinder')
+      "<geometry>\n"\
+      "       <cylinder>\n"\
+      "         <radius>\n"\
+      "           " + (_sizeX * 0.5).to_s() + "\n"\
+      "         </radius>\n"\
+      "         <length>\n"\
+      "           " + _sizeY.to_s() + "\n"\
+      "         </length>\n"\
+      "        </cylinder>\n"\
+      "      </geometry>\n"
+    end
+
   end
 %>
 <!--
@@ -96,6 +205,8 @@
 
   - primary: <%= primary %>
   - secondary: <%= secondary %>
+  - performers: <%= performers %>
+  - seed: <%= seed %>
 
 -->
 <sdf version="1.6">
@@ -210,37 +321,48 @@
     </light>
 
     <%
-      for shape in shapes
+      for perf in (1..performers)
+        geom = ['box', 'sphere', 'cylinder'].sample()
+        sizeX = rand(size_min..size_max)
+        sizeY = rand(size_min..size_max)
+        sizeZ = rand(size_min..size_max)
     %>
 
-    <model name="<%= shape[:name] %>">
-      <pose>0 <%= shape[:y_pos] %> 2.5 0 0 0</pose>
-      <link name="shape_link">
-        <inertial>
-          <inertia>
-            <ixx>3</ixx>
-            <ixy>0</ixy>
-            <ixz>0</ixz>
-            <iyy>3</iyy>
-            <iyz>0</iyz>
-            <izz>3</izz>
-          </inertia>
-          <mass>3.0</mass>
-        </inertial>
-        <collision name="shape_collision">
-          <geometry>
-            <%= shape[:geom] %>
-          </geometry>
+    <model name="model_<%= perf.to_s %>">
+      <pose>
+        <%= rand(x_min..x_max) %>
+        <%= rand(y_min..y_max) %>
+        <%= rand(z_min..z_max) %>
+        <%= rand(0..Math::PI) %>
+        <%= rand(0..Math::PI) %>
+        <%= rand(0..Math::PI) %>
+      </pose>
+      <link name="link">
+        <%= printInertia(geom, sizeX, sizeY, sizeZ) %>
+        <collision name="collision">
+          <%= printGeom(geom, sizeX, sizeY, sizeZ) %>
         </collision>
-
-        <visual name="shape_visual">
-          <geometry>
-            <%= shape[:geom] %>
-          </geometry>
+        <visual name="visual">
+          <%= printGeom(geom, sizeX, sizeY, sizeZ) %>
           <material>
-            <ambient><%= shape[:color] %></ambient>
-            <diffuse><%= shape[:color] %></diffuse>
-            <specular><%= shape[:color] %></specular>
+            <diffuse>
+              <%= rand(0..1) %>
+              <%= rand(0..1) %>
+              <%= rand(0..1) %>
+              <%= 1 %>
+            </diffuse>
+            <specular>
+              <%= rand(0..1) %>
+              <%= rand(0..1) %>
+              <%= rand(0..1) %>
+              <%= 1 %>
+            </specular>
+            <ambient>
+              <%= rand(0..1) %>
+              <%= rand(0..1) %>
+              <%= rand(0..1) %>
+              <%= 1 %>
+            </ambient>
           </material>
         </visual>
       </link>
@@ -255,18 +377,10 @@
       <pose><%= block[:x_pos] %> <%= block[:y_pos] %> <%= block[:z_pos] %> 0 <%= slope %> 0</pose>
       <link name="link">
         <collision name="collision">
-          <geometry>
-            <box>
-              <size><%= block_length %> <%= block[:width] %> 0.1</size>
-            </box>
-          </geometry>
+          <%= printGeom('box', block_length, block_width, block_thickness) %>
         </collision>
         <visual name="visual">
-          <geometry>
-            <box>
-              <size><%= block_length %> <%= block[:width] %> 0.1</size>
-            </box>
-          </geometry>
+          <%= printGeom('box', block_length, block_width, block_thickness) %>
           <material>
             <ambient>0.8 0.8 0.8 1</ambient>
             <diffuse>0.8 0.8 0.8 1</diffuse>
@@ -276,6 +390,7 @@
       </link>
     </model>
 
+    <% if level_visuals == 1 %>
     <model name="level_vis_<%= block[:name] %>">
       <static>true</static>
       <pose><%= block[:x_pos] %> <%= block[:y_pos] %> <%= block[:z_pos] %> 0 0 0</pose>
@@ -297,7 +412,7 @@
             <box>
               <size>
                 <%= block_length + level_buffer*2 %>
-                <%= block[:width] + level_buffer*2 %>
+                <%= block_width + level_buffer*2 %>
                 <%= level_height  + level_buffer*2 %>
               </size>
             </box>
@@ -311,31 +426,24 @@
       </link>
     </model>
     <% end %>
+    <% end %>
 
-    <model name="end_block_A">
+    <model name="end_block">
       <static>true</static>
       <pose>
-        <%= block_length * (total_steps - 1.0) * Math::cos(slope) %>
-        -1.5
-        <%= -block_length * (total_steps - 1.0) * Math::sin(slope) %>
+        <%= block_length * (total_steps - 0.5) * Math::cos(slope) %>
+        <%= block_width * (total_columns - 1) * 0.5 %>
+        <%= -block_length * (total_steps - 0.5) * Math::sin(slope) + level_height * 0.5 %>
         0
         0
         0
       </pose>
       <link name="link">
         <collision name="collision">
-          <geometry>
-            <box>
-              <size>0.1 5.0 4.0</size>
-            </box>
-          </geometry>
+          <%= printGeom('box', block_thickness, block_width * total_columns, level_height) %>
         </collision>
         <visual name="visual">
-          <geometry>
-            <box>
-              <size>0.1 2.0 4.0</size>
-            </box>
-          </geometry>
+          <%= printGeom('box', block_thickness, block_width * total_columns, level_height) %>
           <material>
             <ambient>0.8 0.8 0.8 1</ambient>
             <diffuse>0.8 0.8 0.8 1</diffuse>
@@ -345,30 +453,47 @@
       </link>
     </model>
 
-    <model name="end_block_B">
+    <model name="side_block_A">
       <static>true</static>
       <pose>
-        <%= block_length * (total_steps - 0.5) * Math::cos(slope) %>
-        1.5
-        <%= -block_length * (total_steps - 0.5) * Math::sin(slope) %>
+        <%= block_length * (total_steps - 0.5) * 0.5 * Math::cos(slope) %>
+        <%= block_width * -0.5 %>
+        <%= -block_length * (total_steps - 0.5) * 0.5 * Math::sin(slope) + level_height * 0.5 %>
         0
-        0
+        <%= slope %>
         0
       </pose>
       <link name="link">
         <collision name="collision">
-          <geometry>
-            <box>
-              <size>0.1 5.0 4.0</size>
-            </box>
-          </geometry>
+          <%= printGeom('box', block_length * total_steps, block_thickness, level_height) %>
         </collision>
         <visual name="visual">
-          <geometry>
-            <box>
-              <size>0.1 2.0 4.0</size>
-            </box>
-          </geometry>
+          <%= printGeom('box', block_length * total_steps, block_thickness, level_height) %>
+          <material>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.8 0.8 0.8 1</diffuse>
+            <specular>0.8 0.8 0.8 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="side_block_B">
+      <static>true</static>
+      <pose>
+        <%= block_length * (total_steps - 0.5) * 0.5 * Math::cos(slope) %>
+        <%= block_width * (total_columns - 0.5) %>
+        <%= -block_length * (total_steps - 0.5) * 0.5 * Math::sin(slope) + level_height * 0.5 %>
+        0
+        <%= slope %>
+        0
+      </pose>
+      <link name="link">
+        <collision name="collision">
+          <%= printGeom('box', block_length * total_steps, block_thickness, level_height) %>
+        </collision>
+        <visual name="visual">
+          <%= printGeom('box', block_length * total_steps, block_thickness, level_height) %>
           <material>
             <ambient>0.8 0.8 0.8 1</ambient>
             <diffuse>0.8 0.8 0.8 1</diffuse>
@@ -381,13 +506,17 @@
     <plugin name="ignition::gazebo" filename="dummy">
 
     <%
-      for shape in shapes
+      for perf in (1..performers)
     %>
-      <performer name="perf_<%= shape[:name] %>">
-        <ref><%= shape[:name] %></ref>
+      <performer name="perf_<%= perf.to_s %>">
+        <ref>model_<%= perf.to_s %></ref>
         <geometry>
           <box>
-            <size>1 1 1</size>
+            <size>
+              <%= size_max %>
+              <%= size_max %>
+              <%= size_max %>
+            </size>
           </box>
         </geometry>
       </performer>
@@ -400,7 +529,7 @@
       <pose><%= block[:x_pos] %> <%= block[:y_pos] %> <%= block[:z_pos] %> 0 0 0</pose>
       <geometry>
         <box>
-          <size><%= block_length %> <%= block[:width] %> <%= level_height %></size>
+          <size><%= block_length %> <%= block_width %> <%= level_height %></size>
         </box>
       </geometry>
       <buffer><%= level_buffer %></buffer>
