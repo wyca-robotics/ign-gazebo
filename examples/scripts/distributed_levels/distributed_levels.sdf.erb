@@ -7,6 +7,7 @@
   # p: number of performer spheres
   # s: seed for random number generator
   # lv: 1 to generate level visuals
+  # f: Fun! Random shapes!
 
   ###############################################
   #                                             #
@@ -39,9 +40,14 @@
     performers = p.to_i
   end
 
-  level_visuals = 0
-  if (defined? lv)
-    level_visuals = 1
+  level_visuals = false
+  if (defined? lv and lv == '1')
+    level_visuals = true
+  end
+
+  $fun = false
+  if (defined? f and f == '1')
+    $fun = true
   end
 
   seed = rand(0..10000000)
@@ -56,14 +62,14 @@
   #                                             #
   ###############################################
 
+  total_steps = $fun ? 6 : 1
+  total_columns = $fun ? 20 : performers
   block_width = 2.0
-  block_length = 3.0
+  block_length = $fun ? 3.0 : total_columns * 2
   block_thickness = 0.1
   slope = Math::PI / 6
-  level_height = 2.0
-  level_buffer = 1.0
-  total_steps = 6
-  total_columns = 20
+  level_height = block_length * Math::sin(slope)
+  level_buffer = 0.5
 
   blocks = []
   (0..total_steps-1).each do |step|
@@ -84,21 +90,26 @@
   #                                             #
   ###############################################
 
-  # Boundaries to spawn
-  x_min = 0
-  x_max = block_length * 0.5
-  y_min = 0
-  y_max = block_width * (total_columns - 0.5)
-  z_min = 0.5
-  z_max = 5
-
-  # Limit sizes
+  # Limit shape sizes
   size_min = 0.1
   size_max = 0.5
+  size_mid = (size_max - size_min) * 0.5
+
+  # Boundaries to spawn
+  x_min = block_length * Math::cos(slope) * -0.5 + size_max
+  x_max = block_length * 0.3
+  x_mid = (x_max - x_min) * 0.5
+  y_min = 0
+  y_max = block_width * (total_columns - 0.5)
+  y_mid = (y_max - y_min) * 0.5
+  z_min = block_length * Math::sin(slope) * 0.5
+  z_max = block_length
+  z_mid = (z_max - z_min) * 0.5
 
   # Limit density
   $density_min = 0.1
   $density_max = 5.0
+  $density_mid = ($density_max - $density_min) * 0.5
 
   ###############################################
   #                                             #
@@ -114,7 +125,7 @@
   # _sizeZ: Z size
   def printInertia(_geom, _sizeX, _sizeY = 0, _sizeZ = 0)
 
-    density = rand($density_min..$density_max)
+    density = $fun ? rand($density_min..$density_max) : $density_mid
     radius = _sizeX * 0.5
 
     if (_geom == 'box')
@@ -207,6 +218,8 @@
   - secondary: <%= secondary %>
   - performers: <%= performers %>
   - seed: <%= seed %>
+  - fun: <%= $fun %>
+  - level visuals: <%= level_visuals %>
 
 -->
 <sdf version="1.6">
@@ -322,20 +335,26 @@
 
     <%
       for perf in (1..performers)
-        geom = ['box', 'sphere', 'cylinder'].sample()
-        sizeX = rand(size_min..size_max)
-        sizeY = rand(size_min..size_max)
-        sizeZ = rand(size_min..size_max)
+        geom = $fun ? ['box', 'sphere', 'cylinder'].sample() : 'cylinder'
+        sizeX = $fun ? rand(size_min..size_max) : size_mid
+        sizeY = $fun ? rand(size_min..size_max) : size_mid
+        sizeZ = $fun ? rand(size_min..size_max) : size_mid
+        posX = $fun ? rand(x_min..x_max) : x_min
+        posY = $fun ? rand(y_min..y_max) : (perf-1) * block_width
+        posZ = $fun ? rand(z_min..z_max) : z_min
+        roll = $fun ? rand(0..Math::PI) : Math::PI * 0.5
+        pitch = $fun ? rand(0..Math::PI) : 0
+        yaw = $fun ? rand(0..Math::PI) : Math::PI * perf / performers
     %>
 
     <model name="model_<%= perf.to_s %>">
       <pose>
-        <%= rand(x_min..x_max) %>
-        <%= rand(y_min..y_max) %>
-        <%= rand(z_min..z_max) %>
-        <%= rand(0..Math::PI) %>
-        <%= rand(0..Math::PI) %>
-        <%= rand(0..Math::PI) %>
+        <%= posX %>
+        <%= posY %>
+        <%= posZ %>
+        <%= roll %>
+        <%= pitch %>
+        <%= yaw %>
       </pose>
       <link name="link">
         <%= printInertia(geom, sizeX, sizeY, sizeZ) %>
@@ -390,7 +409,7 @@
       </link>
     </model>
 
-    <% if level_visuals == 1 %>
+    <% if level_visuals %>
     <model name="level_vis_<%= block[:name] %>">
       <static>true</static>
       <pose><%= block[:x_pos] %> <%= block[:y_pos] %> <%= block[:z_pos] %> 0 0 0</pose>
@@ -398,7 +417,7 @@
         <visual name="visual_level">
           <geometry>
             <box>
-              <size><%= block_length %> <%= block[:width] %> <%= level_height %></size>
+              <size><%= block_length %> <%= block_width %> <%= level_height %></size>
             </box>
           </geometry>
           <material>
