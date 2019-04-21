@@ -10,7 +10,7 @@
         Topic to publish twist messages.
         Works well with diff_drive.sdf world, see README for instructions.
       -->
-      <twist_topic>/model/vehicle_blue/cmd_vel</twist_topic>
+      <twist_topic>/model/vehicle_0/cmd_vel</twist_topic>
 
       <!-- Normal model -->
 
@@ -24,7 +24,7 @@
       <scale_linear>2 0 0</scale_linear>
 
       <!-- Scale for angular RPY, defaults to 0.5 on Yaw-->
-      <scale_linear>0 0 2</scale_linear>
+      <scale_angular>0 0 2</scale_angular>
 
      <!-- Turbo mode -->
 
@@ -32,10 +32,10 @@
       <enable_turbo_button>1</enable_turbo_button>
 
       <!-- Scale for linear XYZ, defaults to the normal mode scale -->
-      <scale_linear_turbo>5 0 0</scale_linear_turbo>
+      <scale_linear_turbo>20 0 0</scale_linear_turbo>
 
       <!-- Scale for angular RPY, defaults to the normal mode scale -->
-      <scale_linear>0 0 5</scale_linear>
+      <scale_angular_turbo>0 0 5</scale_angular_turbo>
     </plugin>
   </world>
 </sdf>
