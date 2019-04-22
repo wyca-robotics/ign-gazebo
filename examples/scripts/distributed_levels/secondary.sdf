@@ -5,6 +5,7 @@
 
   - primary: false
   - secondary: true
+  - level visuals: false
 
 -->
 <sdf version="1.6">
@@ -54,7 +55,7 @@
             <iyz>0</iyz>
             <izz>3</izz>
           </inertia>
-          <mass>3.0</mass>
+          <mass>10</mass>
         </inertial>
         <collision name="shape_collision">
           <geometry>
@@ -88,7 +89,7 @@
             <iyz>0</iyz>
             <izz>3</izz>
           </inertia>
-          <mass>3.0</mass>
+          <mass>3</mass>
         </inertial>
         <collision name="shape_collision">
           <geometry>
@@ -137,40 +138,7 @@
       </link>
     </model>
 
-    <model name="level_vis_block_0_A">
-      <static>true</static>
-      <pose>0.0 -1.5 -0.0 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 2.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                4.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
+    
     
     <model name="block_0_B">
       <static>true</static>
@@ -198,40 +166,7 @@
       </link>
     </model>
 
-    <model name="level_vis_block_0_B">
-      <static>true</static>
-      <pose>0.0 1.5 -0.0 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 2.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                4.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
+    
     
     <model name="block_1_A">
       <static>true</static>
@@ -259,40 +194,7 @@
       </link>
     </model>
 
-    <model name="level_vis_block_1_A">
-      <static>true</static>
-      <pose>2.598076211353316 -1.5 -1.4999999999999998 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 2.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                4.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
+    
     
     <model name="block_1_B">
       <static>true</static>
@@ -320,40 +222,7 @@
       </link>
     </model>
 
-    <model name="level_vis_block_1_B">
-      <static>true</static>
-      <pose>2.598076211353316 1.5 -1.4999999999999998 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 2.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                4.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
+    
     
     <model name="block_2_A">
       <static>true</static>
@@ -381,40 +250,7 @@
       </link>
     </model>
 
-    <model name="level_vis_block_2_A">
-      <static>true</static>
-      <pose>5.196152422706632 -1.5 -2.9999999999999996 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 2.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                4.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
+    
     
     <model name="block_2_B">
       <static>true</static>
@@ -442,40 +278,7 @@
       </link>
     </model>
 
-    <model name="level_vis_block_2_B">
-      <static>true</static>
-      <pose>5.196152422706632 1.5 -2.9999999999999996 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 2.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                4.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
+    
     
     <model name="block_3_C">
       <static>true</static>
@@ -503,292 +306,15 @@
       </link>
     </model>
 
-    <model name="level_vis_block_3_C">
-      <static>true</static>
-      <pose>7.794228634059948 0 -4.499999999999999 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 5.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                7.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
     
-    <model name="block_4_A">
-      <static>true</static>
-      <pose>10.392304845413264 -1.5 -5.999999999999999 0 0.5235987755982988 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <box>
-              <size>3.0 2.0 0.1</size>
-            </box>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <box>
-              <size>3.0 2.0 0.1</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0.8 0.8 0.8 1</ambient>
-            <diffuse>0.8 0.8 0.8 1</diffuse>
-            <specular>0.8 0.8 0.8 1</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <model name="level_vis_block_4_A">
-      <static>true</static>
-      <pose>10.392304845413264 -1.5 -5.999999999999999 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 2.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                4.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
-    
-    <model name="block_4_B">
-      <static>true</static>
-      <pose>10.392304845413264 1.5 -5.999999999999999 0 0.5235987755982988 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <box>
-              <size>3.0 2.0 0.1</size>
-            </box>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <box>
-              <size>3.0 2.0 0.1</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0.8 0.8 0.8 1</ambient>
-            <diffuse>0.8 0.8 0.8 1</diffuse>
-            <specular>0.8 0.8 0.8 1</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <model name="level_vis_block_4_B">
-      <static>true</static>
-      <pose>10.392304845413264 1.5 -5.999999999999999 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 2.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                4.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
-    
-    <model name="block_5_A">
-      <static>true</static>
-      <pose>12.99038105676658 -1.5 -7.499999999999999 0 0.5235987755982988 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <box>
-              <size>3.0 2.0 0.1</size>
-            </box>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <box>
-              <size>3.0 2.0 0.1</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0.8 0.8 0.8 1</ambient>
-            <diffuse>0.8 0.8 0.8 1</diffuse>
-            <specular>0.8 0.8 0.8 1</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <model name="level_vis_block_5_A">
-      <static>true</static>
-      <pose>12.99038105676658 -1.5 -7.499999999999999 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 2.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                4.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
-    
-    <model name="block_5_B">
-      <static>true</static>
-      <pose>12.99038105676658 1.5 -7.499999999999999 0 0.5235987755982988 0</pose>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
-            <box>
-              <size>3.0 2.0 0.1</size>
-            </box>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <box>
-              <size>3.0 2.0 0.1</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0.8 0.8 0.8 1</ambient>
-            <diffuse>0.8 0.8 0.8 1</diffuse>
-            <specular>0.8 0.8 0.8 1</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <model name="level_vis_block_5_B">
-      <static>true</static>
-      <pose>12.99038105676658 1.5 -7.499999999999999 0 0 0</pose>
-      <link name="link">
-        <visual name="visual_level">
-          <geometry>
-            <box>
-              <size>3.0 2.0 2.0</size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0 0.8 0.2</ambient>
-            <diffuse>0 0 0.8 0.2</diffuse>
-            <specular>0 0 0.8 0.2</specular>
-          </material>
-        </visual>
-        <visual name="visual_buffer">
-          <geometry>
-            <box>
-              <size>
-                5.0
-                4.0
-                4.0
-              </size>
-            </box>
-          </geometry>
-          <material>
-            <ambient>0 0.8 0.8 0.2</ambient>
-            <diffuse>0 0.8 0.8 0.2</diffuse>
-            <specular>0 0.8 0.8 0.2</specular>
-          </material>
-        </visual>
-      </link>
-    </model>
     
 
     <model name="end_block_A">
       <static>true</static>
       <pose>
-        12.99038105676658
+        7.794228634059948
         -1.5
-        -7.499999999999999
+        -4.499999999999999
         0
         0
         0
@@ -819,9 +345,9 @@
     <model name="end_block_B">
       <static>true</static>
       <pose>
-        14.289419162443238
+        9.093266739736606
         1.5
-        -8.249999999999998
+        -5.249999999999999
         0
         0
         0
@@ -856,7 +382,7 @@
         <ref>green_sphere</ref>
         <geometry>
           <box>
-            <size>1 1 1</size>
+            <size>0.4 0.4 0.4</size>
           </box>
         </geometry>
       </performer>
@@ -947,50 +473,6 @@
       </geometry>
       <buffer>1.0</buffer>
       <ref>block_3_C</ref>
-    </level>
-    
-    <level name="level_block_4_A">
-      <pose>10.392304845413264 -1.5 -5.999999999999999 0 0 0</pose>
-      <geometry>
-        <box>
-          <size>3.0 2.0 2.0</size>
-        </box>
-      </geometry>
-      <buffer>1.0</buffer>
-      <ref>block_4_A</ref>
-    </level>
-    
-    <level name="level_block_4_B">
-      <pose>10.392304845413264 1.5 -5.999999999999999 0 0 0</pose>
-      <geometry>
-        <box>
-          <size>3.0 2.0 2.0</size>
-        </box>
-      </geometry>
-      <buffer>1.0</buffer>
-      <ref>block_4_B</ref>
-    </level>
-    
-    <level name="level_block_5_A">
-      <pose>12.99038105676658 -1.5 -7.499999999999999 0 0 0</pose>
-      <geometry>
-        <box>
-          <size>3.0 2.0 2.0</size>
-        </box>
-      </geometry>
-      <buffer>1.0</buffer>
-      <ref>block_5_A</ref>
-    </level>
-    
-    <level name="level_block_5_B">
-      <pose>12.99038105676658 1.5 -7.499999999999999 0 0 0</pose>
-      <geometry>
-        <box>
-          <size>3.0 2.0 2.0</size>
-        </box>
-      </geometry>
-      <buffer>1.0</buffer>
-      <ref>block_5_B</ref>
     </level>
     
 

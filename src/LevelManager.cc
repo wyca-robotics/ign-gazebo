@@ -178,6 +178,9 @@ void LevelManager::ReadPerformers(const sdf::ElementPtr &_sdf)
                                         components::Name(name));
     this->runner->entityCompMgr.CreateComponent(performerEntity,
                                         components::Geometry(geometry));
+
+    ignmsg << "Created performer [" << performerEntity << " / " << name << "]"
+           << std::endl;
   }
 
   if (this->useLevels && performerMap.empty())

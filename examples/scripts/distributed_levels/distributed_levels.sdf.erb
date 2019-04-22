@@ -4,6 +4,7 @@
   #
   # Command line options (usage erb [opt]=[arg]):
   # type: primary / secondary / standalone (not distributed)
+  # lv: 1 to generate level visuals
 
   ###############################################
   #                                             #
@@ -31,6 +32,11 @@
     end
   end
 
+  level_visuals = false
+  if (defined? lv and lv == '1')
+    level_visuals = true
+  end
+
   ###############################################
   #                                             #
   #                  MODELS                     #
@@ -41,11 +47,19 @@
   [
     {:name => 'green_sphere',
      :color => '0 1 0 1',
+     :x_pos => '0',
      :y_pos => '-1.5',
+     :z_pos => '2.5',
+     :mass => '10',
+     :perf_box => '0.4 0.4 0.4',
      :geom => '<sphere><radius>0.2</radius></sphere>'},
     {:name => 'yellow_box',
      :color => '1 1 0 1',
+     :x_pos => '0',
      :y_pos => '1.5',
+     :z_pos => '2.5',
+     :mass => '3',
+     :perf_box => '1 1 1',
      :geom => '<box><size>1 1 1</size></box>'},
   ]
 
@@ -54,7 +68,7 @@
   slope = Math::PI / 6
   level_height = 2.0
   level_buffer = 1.0
-  total_steps = 6
+  total_steps = 4
 
   blocks = []
   (0..total_steps-1).each do |step|
@@ -96,6 +110,7 @@
 
   - primary: <%= primary %>
   - secondary: <%= secondary %>
+  - level visuals: <%= level_visuals %>
 
 -->
 <sdf version="1.6">
@@ -214,7 +229,7 @@
     %>
 
     <model name="<%= shape[:name] %>">
-      <pose>0 <%= shape[:y_pos] %> 2.5 0 0 0</pose>
+      <pose><%= shape[:x_pos] %> <%= shape[:y_pos] %> <%= shape[:z_pos] %> 0 0 0</pose>
       <link name="shape_link">
         <inertial>
           <inertia>
@@ -225,7 +240,7 @@
             <iyz>0</iyz>
             <izz>3</izz>
           </inertia>
-          <mass>3.0</mass>
+          <mass><%= shape[:mass] %></mass>
         </inertial>
         <collision name="shape_collision">
           <geometry>
@@ -276,6 +291,7 @@
       </link>
     </model>
 
+    <% if level_visuals %>
     <model name="level_vis_<%= block[:name] %>">
       <static>true</static>
       <pose><%= block[:x_pos] %> <%= block[:y_pos] %> <%= block[:z_pos] %> 0 0 0</pose>
@@ -310,6 +326,7 @@
         </visual>
       </link>
     </model>
+    <% end %>
     <% end %>
 
     <model name="end_block_A">
@@ -387,7 +404,7 @@
         <ref><%= shape[:name] %></ref>
         <geometry>
           <box>
-            <size>1 1 1</size>
+            <size><%= shape[:perf_box] %></size>
           </box>
         </geometry>
       </performer>
