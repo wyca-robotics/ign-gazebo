@@ -306,3 +306,21 @@ math::Inertiald ignition::gazebo::convert(const msgs::Inertial &_in)
   out.SetPose(msgs::Convert(_in.pose()));
   return out;
 }
+
+//////////////////////////////////////////////////
+template<>
+msgs::Axis ignition::gazebo::convert(const sdf::JointAxis &_in)
+{
+  msgs::Axis out;
+  msgs::Set(out.mutable_xyz(), _in.Xyz());
+  return out;
+}
+
+//////////////////////////////////////////////////
+template<>
+sdf::JointAxis ignition::gazebo::convert(const msgs::Axis &_in)
+{
+  sdf::JointAxis out;
+  out.SetXyz(msgs::Convert(_in.xyz()));
+  return out;
+}
