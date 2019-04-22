@@ -1,3 +1,9 @@
+if(WIN32)
+  # when using vcpkg in Windows the call to IgnFindProtobuf
+  # does not find the macro PROTOBUF_GENERATE_CPP
+  find_package(Protobuf)
+endif()
+
 PROTOBUF_GENERATE_CPP(PROTO_PRIVATE_SRC PROTO_PRIVATE_HEADERS
   peer_info.proto
   peer_control.proto
