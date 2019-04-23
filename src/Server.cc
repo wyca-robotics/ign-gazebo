@@ -26,6 +26,8 @@
 #include "ServerPrivate.hh"
 #include "SimulationRunner.hh"
 
+#include <numeric>
+
 using namespace ignition::gazebo;
 
 /// \brief This struct provides access to the default world.
