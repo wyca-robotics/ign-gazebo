@@ -338,6 +338,8 @@ void NetworkManagerPrimary::PopulateAffinities(
 
     // Choose to keep the level in the secondary with the most performers.
     // If the numbers are the same, any can be chosen.
+    // FIXME(louise) We sometimes run into a situation where 2 levels are
+    // told to swap secondaries every iteration in a loop
     std::string chosenSecondary;
     int maxCount{0};
     for (auto [secondary, count] : secondaryCounts)
