@@ -94,7 +94,7 @@ std::ostream &toStream(std::ostream &_out, DataType const &_data)
 /// \param[in] _out Out stream.
 /// \param[in] _data Data to be serialized.
 template<typename DataType, typename Identifier, typename... Ignored>
-std::ostream &toStream(std::ostream &_out, DataType const &,
+std::ostream &_toStream(std::ostream &_out, DataType const &,
     Ignored const &..., ...)
 {
   static bool warned{false};
@@ -518,7 +518,7 @@ namespace components
   template <typename DataType, typename Identifier>
   void Component<DataType, Identifier>::Serialize(std::ostream &_out) const
   {
-    toStream<DataType, Identifier>(_out, this->Data());
+    _toStream<DataType, Identifier>(_out, this->Data());
   }
 
   //////////////////////////////////////////////////
