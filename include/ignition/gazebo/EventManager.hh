@@ -121,7 +121,9 @@ namespace ignition
       /// \brief Hash functor for TypeInfoRef
       private: struct Hasher
                {
-                 std::size_t operator()(TypeInfoRef _code) const
+		 Hasher() = default;
+                 
+		 std::size_t operator()(TypeInfoRef _code) const
                  {
                    return _code.get().hash_code();
                  }
@@ -130,6 +132,8 @@ namespace ignition
       /// \brief Equality functor for TypeInfoRef
       private: struct EqualTo
                {
+		 EqualTo() = default;
+
                  bool operator()(TypeInfoRef _lhs, TypeInfoRef _rhs) const
                  {
                    return _lhs.get() == _rhs.get();
