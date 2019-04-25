@@ -212,7 +212,6 @@ namespace components
     public: friend std::ostream &operator<<(
                 std::ostream &_out, const BaseComponent &_component)
     {
-      // TODO(louise) This skips custom operators when using BaseComponent
       _component.Serialize(_out);
       return _out;
     }
@@ -396,27 +395,6 @@ namespace components
     /// \param[in] _component Component to compare to
     /// \return False.
     public: bool operator!=(const Component<NoData, Identifier> &) const;
-
-    /// \brief Components with no data are always serialize to an empty string.
-    /// \param[in] _out Out stream.
-    /// \param[in] _component Component to stream
-    /// \return The same _out stream, unchanged.
-    public: friend std::ostream &operator<<(std::ostream &_out,
-        const Component<NoData, Identifier> &)
-    {
-      _out << "-";
-      return _out;
-    }
-
-    /// \brief Components with no data are always serialize to an empty string.
-    /// \param[in] _out In stream.
-    /// \param[in] _component Component to stream
-    /// \return The same _in stream, unchanged.
-    public: friend std::istream &operator>>(std::istream &_in,
-        Component<NoData, Identifier> &)
-    {
-      return _in;
-    }
 
     // Documentation inherited
     public: void Serialize(std::ostream &_out) const override;

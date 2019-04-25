@@ -888,7 +888,7 @@ TEST_F(ComponentsTest, World)
   // Stream operators
   std::ostringstream ostr;
   ostr << comp1;
-  EXPECT_TRUE(ostr.str().empty());
+  EXPECT_EQ("-", ostr.str());
 
   std::istringstream istr("ignored");
   components::World comp3;
