@@ -19,7 +19,8 @@
 #include <set>
 #include <vector>
 
-#include "ignition/common/Profiler.hh"
+#include <ignition/common/Profiler.hh>
+#include <ignition/math/graph/GraphAlgorithms.hh>
 #include "ignition/gazebo/components/Component.hh"
 #include "ignition/gazebo/components/Factory.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
@@ -660,38 +661,80 @@ void EntityComponentManager::RebuildViews()
 }
 
 //////////////////////////////////////////////////
-ignition::msgs::SerializedState EntityComponentManager::State(
-    std::unordered_set<Entity> _entities,
-    std::unordered_set<ComponentTypeId> _types) const
+void EntityComponentManager::AddEntityToMessage(msgs::SerializedState &_msg,
+    Entity _entity, const std::unordered_set<ComponentTypeId> &_types) const
+{
+  auto entityMsg = _msg.add_entities();
+  entityMsg->set_id(_entity);
+
+  if (this->dataPtr->toRemoveEntities.find(_entity) !=
+      this->dataPtr->toRemoveEntities.end())
+  {
+    entityMsg->set_remove(true);
+  }
+
+  // Empty means all types
+  bool allTypes = _types.empty();
+
+  auto components = this->dataPtr->entityComponents[_entity];
+  for (const auto &comp : components)
+  {
+    if (!allTypes && _types.find(comp.first) == _types.end())
+    {
+      continue;
+    }
+
+    auto compMsg = entityMsg->add_components();
+
+    auto compBase = this->ComponentImplementation(_entity, comp.first);
+    compMsg->set_type(compBase->TypeId());
+
+    std::ostringstream ostr;
+    ostr << *compBase;
+
+    compMsg->set_component(ostr.str());
+
+    // TODO(anyone) Set component being removed once we have a way to queue it
+  }
+}
+
+//////////////////////////////////////////////////
+ignition::msgs::SerializedState EntityComponentManager::ChangedState() const
 {
   ignition::msgs::SerializedState stateMsg;
-  for (const auto &[entity, components] : this->dataPtr->entityComponents)
+
+  // New entities
+  for (const auto &entity : this->dataPtr->newlyCreatedEntities)
   {
+    this->AddEntityToMessage(stateMsg, entity);
+  }
+
+  // Entities being removed
+  for (const auto &entity : this->dataPtr->toRemoveEntities)
+  {
+    this->AddEntityToMessage(stateMsg, entity);
+  }
+
+  // TODO(anyone) New / removed / changed components
+
+  return stateMsg;
+}
+
+//////////////////////////////////////////////////
+ignition::msgs::SerializedState EntityComponentManager::State(
+    const std::unordered_set<Entity> &_entities,
+    const std::unordered_set<ComponentTypeId> &_types) const
+{
+  ignition::msgs::SerializedState stateMsg;
+  for (const auto &it : this->dataPtr->entityComponents)
+  {
+    auto entity = it.first;
     if (!_entities.empty() && _entities.find(entity) == _entities.end())
     {
       continue;
     }
 
-    auto entityMsg = stateMsg.add_entities();
-    entityMsg->set_id(entity);
-
-    for (const auto &comp : components)
-    {
-      if (!_types.empty() && _types.find(comp.first) == _entities.end())
-      {
-        continue;
-      }
-
-      auto compMsg = entityMsg->add_components();
-
-      auto compBase = this->ComponentImplementation(entity, comp.first);
-      compMsg->set_type(compBase->TypeId());
-
-      std::ostringstream ostr;
-      ostr << *compBase;
-
-      compMsg->set_component(ostr.str());
-    }
+    this->AddEntityToMessage(stateMsg, entity, _types);
   }
 
   return stateMsg;
@@ -783,6 +826,7 @@ void EntityComponentManager::SetState(
 
 //////////////////////////////////////////////////
 std::unordered_set<Entity> EntityComponentManager::Descendants(Entity _entity)
+    const
 {
   // Check cache
   if (this->dataPtr->descendantCache.find(_entity) !=
@@ -796,26 +840,10 @@ std::unordered_set<Entity> EntityComponentManager::Descendants(Entity _entity)
   if (!this->HasEntity(_entity))
     return descendants;
 
-  descendants.insert(_entity);
-
-  auto adjacents = this->dataPtr->entities.AdjacentsFrom(_entity);
-  auto current = adjacents.begin();
-  while (current != adjacents.end())
-  {
-    auto id = current->first;
-
-    // Store entity
-    descendants.insert(id);
-
-    // Add adjacents to set
-    for (auto adj : this->dataPtr->entities.AdjacentsFrom(id))
-    {
-      adjacents.insert(adj);
-    }
-
-    // Remove from set
-    current = adjacents.erase(current);
-  }
+  auto descVector = math::graph::BreadthFirstSort(this->dataPtr->entities,
+      _entity);
+  std::move(descVector.begin(), descVector.end(), std::inserter(descendants,
+      descendants.end()));
 
   this->dataPtr->descendantCache[_entity] = descendants;
   return descendants;
