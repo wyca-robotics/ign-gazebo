@@ -28,18 +28,27 @@
 
 namespace sdf
 {
-inline std::ostream &operator<<(std::ostream &_out, const Geometry &_geom)
+/// \brief Stream insertion operator for `sdf::Geometry`.
+/// \param[in] _out Output stream.
+/// \param[in] _geometry Geometry to stream
+/// \return The stream.
+inline std::ostream &operator<<(std::ostream &_out, const Geometry &_geometry)
 {
-  auto msg = ignition::gazebo::convert<ignition::msgs::Geometry>(_geom);
+  auto msg = ignition::gazebo::convert<ignition::msgs::Geometry>(_geometry);
   msg.SerializeToOstream(&_out);
   return _out;
 }
-inline std::istream &operator>>(std::istream &_in, Geometry &_geom)
+
+/// \brief Stream extraction operator for `sdf::Geometry`.
+/// \param[in] _in Input stream.
+/// \param[out] _geometry Geometry to populate
+/// \return The stream.
+inline std::istream &operator>>(std::istream &_in, Geometry &_geometry)
 {
   ignition::msgs::Geometry msg;
   msg.ParseFromIstream(&_in);
 
-  _geom = ignition::gazebo::convert<sdf::Geometry>(msg);
+  _geometry = ignition::gazebo::convert<sdf::Geometry>(msg);
   return _in;
 }
 }
@@ -54,7 +63,6 @@ namespace components
 {
   /// \brief This component holds an entity's geometry.
   using Geometry = Component<sdf::Geometry, class GeometryTag>;
-
   IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.Geometry", Geometry)
 }
 }
