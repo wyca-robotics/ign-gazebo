@@ -420,7 +420,8 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
         // TODO(anyone) This component is used for friction, but doesn't get
         // transmitted during distributed sim. We shold have an sdf::Surface
         // class instead.
-        auto collElement = _ecm.Component<components::CollisionElement>(_entity);
+        auto collElement =
+            _ecm.Component<components::CollisionElement>(_entity);
         if (collElement)
         {
           collision.Load(collElement->Data());

@@ -317,7 +317,7 @@ void NetworkManagerPrimary::PopulateAffinities(
   }
 
   // Check for level changes
-  for (auto [level, secs] : lToSNew)
+  for (const auto &[level, secs] : lToSNew)
   {
     // Level is only in one secondary, all good
     if (secs.size() <= 1)
@@ -325,7 +325,7 @@ void NetworkManagerPrimary::PopulateAffinities(
 
     std::string msg{"Level [" + std::to_string(level) + "] is in [" +
         std::to_string(secs.size()) + "] secondaries:"};
-    for (auto s : secs)
+    for (const auto &s : secs)
       msg += " [" + s + "] ";
     ignmsg << msg << std::endl;
 
@@ -342,7 +342,7 @@ void NetworkManagerPrimary::PopulateAffinities(
     // told to swap secondaries every iteration in a loop
     std::string chosenSecondary;
     int maxCount{0};
-    for (auto [secondary, count] : secondaryCounts)
+    for (const auto &[secondary, count] : secondaryCounts)
     {
       if (count > maxCount)
       {
