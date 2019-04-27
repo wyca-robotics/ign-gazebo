@@ -44,6 +44,7 @@
 #include <ignition/physics/GetEntities.hh>
 #include <ignition/physics/Joint.hh>
 #include <ignition/physics/Link.hh>
+#include <ignition/physics/FreeGroup.hh>
 #include <ignition/physics/RemoveEntities.hh>
 #include <ignition/physics/Shape.hh>
 #include <ignition/physics/SphereShape.hh>
@@ -68,6 +69,7 @@
 // Components
 #include "ignition/gazebo/components/AngularAcceleration.hh"
 #include "ignition/gazebo/components/AngularVelocity.hh"
+#include "ignition/gazebo/components/AngularVelocityCmd.hh"
 #include "ignition/gazebo/components/CanonicalLink.hh"
 #include "ignition/gazebo/components/ChildLinkName.hh"
 #include "ignition/gazebo/components/Collision.hh"
@@ -82,6 +84,7 @@
 #include "ignition/gazebo/components/JointVelocity.hh"
 #include "ignition/gazebo/components/LinearAcceleration.hh"
 #include "ignition/gazebo/components/LinearVelocity.hh"
+#include "ignition/gazebo/components/LinearVelocityCmd.hh"
 #include "ignition/gazebo/components/Link.hh"
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/components/Name.hh"
@@ -90,6 +93,7 @@
 #include "ignition/gazebo/components/ExternalWorldWrenchCmd.hh"
 #include "ignition/gazebo/components/JointForceCmd.hh"
 #include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/components/PoseCmd.hh"
 #include "ignition/gazebo/components/Static.hh"
 #include "ignition/gazebo/components/ThreadPitch.hh"
 #include "ignition/gazebo/components/Visual.hh"
@@ -106,6 +110,11 @@ namespace components = ignition::gazebo::components;
 class ignition::gazebo::systems::PhysicsPrivate
 {
   public: using MinimumFeatureList = ignition::physics::FeatureList<
+          // FreeGroup
+          ignition::physics::FindFreeGroupFeature,
+          ignition::physics::SetFreeGroupVelocity,
+          ignition::physics::SetFreeGroupPose,
+          ignition::physics::FreeGroupFrameSemantics,
           ignition::physics::LinkFrameSemantics,
           ignition::physics::AddLinkExternalForceTorque,
           ignition::physics::ForwardStep,
@@ -146,6 +155,9 @@ class ignition::gazebo::systems::PhysicsPrivate
   public: using JointPtrType = ignition::physics::JointPtr<
             ignition::physics::FeaturePolicy3d, MinimumFeatureList>;
 
+  public: using FreeGroupPtrType = ignition::physics::FreeGroupPtr<
+            ignition::physics::FeaturePolicy3d, MinimumFeatureList>;
+
   /// \brief Create physics entities
   /// \param[in] _ecm Constant reference to ECM.
   public: void CreatePhysicsEntities(const EntityComponentManager &_ecm);
@@ -156,7 +168,7 @@ class ignition::gazebo::systems::PhysicsPrivate
 
   /// \brief Update physics from components
   /// \param[in] _ecm Constant reference to ECM.
-  public: void UpdatePhysics(const EntityComponentManager &_ecm);
+  public: void UpdatePhysics(EntityComponentManager &_ecm);
 
   /// \brief Step the simulationrfor each world
   /// \param[in] _dt Duration
@@ -560,7 +572,7 @@ void PhysicsPrivate::RemovePhysicsEntities(const EntityComponentManager &_ecm)
 }
 
 //////////////////////////////////////////////////
-void PhysicsPrivate::UpdatePhysics(const EntityComponentManager &_ecm)
+void PhysicsPrivate::UpdatePhysics(EntityComponentManager &_ecm)
 {
   IGN_PROFILE("PhysicsPrivate::UpdatePhysics");
   // Handle joint state
@@ -622,6 +634,145 @@ void PhysicsPrivate::UpdatePhysics(const EntityComponentManager &_ecm)
         linkIt->second->AddExternalForce(math::eigen3::convert(force));
         linkIt->second->AddExternalTorque(math::eigen3::convert(torque));
 
+        return true;
+      });
+
+  // Commanded Link Linear Velocities
+  _ecm.Each<components::Link, components::WorldLinearVelocityCmd>(
+      [&](const Entity &_entity,
+          const components::Link *,
+          const components::WorldLinearVelocityCmd *_linVelCmd)
+      {
+        auto linkIt = this->entityLinkMap.find(_entity);
+        if (linkIt == this->entityLinkMap.end())
+          return true;
+
+        // TODO(addisu) Store the free group instead of searching for it at
+        // every iteration
+        auto freeGroup = linkIt->second->FindFreeGroup();
+        if (freeGroup)
+        {
+          freeGroup->SetWorldLinearVelocity(
+              math::eigen3::convert(_linVelCmd->Data()));
+        }
+        return true;
+      });
+
+  // Commanded Model Linear Velocities
+  _ecm.Each<components::Model, components::WorldLinearVelocityCmd>(
+      [&](const Entity &_entity, const components::Model *,
+          const components::WorldLinearVelocityCmd *_linVelCmd)
+      {
+        auto modelIt = this->entityModelMap.find(_entity);
+        if (modelIt == this->entityModelMap.end())
+          return true;
+
+        // TODO(addisu) Store the free group instead of searching for it at
+        // every iteration
+        auto freeGroup = modelIt->second->FindFreeGroup();
+        if (freeGroup)
+        {
+          freeGroup->SetWorldLinearVelocity(
+              math::eigen3::convert(_linVelCmd->Data()));
+        }
+        return true;
+      });
+
+  // Commanded Link Angular Velocities
+  _ecm.Each<components::Link, components::WorldAngularVelocityCmd>(
+      [&](const Entity &_entity,
+          const components::Link *,
+          const components::WorldAngularVelocityCmd *_angVelCmd)
+      {
+        auto linkIt = this->entityLinkMap.find(_entity);
+        if (linkIt == this->entityLinkMap.end())
+          return true;
+
+        // TODO(addisu) Store the free group instead of searching for it at
+        // every iteration
+        auto freeGroup = linkIt->second->FindFreeGroup();
+        if (freeGroup)
+        {
+          freeGroup->SetWorldAngularVelocity(
+              math::eigen3::convert(_angVelCmd->Data()));
+        }
+        return true;
+      });
+
+  _ecm.Each<components::Model, components::WorldAngularVelocityCmd>(
+      [&](const Entity &_entity, const components::Model *,
+          const components::WorldAngularVelocityCmd *_angVelCmd)
+      {
+        auto modelIt = this->entityModelMap.find(_entity);
+        if (modelIt == this->entityModelMap.end())
+          return true;
+
+        // TODO(addisu) Store the free group instead of searching for it at
+        // every iteration
+        auto freeGroup = modelIt->second->FindFreeGroup();
+        if (freeGroup)
+        {
+          freeGroup->SetWorldAngularVelocity(
+              math::eigen3::convert(_angVelCmd->Data()));
+        }
+        return true;
+      });
+
+  _ecm.Each<components::Link, components::WorldPoseCmd>(
+      [&](const Entity &_entity, const components::Link *,
+          const components::WorldPoseCmd *_poseCmd)
+      {
+        auto linkIt = this->entityLinkMap.find(_entity);
+        if (linkIt == this->entityLinkMap.end())
+          return true;
+
+        // TODO(addisu) Store the free group instead of searching for it at
+        // every iteration
+        auto freeGroup = linkIt->second->FindFreeGroup();
+        if (freeGroup)
+        {
+          freeGroup->SetWorldPose(math::eigen3::convert(_poseCmd->Data()));
+        }
+        return true;
+      });
+
+  _ecm.Each<components::Model, components::WorldPoseCmd>(
+      [&](const Entity &_entity, const components::Model *,
+          const components::WorldPoseCmd *_poseCmd)
+      {
+        auto modelIt = this->entityModelMap.find(_entity);
+        if (modelIt == this->entityModelMap.end())
+          return true;
+
+        // TODO(addisu) Store the free group instead of searching for it at
+        // every iteration
+        auto freeGroup = modelIt->second->FindFreeGroup();
+        if (freeGroup)
+        {
+          freeGroup->SetWorldPose(math::eigen3::convert(_poseCmd->Data()));
+        }
+        return true;
+      });
+
+  // Clear pending commands
+  _ecm.Each<components::WorldAngularVelocityCmd>(
+      [&](const Entity &_entity, components::WorldAngularVelocityCmd *) -> bool
+      {
+        _ecm.RemoveComponent<components::WorldAngularVelocityCmd>(_entity);
+        return true;
+      });
+
+  _ecm.Each<components::WorldLinearVelocityCmd>(
+      [&](const Entity &_entity, components::WorldLinearVelocityCmd *) -> bool
+      {
+        _ecm.RemoveComponent<components::WorldLinearVelocityCmd>(_entity);
+        return true;
+      });
+
+  _ecm.Each<components::WorldPoseCmd>(
+      [&](const Entity &_entity, components::WorldPoseCmd*) -> bool
+      {
+        _ecm.RemoveComponent<components::WorldPoseCmd>(_entity);
         return true;
       });
 }
@@ -783,8 +934,8 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
       });
 
   // pose/velocity/acceleration of non-link entities such as sensors /
-  // collisions. These get updated only if another system has created a
-  // components::WorldPose component for the entity.
+  // collisions. These get updated only if another system has created
+  // the component for the entity.
   // Populated components:
   // * WorldPose
   // * WorldLinearVelocity
