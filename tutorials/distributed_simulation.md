@@ -42,8 +42,8 @@ active than instances, multiple levels will be allocated to each secondary.
   particular instance is running slower than the rest, it will have an
   impact on the total simulation throughput.
 
-* Fixed runners - all simulation runners have to be defined ahead of time.
-  If a runner joins or leaves the graph after simulation has started, simulation
+* Fixed secondaries - all simulation runners have to be defined ahead of time.
+  If a secondary joins or leaves the graph after simulation has started, simulation
   will terminate.
 
 ## Execution flow
@@ -51,7 +51,7 @@ active than instances, multiple levels will be allocated to each secondary.
 ### Configuration and launch
 
 Multiple `ign-gazebo` executables are started on the same local area network,
-each with the `--distributed` flag set.
+each with the `--network-role` flag set.
 
 #### Command line options
 
@@ -71,7 +71,7 @@ The secondary instances will only read the role command line option
 #### Environment variables
 
 **WARNING:** Environment variables for distributed simulation configuration
-is deprecated in version 2.x.x of Ignition Gazebo. Please use the
+are deprecated in version 2.x.x of Ignition Gazebo. Please use the
 command-line options instead.
 
 The primary instance will read several environment variables to dictate its behavior.
@@ -109,16 +109,61 @@ duration. Both of these signals will cause the termination of the simulation.
 
 ### Distribution
 
+Performers are distributed across secondaries in a way that:
+
+* Each level can only be simulated by one secondary at a time.
+* The number of idle secondaries is minimized.
+
+The primary keeps all performers loaded, but performs no physics simulation.
+
+#### Initial
+
 After discovery, the `NetworkManager` works on the initial distribution of
-performers across the network graph according to the levels they're in. If
-there are more performers than secondaries, then some secondaries will receive
-multiple performers. On the other hand, if performers are located in less
-levels than secondaries, some secondaries will be left idle.
+performers across the network graph according to the levels they're in.
+
+1. Group performers according to the levels they're in.
+1. Distribute levels across secondaries in a round-robin fashion.
+1. Distribute remaining performers, which aren't in any levels, in a
+round-robin fashion.
+
+If there are more levels with performers than secondaries, then some secondaries
+will receive multiple levels and performers. On the other hand, if performers
+are located in less levels than secondaries, some secondaries will be left idle.
+
+#### Redistribution
 
 As simulation proceeds and performers move across levels, their affinities will
-be updated as part of the message sent on the `/step` topic in order to
-avoid duplicate levels across secondaries. The primary, on the other hand,
-keeps all performers loaded, but performs no physics simulation.
+be updated as part of the message sent on the `/step` topic.
+
+* If a performer enters a level which is being simulated by another secondary,
+either the new or the old performer must be moved. The choice of who to move
+is made in a way that the least performers need to be moved.
+
+* When a performer enters a level that was empty, the performer is moved to an
+idle secondary, if available.
+
+As an example, consider a situation where there are:
+
+* 3 secondaries: `S1`, `S2` and `S3`
+* 3 levels: `L1`, `L2` and `L3`
+* 3 performers: `P1`, `P2` and `P3`
+
+Initially:
+
+* Performer `P1` is in level `L1`, simulated by secondary `S1`.
+* Performers `P2` and `P3` are in level `L2`, simulated by secondary `S2`.
+* `L3` is empty.
+* `S3` is idle.
+
+Some possible moves, all starting from the initial situation:
+
+* `P1` enters `L3`: no reassignments, `S1` is simulating `L3` and `S2` is
+simulating `L2`.
+* `P1` enters `L2`: `P1` is moved to `S2` and `S1` is idle.
+* `P2` and `P3` enter `L1` at the exact same iteration: `P1` is moved
+to `S2` and `S1` is idle.
+* `P3` enters `L3`: `P3` is moved to `S3`.
+* `P2` enters `L1`, `P2` is moved to `S1`.
 
 ### Stepping
 
@@ -132,7 +177,7 @@ containing:
 
     * The current sim time, iteration, step size and paused state.
     * The latest secondary-to-performer affinity changes.
-    * **Upcoming**: The updated state of all performers which are changing secondaries.
+    * The updated state of all performers which are changing secondaries.
 
 1. Each secondary receives the step message, and:
 
