@@ -119,3 +119,21 @@ TEST(CmdLine, Gazebo)
         << output;
   }
 }
+
+/////////////////////////////////////////////////
+/// Main
+int main(int argc, char **argv)
+{
+  // Get a random partition name.
+  g_partition = testing::getRandomNumber();
+
+  // Set the partition name for this process.
+  setenv("IGN_PARTITION", g_partition.c_str(), 1);
+
+  // Set IGN_CONFIG_PATH to the directory where the .yaml configuration files
+  // is located.
+  setenv("IGN_CONFIG_PATH", IGN_CONFIG_PATH, 1);
+
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
