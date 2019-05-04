@@ -25,9 +25,15 @@
 
 static const std::string kBinPath(PROJECT_BINARY_PATH);
 
+#ifdef __APPLE__
+static const std::string ld_library_path = "DYLD_LIBRARY_PATH";
+#else
+static const std::string ld_library_path = "LD_LIBRARY_PATH";
+#endif
 static const std::string kIgnCommand(
   "IGN_GAZEBO_SYSTEM_PLUGIN_PATH=" + kBinPath + "/lib " +
-  "LD_LIBRARY_PATH=" + kBinPath + "/lib:/usr/local/lib:${LD_LIBRARY_PATH} ");
+  ld_library_path + "=" + kBinPath + "/lib:/usr/local/lib:${" +
+  ld_library_path + "} ");
 
 /////////////////////////////////////////////////
 std::string customExecStr(std::string _cmd)
