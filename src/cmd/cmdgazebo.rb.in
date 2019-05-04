@@ -228,8 +228,8 @@ class Cmd
 
     begin
       Importer.dlload plugin
-    rescue DLError
-      puts "Library error: [#{plugin}] not found."
+    rescue DLError => e
+      puts "Library error for [#{plugin}]: #{e.to_s}"
       exit(-1)
     end
 
