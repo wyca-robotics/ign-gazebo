@@ -112,8 +112,8 @@ class ignition::gazebo::systems::PhysicsPrivate
   public: using MinimumFeatureList = ignition::physics::FeatureList<
           // FreeGroup
           ignition::physics::FindFreeGroupFeature,
-          ignition::physics::SetFreeGroupVelocity,
-          ignition::physics::SetFreeGroupPose,
+          ignition::physics::SetFreeGroupWorldVelocity,
+          ignition::physics::SetFreeGroupWorldPose,
           ignition::physics::FreeGroupFrameSemantics,
           ignition::physics::LinkFrameSemantics,
           ignition::physics::AddLinkExternalForceTorque,
