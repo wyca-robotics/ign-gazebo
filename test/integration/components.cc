@@ -19,6 +19,10 @@
 
 #include <sdf/Cylinder.hh>
 #include <sdf/Element.hh>
+#include <sdf/Altimeter.hh>
+#include <sdf/Magnetometer.hh>
+#include <sdf/Noise.hh>
+#include <sdf/Sensor.hh>
 
 #include "ignition/gazebo/components/Altimeter.hh"
 #include "ignition/gazebo/components/AngularVelocity.hh"
@@ -34,6 +38,7 @@
 #include "ignition/gazebo/components/JointAxis.hh"
 #include "ignition/gazebo/components/JointType.hh"
 #include "ignition/gazebo/components/JointVelocity.hh"
+#include "ignition/gazebo/components/JointVelocityCmd.hh"
 #include "ignition/gazebo/components/Level.hh"
 #include "ignition/gazebo/components/LevelBuffer.hh"
 #include "ignition/gazebo/components/LevelEntityNames.hh"
@@ -41,6 +46,7 @@
 #include "ignition/gazebo/components/LinearAcceleration.hh"
 #include "ignition/gazebo/components/LinearVelocity.hh"
 #include "ignition/gazebo/components/Link.hh"
+#include "ignition/gazebo/components/Magnetometer.hh"
 #include "ignition/gazebo/components/Material.hh"
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/components/Name.hh"
@@ -49,6 +55,7 @@
 #include "ignition/gazebo/components/Performer.hh"
 #include "ignition/gazebo/components/PerformerLevels.hh"
 #include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/components/Scene.hh"
 #include "ignition/gazebo/components/Sensor.hh"
 #include "ignition/gazebo/components/Static.hh"
 #include "ignition/gazebo/components/ThreadPitch.hh"
@@ -71,8 +78,23 @@ class ComponentsTest : public ::testing::Test
 /////////////////////////////////////////////////
 TEST_F(ComponentsTest, Altimeter)
 {
-  auto data1 = std::make_shared<sdf::Element>();
-  auto data2 = std::make_shared<sdf::Element>();
+  sdf::Sensor data1;
+  sdf::Altimeter altimeter;
+  sdf::Noise noise;
+  noise.SetType(sdf::NoiseType::GAUSSIAN);
+  noise.SetMean(0.3);
+  altimeter.SetVerticalVelocityNoise(noise);
+  data1.SetAltimeterSensor(altimeter);
+  data1.SetType(sdf::SensorType::ALTIMETER);
+
+  sdf::Sensor data2;
+  sdf::Altimeter altimeter2;
+  sdf::Noise noise2;
+  noise2.SetType(sdf::NoiseType::GAUSSIAN);
+  noise2.SetMean(0.2);
+  altimeter2.SetVerticalVelocityNoise(noise2);
+  data2.SetAltimeterSensor(altimeter2);
+  data1.SetType(sdf::SensorType::ALTIMETER);
 
   // Create components
   auto comp11 = components::Altimeter(data1);
@@ -87,7 +109,17 @@ TEST_F(ComponentsTest, Altimeter)
   EXPECT_FALSE(comp11 == comp2);
   EXPECT_FALSE(comp11 != comp12);
 
-  // TODO(anyone) Stream operator
+  // Stream operator
+  std::ostringstream ostr;
+  ostr << comp11;
+  std::istringstream istr(ostr.str());
+  components::Altimeter comp3;
+  istr >> comp3;
+  EXPECT_EQ(sdf::SensorType::ALTIMETER, comp3.Data().Type());
+  EXPECT_EQ(sdf::NoiseType::GAUSSIAN,
+      comp3.Data().AltimeterSensor()->VerticalVelocityNoise().Type());
+  EXPECT_DOUBLE_EQ(0.3,
+      comp3.Data().AltimeterSensor()->VerticalVelocityNoise().Mean());
 }
 
 /////////////////////////////////////////////////
@@ -416,19 +448,38 @@ TEST_F(ComponentsTest, JointType)
 TEST_F(ComponentsTest, JointVelocity)
 {
   // Create components
-  auto comp11 = components::JointVelocity(1.2);
-
-  // No double comparisons
+  auto comp11 = components::JointVelocity({1.2, 2.3, 3.4});
 
   // Stream operators
   std::ostringstream ostr;
   ostr << comp11;
-  EXPECT_EQ("1.2", ostr.str());
 
-  std::istringstream istr("3.4");
+  std::istringstream istr(ostr.str());
   components::JointVelocity comp3;
   istr >> comp3;
-  EXPECT_DOUBLE_EQ(3.4, comp3.Data());
+  ASSERT_EQ(3u, comp3.Data().size());
+  EXPECT_DOUBLE_EQ(1.2, comp3.Data()[0]);
+  EXPECT_DOUBLE_EQ(2.3, comp3.Data()[1]);
+  EXPECT_DOUBLE_EQ(3.4, comp3.Data()[2]);
+}
+
+/////////////////////////////////////////////////
+TEST_F(ComponentsTest, JointVelocityCmd)
+{
+  // Create components
+  auto comp11 = components::JointVelocityCmd({1.2, 2.3, 3.4});
+
+  // Stream operators
+  std::ostringstream ostr;
+  ostr << comp11;
+
+  std::istringstream istr(ostr.str());
+  components::JointVelocityCmd comp3;
+  istr >> comp3;
+  ASSERT_EQ(3u, comp3.Data().size());
+  EXPECT_DOUBLE_EQ(1.2, comp3.Data()[0]);
+  EXPECT_DOUBLE_EQ(2.3, comp3.Data()[1]);
+  EXPECT_DOUBLE_EQ(3.4, comp3.Data()[2]);
 }
 
 /////////////////////////////////////////////////
@@ -508,6 +559,21 @@ TEST_F(ComponentsTest, LevelEntityNames)
 TEST_F(ComponentsTest, Light)
 {
   auto data1 = sdf::Light();
+  data1.SetType(sdf::LightType::POINT);
+  data1.SetName("light_test");
+  data1.SetPose(math::Pose3d(1, 2, 4, 0, 0, IGN_PI));
+  data1.SetDiffuse(math::Color(1, 0, 0, 1));
+  data1.SetSpecular(math::Color(0, 1, 0, 1));
+  data1.SetCastShadows(true);
+  data1.SetAttenuationRange(1.3);
+  data1.SetLinearAttenuationFactor(0.3);
+  data1.SetQuadraticAttenuationFactor(0.1);
+  data1.SetConstantAttenuationFactor(0.05);
+  data1.SetDirection(math::Vector3d(2, 3, 4));
+  data1.SetSpotInnerAngle(math::Angle(0.3));
+  data1.SetSpotOuterAngle(math::Angle(2.3));
+  data1.SetSpotFalloff(5.15);
+
   auto data2 = sdf::Light();
 
   // Create components
@@ -515,7 +581,28 @@ TEST_F(ComponentsTest, Light)
   auto comp12 = components::Light(data1);
   auto comp2 = components::Light(data2);
 
-  // TODO(anyone) Stream operator
+  // TODO(anyone) Equality operators
+
+  // Stream operators
+  std::ostringstream ostr;
+  ostr << comp11;
+  std::istringstream istr(ostr.str());
+  components::Light comp3;
+  istr >> comp3;
+  EXPECT_EQ(sdf::LightType::POINT, comp3.Data().Type());
+  EXPECT_EQ("light_test", comp3.Data().Name());
+  EXPECT_EQ(math::Pose3d(1, 2, 4, 0, 0, IGN_PI), comp3.Data().Pose());
+  EXPECT_EQ(math::Color(1, 0, 0, 1), comp3.Data().Diffuse());
+  EXPECT_EQ(math::Color(0, 1, 0, 1), comp3.Data().Specular());
+  EXPECT_TRUE(comp3.Data().CastShadows());
+  EXPECT_FLOAT_EQ(1.3, comp3.Data().AttenuationRange());
+  EXPECT_FLOAT_EQ(0.3, comp3.Data().LinearAttenuationFactor());
+  EXPECT_FLOAT_EQ(0.1, comp3.Data().QuadraticAttenuationFactor());
+  EXPECT_FLOAT_EQ(0.05, comp3.Data().ConstantAttenuationFactor());
+  EXPECT_EQ(math::Angle(0.3), comp3.Data().SpotInnerAngle());
+  EXPECT_EQ(math::Angle(2.3), comp3.Data().SpotOuterAngle());
+  EXPECT_FLOAT_EQ(5.15, comp3.Data().SpotFalloff());
+  EXPECT_EQ(math::Vector3d(2, 3, 4), comp3.Data().Direction());
 }
 
 /////////////////////////////////////////////////
@@ -595,6 +682,47 @@ TEST_F(ComponentsTest, Link)
 }
 
 /////////////////////////////////////////////////
+TEST_F(ComponentsTest, Magnetometer)
+{
+  sdf::Sensor data1;
+  data1.SetName("banana");
+  data1.SetType(sdf::SensorType::MAGNETOMETER);
+  data1.SetUpdateRate(12.4);
+  data1.SetTopic("grape");
+  data1.SetPose(ignition::math::Pose3d(1, 2, 3, 0, 0, 0));
+
+  sdf::Magnetometer mag1;
+  data1.SetMagnetometerSensor(mag1);
+
+  sdf::Sensor data2;
+
+  // Create components
+  auto comp11 = components::Magnetometer(data1);
+  auto comp12 = components::Magnetometer(data1);
+  auto comp2 = components::Magnetometer(data2);
+
+  // Equality operators
+  EXPECT_EQ(comp11, comp12);
+  EXPECT_NE(comp11, comp2);
+  EXPECT_TRUE(comp11 == comp12);
+  EXPECT_TRUE(comp11 != comp2);
+  EXPECT_FALSE(comp11 == comp2);
+  EXPECT_FALSE(comp11 != comp12);
+
+  // Stream operators
+  std::ostringstream ostr;
+  ostr << comp11;
+  std::istringstream istr(ostr.str());
+  components::Magnetometer comp3;
+  istr >> comp3;
+  EXPECT_EQ("banana", comp3.Data().Name());
+  EXPECT_EQ(sdf::SensorType::MAGNETOMETER, comp3.Data().Type());
+  EXPECT_EQ("grape", comp3.Data().Topic());
+  EXPECT_DOUBLE_EQ(12.4, comp3.Data().UpdateRate());
+  EXPECT_EQ(ignition::math::Pose3d(1, 2, 3, 0, 0, 0), comp3.Data().Pose());
+}
+
+/////////////////////////////////////////////////
 TEST_F(ComponentsTest, Material)
 {
   auto data1 = sdf::Material();
@@ -603,8 +731,9 @@ TEST_F(ComponentsTest, Material)
 
   // Create components
   auto comp11 = components::Material(data1);
-  auto comp12 = components::Material(data1);
   auto comp2 = components::Material(data2);
+
+  // TODO(anyone) Equality operators
 
   // Stream operators
   std::ostringstream ostr;
@@ -895,3 +1024,30 @@ TEST_F(ComponentsTest, World)
   istr >> comp3;
 }
 
+/////////////////////////////////////////////////
+TEST_F(ComponentsTest, Scene)
+{
+  auto data1 = sdf::Scene();
+  data1.SetAmbient(math::Color(1, 0, 1, 1));
+  data1.SetBackground(math::Color(1, 1, 0, 1));
+  data1.SetShadows(true);
+  data1.SetGrid(false);
+  data1.SetOriginVisual(true);
+
+  // Create components
+  auto comp11 = components::Scene(data1);
+
+  // TODO(anyone) Equality operators
+
+  // Stream operators
+  std::ostringstream ostr;
+  ostr << comp11;
+  std::istringstream istr(ostr.str());
+  components::Scene comp3;
+  istr >> comp3;
+  EXPECT_EQ(math::Color(1, 0, 1, 1), comp3.Data().Ambient());
+  EXPECT_EQ(math::Color(1, 1, 0, 1), comp3.Data().Background());
+  EXPECT_TRUE(comp3.Data().Shadows());
+  EXPECT_FALSE(comp3.Data().Grid());
+  EXPECT_TRUE(comp3.Data().OriginVisual());
+}
