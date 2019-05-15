@@ -250,13 +250,6 @@ void RenderUtil::Update()
        sdf::Sensor dataSdf = std::get<1>(sensor);
        Entity parent = std::get<2>(sensor);
 
-       static sdf::SDFPtr sdfParsed;
-       if (!sdfParsed)
-       {
-         sdfParsed.reset(new sdf::SDF());
-         sdf::init(sdfParsed);
-       }
-
        // two sensors with the same name cause conflicts. We'll need to use
        // scoped names
        // TODO(anyone) do this in ign-sensors?
@@ -638,5 +631,5 @@ void RenderUtil::SetEnableSensors(bool _enable,
     _createSensorCb)
 {
   this->dataPtr->enableSensors = _enable;
-  this->dataPtr->createSensorCb = _createSensorCb;
+  this->dataPtr->createSensorCb = std::move(_createSensorCb);
 }

@@ -10,7 +10,6 @@ sudo apt-get install -y \
   doxygen \
   libbullet-dev \
   libeigen3-dev \
-  libgflags-dev \
   libtinyxml2-dev \
   libprotoc-dev libprotobuf-dev \
   protobuf-compiler \
@@ -45,6 +44,8 @@ sudo apt-get install -y \
 
 # ign-rendering dependencies
 sudo apt-get install -y \
+  libogre-1.9-dev \
+  libogre-2.1-dev \
   libglew-dev \
   libfreeimage-dev \
   freeglut3-dev \
@@ -59,6 +60,11 @@ sudo apt-get install -y \
 # SDFormat dependencies
 sudo apt-get install -y \
   libxml2-dev
+
+# ign-gazebo dependencies
+sudo apt-get install -y \
+  libgflags-dev \
+  qml-module-qtqml-models2
 
 sudo apt-get clean
 
