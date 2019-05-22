@@ -39,6 +39,7 @@ target_link_libraries(${ign_lib_target}
 )
 
 set (sources
+  ./backward-cpp/backward.cpp
   Conversions.cc
   EntityComponentManager.cc
   EventManager.cc
@@ -83,6 +84,8 @@ set (gtest_sources
 ign_create_core_library(SOURCES ${sources} CXX_STANDARD 17)
 target_link_libraries(${PROJECT_LIBRARY_TARGET_NAME}
   PUBLIC
+  bfd
+  dl
   ignition-math${IGN_MATH_VER}
   ignition-plugin${IGN_PLUGIN_VER}::core
   ignition-common${IGN_COMMON_VER}::ignition-common${IGN_COMMON_VER}
