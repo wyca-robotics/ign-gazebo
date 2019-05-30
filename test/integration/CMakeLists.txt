@@ -1,6 +1,7 @@
 set(TEST_TYPE "INTEGRATION")
 
 set(tests
+  air_pressure_system.cc
   altimeter_system.cc
   apply_joint_force_system.cc
   battery_plugin.cc
@@ -15,6 +16,7 @@ set(tests
   joint_controller_system.cc
   lift_drag_system.cc
   level_manager.cc
+  level_manager_runtime_performers.cc
   link.cc
   logical_camera_system.cc
   magnetometer_system.cc

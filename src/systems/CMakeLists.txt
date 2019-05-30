@@ -1,7 +1,3 @@
-set(IGNITION_GAZEBO_PLUGIN_INSTALL_DIR
-  ${CMAKE_INSTALL_PREFIX}/${IGN_LIB_INSTALL_DIR}/ign-${IGN_DESIGNATION}-${PROJECT_VERSION_MAJOR}/plugins
-)
-
 #################################################
 # gz_add_system(<system>
 #              SOURCES <sources>
@@ -74,6 +70,7 @@ function(gz_add_system system_name)
   INSTALL(FILES ${PROJECT_BINARY_DIR}/${unversioned} DESTINATION ${IGNITION_GAZEBO_PLUGIN_INSTALL_DIR})
 endfunction()
 
+add_subdirectory(air_pressure)
 add_subdirectory(altimeter)
 add_subdirectory(apply_joint_force)
 add_subdirectory(battery_plugin)
@@ -86,6 +83,7 @@ add_subdirectory(lift_drag)
 add_subdirectory(log)
 add_subdirectory(logical_camera)
 add_subdirectory(magnetometer)
+add_subdirectory(multicopter_motor_model)
 add_subdirectory(physics)
 add_subdirectory(pose_publisher)
 add_subdirectory(scene_broadcaster)
