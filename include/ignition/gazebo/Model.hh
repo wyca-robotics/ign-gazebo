@@ -57,7 +57,7 @@ namespace ignition
     class IGNITION_GAZEBO_VISIBLE Model {
       /// \brief Constructor
       /// \param[in] _entity Model entity
-      public: explicit Model(ignition::gazebo::Entity _entity = kNullEntity);
+      public: explicit Model(gazebo::Entity _entity = kNullEntity);
 
       /// \brief Copy constructor
       /// \param[in] _model Model to copy.

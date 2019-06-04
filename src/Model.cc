@@ -31,7 +31,7 @@ class ignition::gazebo::ModelPrivate
 using namespace ignition::gazebo;
 
 //////////////////////////////////////////////////
-Model::Model(ignition::gazebo::Entity _entity)
+Model::Model(gazebo::Entity _entity)
   : dataPtr(std::make_unique<ModelPrivate>())
 {
   this->dataPtr->id = _entity;

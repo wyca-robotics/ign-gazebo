@@ -41,6 +41,8 @@ template<typename T> struct IsSharedPtr<std::shared_ptr<T>>:
 {
 };
 
+// NOOOOOOOO
+//
 /// \brief Helper template to call stream operators only on types that support
 /// them.
 /// This version is called for types that have operator<<
@@ -97,7 +99,7 @@ template<typename DataType, typename Identifier, typename... Ignored>
 std::ostream &_toStream(std::ostream &_out, DataType const &,
     Ignored const &..., ...)
 {
-  static bool warned{false};
+  static bool warned = false;
   if (!warned)
   {
     ignwarn << "Trying to serialize component with data type ["

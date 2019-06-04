@@ -19,8 +19,3 @@
 using namespace ignition;
 using namespace gazebo;
 
-//////////////////////////////////////////////////
-EventManager::EventManager() = default;
-
-//////////////////////////////////////////////////
-EventManager::~EventManager() = default;

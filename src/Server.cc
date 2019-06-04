@@ -64,7 +64,7 @@ struct DefaultWorld
         _config.LogPlaybackPath() + "</path></plugin>");
     }
 
-    static std::string plugins = accumulate(pluginsV.begin(),
+    static std::string plugins = std::accumulate(pluginsV.begin(),
       pluginsV.end(), std::string(""));
     return plugins;
   }
