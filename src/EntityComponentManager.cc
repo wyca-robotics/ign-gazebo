@@ -19,7 +19,8 @@
 #include <set>
 #include <vector>
 
-#include "ignition/common/Profiler.hh"
+#include <ignition/common/Profiler.hh>
+#include <ignition/math/graph/GraphAlgorithms.hh>
 #include "ignition/gazebo/components/Component.hh"
 #include "ignition/gazebo/components/Factory.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
@@ -77,6 +78,11 @@ class ignition::gazebo::EntityComponentManagerPrivate
   /// \brief The set of all views.
   public: mutable std::map<detail::ComponentTypeKey, detail::View> views;
 
+  /// \brief Cache of previously queried descendants. The key is the parent
+  /// entity for which descendants were queried, and the value are all its
+  /// descendants.
+  public: mutable std::map<Entity, std::unordered_set<Entity>> descendantCache;
+
   /// \brief Keep track of entities already used to ensure uniqueness.
   public: uint64_t entityCount{0};
 };
@@ -121,6 +127,9 @@ Entity EntityComponentManagerPrivate::CreateEntityImplementation(Entity _entity)
     std::lock_guard<std::mutex> lock(this->entityCreatedMutex);
     this->newlyCreatedEntities.insert(_entity);
   }
+
+  // Reset descendants cache
+  this->descendantCache.clear();
 
   return _entity;
 }
@@ -244,6 +253,9 @@ void EntityComponentManager::ProcessRemoveEntityRequests()
     // Clear the set of entities to remove.
     this->dataPtr->toRemoveEntities.clear();
   }
+
+  // Reset descendants cache
+  this->dataPtr->descendantCache.clear();
 }
 
 /////////////////////////////////////////////////
@@ -321,6 +333,21 @@ bool EntityComponentManager::IsMarkedForRemoval(const Entity _entity) const
   }
   return this->dataPtr->toRemoveEntities.find(_entity) !=
          this->dataPtr->toRemoveEntities.end();
+}
+
+/////////////////////////////////////////////////
+bool EntityComponentManager::HasNewEntities() const
+{
+  std::lock_guard<std::mutex> lock(this->dataPtr->entityCreatedMutex);
+  return !this->dataPtr->newlyCreatedEntities.empty();
+}
+
+/////////////////////////////////////////////////
+bool EntityComponentManager::HasEntitiesMarkedForRemoval() const
+{
+  std::lock_guard<std::mutex> lock(this->dataPtr->entityRemoveMutex);
+  return this->dataPtr->removeAllEntities ||
+      !this->dataPtr->toRemoveEntities.empty();
 }
 
 /////////////////////////////////////////////////
@@ -649,38 +676,80 @@ void EntityComponentManager::RebuildViews()
 }
 
 //////////////////////////////////////////////////
-ignition::msgs::SerializedState EntityComponentManager::State(
-    std::unordered_set<Entity> _entities,
-    std::unordered_set<ComponentTypeId> _types) const
+void EntityComponentManager::AddEntityToMessage(msgs::SerializedState &_msg,
+    Entity _entity, const std::unordered_set<ComponentTypeId> &_types) const
+{
+  auto entityMsg = _msg.add_entities();
+  entityMsg->set_id(_entity);
+
+  if (this->dataPtr->toRemoveEntities.find(_entity) !=
+      this->dataPtr->toRemoveEntities.end())
+  {
+    entityMsg->set_remove(true);
+  }
+
+  // Empty means all types
+  bool allTypes = _types.empty();
+
+  auto components = this->dataPtr->entityComponents[_entity];
+  for (const auto &comp : components)
+  {
+    if (!allTypes && _types.find(comp.first) == _types.end())
+    {
+      continue;
+    }
+
+    auto compMsg = entityMsg->add_components();
+
+    auto compBase = this->ComponentImplementation(_entity, comp.first);
+    compMsg->set_type(compBase->TypeId());
+
+    std::ostringstream ostr;
+    compBase->Serialize(ostr);
+
+    compMsg->set_component(ostr.str());
+
+    // TODO(anyone) Set component being removed once we have a way to queue it
+  }
+}
+
+//////////////////////////////////////////////////
+ignition::msgs::SerializedState EntityComponentManager::ChangedState() const
 {
   ignition::msgs::SerializedState stateMsg;
-  for (const auto &[entity, components] : this->dataPtr->entityComponents)
+
+  // New entities
+  for (const auto &entity : this->dataPtr->newlyCreatedEntities)
   {
+    this->AddEntityToMessage(stateMsg, entity);
+  }
+
+  // Entities being removed
+  for (const auto &entity : this->dataPtr->toRemoveEntities)
+  {
+    this->AddEntityToMessage(stateMsg, entity);
+  }
+
+  // TODO(anyone) New / removed / changed components
+
+  return stateMsg;
+}
+
+//////////////////////////////////////////////////
+ignition::msgs::SerializedState EntityComponentManager::State(
+    const std::unordered_set<Entity> &_entities,
+    const std::unordered_set<ComponentTypeId> &_types) const
+{
+  ignition::msgs::SerializedState stateMsg;
+  for (const auto &it : this->dataPtr->entityComponents)
+  {
+    auto entity = it.first;
     if (!_entities.empty() && _entities.find(entity) == _entities.end())
     {
       continue;
     }
 
-    auto entityMsg = stateMsg.add_entities();
-    entityMsg->set_id(entity);
-
-    for (const auto &comp : components)
-    {
-      if (!_types.empty() && _types.find(comp.first) == _entities.end())
-      {
-        continue;
-      }
-
-      auto compMsg = entityMsg->add_components();
-
-      auto compBase = this->ComponentImplementation(entity, comp.first);
-      compMsg->set_type(compBase->TypeId());
-
-      std::ostringstream ostr;
-      ostr << *compBase;
-
-      compMsg->set_component(ostr.str());
-    }
+    this->AddEntityToMessage(stateMsg, entity, _types);
   }
 
   return stateMsg;
@@ -722,18 +791,35 @@ void EntityComponentManager::SetState(
         continue;
       }
 
+      auto type = compMsg.type();
+
+      // Components which haven't been registered in this process, such as 3rd
+      // party components streamed to other secondaries and the GUI.
+      if (!components::Factory::Instance()->HasType(type))
+      {
+        static std::unordered_set<unsigned int> printedComps;
+        if (printedComps.find(type) == printedComps.end())
+        {
+          printedComps.insert(type);
+          ignwarn << "Component type [" << type << "] has not been "
+                  << "registered in this process, so it can't be deserialized."
+                  << std::endl;
+        }
+        continue;
+      }
+
       // Create component
       auto newComp = components::Factory::Instance()->New(compMsg.type());
 
       if (nullptr == newComp)
       {
-        ignwarn << "Failed to deserialize component of type [" << compMsg.type()
-                << "]" << std::endl;
+        ignerr << "Failed to deserialize component of type [" << compMsg.type()
+               << "]" << std::endl;
         continue;
       }
 
       std::istringstream istr(compMsg.component());
-      istr >> *newComp.get();
+      newComp->Deserialize(istr);
 
       // Get type id
       auto typeId = newComp->TypeId();
@@ -769,3 +855,29 @@ void EntityComponentManager::SetState(
     }
   }
 }
+
+//////////////////////////////////////////////////
+std::unordered_set<Entity> EntityComponentManager::Descendants(Entity _entity)
+    const
+{
+  // Check cache
+  if (this->dataPtr->descendantCache.find(_entity) !=
+      this->dataPtr->descendantCache.end())
+  {
+    return this->dataPtr->descendantCache[_entity];
+  }
+
+  std::unordered_set<Entity> descendants;
+
+  if (!this->HasEntity(_entity))
+    return descendants;
+
+  auto descVector = math::graph::BreadthFirstSort(this->dataPtr->entities,
+      _entity);
+  std::move(descVector.begin(), descVector.end(), std::inserter(descendants,
+      descendants.end()));
+
+  this->dataPtr->descendantCache[_entity] = descendants;
+  return descendants;
+}
+

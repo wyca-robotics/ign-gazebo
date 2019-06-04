@@ -103,9 +103,9 @@ void NetworkManagerSecondary::OnStep(
   IGN_PROFILE("NetworkManagerSecondary::OnStep");
 
   // Throttle the number of step messages going to the debug output.
-  if (!_msg.paused() && _msg.iteration() % 1000 == 0)
+  if (!_msg.stats().paused() && _msg.stats().iterations() % 1000 == 0)
   {
-    igndbg << "Network iterations: " << _msg.iteration()
+    igndbg << "Network iterations: " << _msg.stats().iterations()
            << std::endl;
   }
 
@@ -141,21 +141,16 @@ void NetworkManagerSecondary::OnStep(
   }
 
   // Update info
-  UpdateInfo info;
-  info.iterations = _msg.iteration();
-  info.paused = _msg.paused();
-  info.dt = std::chrono::steady_clock::duration(
-      std::chrono::nanoseconds(_msg.stepsize()));
-  info.simTime = convert<std::chrono::steady_clock::duration>(_msg.simtime());
+  auto info = convert<UpdateInfo>(_msg.stats());
 
   // Step runner
   this->dataPtr->stepFunction(info);
 
-  // Update state with all the performers
-  // TODO(louise) Get all descendants
-  std::unordered_set<Entity> models;
+  // Update state with all the performer's entities
+  std::unordered_set<Entity> entities;
   for (const auto &perf : this->performers)
   {
+    // Performer model
     auto parent = this->dataPtr->ecm->Component<components::ParentEntity>(perf);
     if (parent == nullptr)
     {
@@ -163,13 +158,15 @@ void NetworkManagerSecondary::OnStep(
              << std::endl;
       continue;
     }
+    auto modelEntity = parent->Data();
 
-    models.insert(parent->Data());
+    auto children = this->dataPtr->ecm->Descendants(modelEntity);
+    entities.insert(children.begin(), children.end());
   }
 
   msgs::SerializedState stateMsg;
-  if (!models.empty())
-    stateMsg = this->dataPtr->ecm->State(models);
+  if (!entities.empty())
+    stateMsg = this->dataPtr->ecm->State(entities);
 
   this->stepAckPub.Publish(stateMsg);
 }

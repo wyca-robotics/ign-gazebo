@@ -139,3 +139,9 @@ BENCHMARK(BM_Serialize5Component)
   ->Arg(500)
   ->Arg(1000)
   ->Unit(benchmark::kMillisecond);
+
+// OSX needs the semicolon, Ubuntu complains that there's an extra ';'
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+BENCHMARK_MAIN();
+#pragma GCC diagnostic pop

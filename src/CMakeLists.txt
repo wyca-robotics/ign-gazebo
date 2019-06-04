@@ -1,3 +1,4 @@
+add_subdirectory(rendering)
 add_subdirectory(gui)
 add_subdirectory(systems)
 add_subdirectory(msgs)
@@ -28,11 +29,21 @@ set(gui_sources
   PARENT_SCOPE
 )
 
+ign_add_component(ign SOURCES cmd/ign.cc GET_TARGET_NAME ign_lib_target)
+target_link_libraries(${ign_lib_target}
+  PRIVATE
+    ${PROJECT_LIBRARY_TARGET_NAME}
+    ignition-common${IGN_COMMON_VER}::ignition-common${IGN_COMMON_VER}
+    ignition-gazebo${PROJECT_VERSION_MAJOR}
+    ignition-gazebo${PROJECT_VERSION_MAJOR}-gui
+)
+
 set (sources
   Conversions.cc
   EntityComponentManager.cc
   EventManager.cc
   LevelManager.cc
+  Link.cc
   Model.cc
   SdfEntityCreator.cc
   Server.cc
@@ -55,6 +66,7 @@ set (gtest_sources
   EntityComponentManager_TEST.cc
   EventManager_TEST.cc
   ign_TEST.cc
+  Link_TEST.cc
   Model_TEST.cc
   SdfEntityCreator_TEST.cc
   Server_TEST.cc
@@ -152,3 +164,8 @@ install (TARGETS ign-gazebo-server DESTINATION ${IGN_BIN_INSTALL_DIR})
 set_target_properties(ign-gazebo-gui
   PROPERTIES VERSION ${PROJECT_VERSION_FULL})
 install (TARGETS ign-gazebo-gui DESTINATION ${IGN_BIN_INSTALL_DIR})
+
+if(NOT WIN32)
+  add_subdirectory(cmd)
+endif()
+

@@ -27,6 +27,7 @@
 #include "ignition/gazebo/components/Name.hh"
 #include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/components/Sensor.hh"
 #include "ignition/gazebo/components/Visual.hh"
 #include "ignition/gazebo/Conversions.hh"
 #include "ignition/gazebo/Model.hh"
@@ -65,8 +66,22 @@ class ignition::gazebo::systems::PosePublisherPrivate
   /// \brief True to publish collision pose
   public: bool publishCollisionPose = false;
 
+  /// \brief True to publish sensor pose
+  public: bool publishSensorPose = false;
+
   /// \brief True to publish nested model pose
   public: bool publishNestedModelPose = false;
+
+  /// \brief Frequency of pose publications in Hz. A negative frequency
+  /// publishes as fast as possible (i.e, at the rate of the simulation step)
+  public: double updateFrequency = -1;
+
+  /// \brief Last time poses were published.
+  public: std::chrono::steady_clock::duration lastPosePubTime{0};
+
+  /// \brief Update period in nanoseconds calculated from the update_frequency
+  /// parameter
+  public: std::chrono::steady_clock::duration updatePeriod{0};
 };
 
 //////////////////////////////////////////////////
@@ -110,6 +125,19 @@ void PosePublisher::Configure(const Entity &_entity,
   this->dataPtr->publishCollisionPose =
     _sdf->Get<bool>("publish_collision_pose",
         this->dataPtr->publishCollisionPose).first;
+
+  this->dataPtr->publishSensorPose =
+    _sdf->Get<bool>("publish_sensor_pose",
+        this->dataPtr->publishSensorPose).first;
+
+  double updateFrequency = _sdf->Get<double>("update_frequency", -1).first;
+
+  if (updateFrequency > 0)
+  {
+    std::chrono::duration<double> period{1 / updateFrequency};
+    this->dataPtr->updatePeriod =
+        std::chrono::duration_cast<std::chrono::steady_clock::duration>(period);
+  }
 }
 
 //////////////////////////////////////////////////
@@ -119,6 +147,16 @@ void PosePublisher::PostUpdate(const UpdateInfo &_info,
   // Nothing left to do if paused.
   if (_info.paused)
     return;
+
+  auto diff = _info.simTime - this->dataPtr->lastPosePubTime;
+  // If the diff is positive and it's less than the update period, we skip
+  // publication. If the diff is negative, then time has gone backward, we go
+  // ahead publish and allow the time to be reset
+  if ((diff > std::chrono::steady_clock::duration::zero()) &&
+      (diff < this->dataPtr->updatePeriod))
+  {
+    return;
+  }
 
   // pose frame, child_frame, pose
   std::vector<std::tuple<std::string, std::string, math::Pose3d>> poses;
@@ -150,6 +188,8 @@ void PosePublisher::PostUpdate(const UpdateInfo &_info,
     msgs::Set(&poseMsg, transform);
     this->dataPtr->posePub.Publish(poseMsg);
   }
+
+  this->dataPtr->lastPosePubTime = _info.simTime;
 }
 
 //////////////////////////////////////////////////
@@ -161,11 +201,13 @@ void PosePublisherPrivate::FillPoses(const Entity &_entity,
   auto nestedModel = _ecm.Component<components::Model>(_entity);
   auto visual = _ecm.Component<components::Visual>(_entity);
   auto collision = _ecm.Component<components::Collision>(_entity);
+  auto sensor = _ecm.Component<components::Sensor>(_entity);
 
   bool fillPose = (link && this->publishLinkPose) ||
       (nestedModel && this->publishNestedModelPose) ||
       (visual && this->publishVisualPose) ||
-      (collision && this->publishCollisionPose);
+      (collision && this->publishCollisionPose) ||
+      (sensor && this->publishSensorPose);
 
   if (fillPose)
   {
@@ -177,19 +219,17 @@ void PosePublisherPrivate::FillPoses(const Entity &_entity,
       return;
     transform = pose->Data();
 
-    // todo(anyone) use scopedName
     auto entityName = _ecm.Component<components::Name>(_entity);
     if (!entityName)
       return;
-    childFrame = entityName->Data();
+    childFrame = scopedName(_entity, _ecm, "::", false);
 
-    // todo(anyone) use scopedName
     auto parent = _ecm.Component<components::ParentEntity>(_entity);
     if (parent)
     {
       auto parentName = _ecm.Component<components::Name>(parent->Data());
       if (parentName)
-        frame = parentName->Data();
+        frame = scopedName(parent->Data(), _ecm, "::", false);
     }
     auto p = std::make_tuple(frame, childFrame, transform);
     _poses.push_back(p);

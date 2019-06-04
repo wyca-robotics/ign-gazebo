@@ -31,49 +31,50 @@ namespace gazebo
 {
 // Inline bracket to help doxygen filtering.
 inline namespace IGNITION_GAZEBO_VERSION_NAMESPACE {
-namespace components
+namespace serializers
 {
-  /// \brief Base class which can be extended to add serialization
-  using PerformerLevelsBase =
-      Component<std::set<Entity>, class PerformerLevelsTag>;
-
-  /// \brief This component holds an entity's geometry.
-  class PerformerLevels : public PerformerLevelsBase
+  class PerformerLevelsSerializer
   {
-    // Documentation inherited
-    public: PerformerLevels() : PerformerLevelsBase()
+    /// \brief Serialization for `std::set<Entity>`.
+    /// \param[in] _out Output stream.
+    /// \param[in] _set Set to stream
+    /// \return The stream.
+    public: static std::ostream &Serialize(std::ostream &_out,
+                                           const std::set<Entity> &_set)
     {
-    }
-
-    // Documentation inherited
-    public: explicit PerformerLevels(const std::set<Entity> &_data)
-      : PerformerLevelsBase(_data)
-    {
-    }
-
-    // Documentation inherited
-    public: void Serialize(std::ostream &_out) const override
-    {
-      for (const auto &level : this->Data())
+      for (const auto &level : _set)
       {
         _out << level << " ";
       }
+      return _out;
     }
 
-    // Documentation inherited
-    public: void Deserialize(std::istream &_in) override
+    /// \brief Deserialization for `std::set<Entity>`.
+    /// \param[in] _in Input stream.
+    /// \param[out] _set Set to populate
+    /// \return The stream.
+    public: static std::istream &Deserialize(std::istream &_in,
+                                             std::set<Entity> &_set)
     {
       _in.setf(std::ios_base::skipws);
 
-      this->Data().clear();
+      _set.clear();
 
       for (auto it = std::istream_iterator<Entity>(_in);
-          it != std::istream_iterator<Entity>(); ++it)
+           it != std::istream_iterator<Entity>(); ++it)
       {
-        this->Data().insert(*it);
+        _set.insert(*it);
       }
+      return _in;
     }
   };
+}
+
+namespace components
+{
+  /// \brief Holds all the levels which a performer is in.
+  using PerformerLevels = Component<std::set<Entity>, class PerformerLevelsTag,
+                                    serializers::PerformerLevelsSerializer>;
   IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.PerformerLevels",
       PerformerLevels)
 }

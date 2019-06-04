@@ -14,7 +14,7 @@ find_package(ignition-cmake2 REQUIRED)
 #============================================================================
 # Configure the project
 #============================================================================
-ign_configure_project(VERSION_SUFFIX pre1)
+ign_configure_project()
 
 #============================================================================
 # Set project-specific options
@@ -100,6 +100,7 @@ set(IGN_PHYSICS_VER ${ignition-physics1_VERSION_MAJOR})
 ign_find_package(ignition-sensors2 REQUIRED
   COMPONENTS
     rendering
+    air_pressure
     altimeter
     camera
     gpu_lidar
@@ -111,6 +112,11 @@ ign_find_package(ignition-sensors2 REQUIRED
 set(IGN_SENSORS_VER ${ignition-sensors2_VERSION_MAJOR})
 
 #--------------------------------------
+# Find ignition-rendering
+ign_find_package(ignition-rendering2 REQUIRED)
+set(IGN_RENDERING_VER ${ignition-rendering2_VERSION_MAJOR})
+
+#--------------------------------------
 # Find gflags
 ign_find_package(gflags
     REQUIRED
@@ -118,7 +124,7 @@ ign_find_package(gflags
 
 #--------------------------------------
 # Find ignition-math
-ign_find_package(ignition-math6 REQUIRED COMPONENTS eigen3)
+ign_find_package(ignition-math6 REQUIRED COMPONENTS eigen3 VERSION 6.2)
 set(IGN_MATH_VER ${ignition-math6_VERSION_MAJOR})
 
 #--------------------------------------
@@ -130,6 +136,14 @@ ign_find_package(IgnProtobuf
                  COMPONENTS all
                  PRETTY Protobuf)
 set(PROTOBUF_IMPORT_DIRS ${ignition-msgs4_INCLUDE_DIRS})
+
+# Plugin install dirs
+set(IGNITION_GAZEBO_PLUGIN_INSTALL_DIR
+  ${CMAKE_INSTALL_PREFIX}/${IGN_LIB_INSTALL_DIR}/ign-${IGN_DESIGNATION}-${PROJECT_VERSION_MAJOR}/plugins
+)
+set(IGNITION_GAZEBO_GUI_PLUGIN_INSTALL_DIR
+  ${CMAKE_INSTALL_PREFIX}/${IGN_LIB_INSTALL_DIR}/ign-${IGN_DESIGNATION}-${PROJECT_VERSION_MAJOR}/plugins/gui
+)
 
 #============================================================================
 # Configure the build

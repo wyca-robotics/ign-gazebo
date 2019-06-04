@@ -386,9 +386,9 @@ TEST_F(UserCommandsTest, Remove)
   EXPECT_NE(nullptr, ecm);
 
   // Check entities
-  // 1 x world + 1 x (default) level + 3 x model + 3 x link + 3 x collision + 3
-  // x visual + 1 x light
-  EXPECT_EQ(15u, ecm->EntityCount());
+  // 1 x world + 1 x (default) level + 1 x wind + 3 x model + 3 x link + 3 x
+  // collision + 3 x visual + 1 x light
+  EXPECT_EQ(16u, ecm->EntityCount());
 
   // Entity remove by name
   msgs::Entity req;
@@ -411,7 +411,7 @@ TEST_F(UserCommandsTest, Remove)
 
   // Run an iteration and check it was removed
   server.Run(true, 1, false);
-  EXPECT_EQ(11u, ecm->EntityCount());
+  EXPECT_EQ(12u, ecm->EntityCount());
 
   EXPECT_EQ(kNullEntity, ecm->EntityByComponents(components::Model(),
       components::Name("box")));
@@ -434,7 +434,7 @@ TEST_F(UserCommandsTest, Remove)
 
   // Run an iteration and check it was removed
   server.Run(true, 1, false);
-  EXPECT_EQ(7u, ecm->EntityCount());
+  EXPECT_EQ(8u, ecm->EntityCount());
 
   EXPECT_EQ(kNullEntity, ecm->EntityByComponents(components::Model(),
       components::Name("sphere")));
@@ -453,7 +453,7 @@ TEST_F(UserCommandsTest, Remove)
 
   // Run an iteration and check it was not removed
   server.Run(true, 1, false);
-  EXPECT_EQ(7u, ecm->EntityCount());
+  EXPECT_EQ(8u, ecm->EntityCount());
 
   EXPECT_NE(kNullEntity, ecm->EntityByComponents(components::Link(),
       components::Name("cylinder_link")));
@@ -474,7 +474,7 @@ TEST_F(UserCommandsTest, Remove)
 
   // Run an iteration and check cylinder was removed and light wasn't
   server.Run(true, 1, false);
-  EXPECT_EQ(3u, ecm->EntityCount());
+  EXPECT_EQ(4u, ecm->EntityCount());
 
   EXPECT_EQ(kNullEntity, ecm->EntityByComponents(components::Model(),
       components::Name("cylinder")));
@@ -493,7 +493,7 @@ TEST_F(UserCommandsTest, Remove)
 
   // Run an iteration and check nothing was removed
   server.Run(true, 1, false);
-  EXPECT_EQ(3u, ecm->EntityCount());
+  EXPECT_EQ(4u, ecm->EntityCount());
 
   EXPECT_NE(kNullEntity, ecm->EntityByComponents(components::Name("sun")));
 
@@ -507,7 +507,7 @@ TEST_F(UserCommandsTest, Remove)
 
   // Run an iteration and check nothing was removed
   server.Run(true, 1, false);
-  EXPECT_EQ(3u, ecm->EntityCount());
+  EXPECT_EQ(4u, ecm->EntityCount());
 
   // Unsupported type - fails to remove
   req.Clear();
@@ -520,7 +520,7 @@ TEST_F(UserCommandsTest, Remove)
 
   // Run an iteration and check nothing was removed
   server.Run(true, 1, false);
-  EXPECT_EQ(3u, ecm->EntityCount());
+  EXPECT_EQ(4u, ecm->EntityCount());
 
   EXPECT_NE(kNullEntity, ecm->EntityByComponents(components::Name("sun")));
 
@@ -535,7 +535,155 @@ TEST_F(UserCommandsTest, Remove)
 
   // Run an iteration and check it was removed
   server.Run(true, 1, false);
-  EXPECT_EQ(2u, ecm->EntityCount());
+  EXPECT_EQ(3u, ecm->EntityCount());
 
   EXPECT_EQ(kNullEntity, ecm->EntityByComponents(components::Name("sun")));
+}
+
+/////////////////////////////////////////////////
+TEST_F(UserCommandsTest, Pose)
+{
+  // Start server
+  ServerConfig serverConfig;
+  const auto sdfFile = std::string(PROJECT_SOURCE_PATH) +
+    "/test/worlds/shapes.sdf";
+  serverConfig.SetSdfFile(sdfFile);
+
+  Server server(serverConfig);
+  EXPECT_FALSE(server.Running());
+  EXPECT_FALSE(*server.Running(0));
+
+  // Create a system just to get the ECM
+  EntityComponentManager *ecm{nullptr};
+  Relay testSystem;
+  testSystem.OnPreUpdate([&](const gazebo::UpdateInfo &,
+                             gazebo::EntityComponentManager &_ecm)
+      {
+        ecm = &_ecm;
+      });
+
+  server.AddSystem(testSystem.systemPtr);
+
+  // Run server and check we have the ECM
+  EXPECT_EQ(nullptr, ecm);
+  server.Run(true, 1, false);
+  EXPECT_NE(nullptr, ecm);
+
+  // Entity move by name
+  msgs::Pose req;
+  req.set_name("box");
+  req.mutable_position()->set_y(123.0);
+
+  msgs::Boolean res;
+  bool result;
+  unsigned int timeout = 5000;
+  std::string service{"/world/default/set_pose"};
+
+  transport::Node node;
+  EXPECT_TRUE(node.Request(service, req, timeout, res, result));
+  EXPECT_TRUE(result);
+  EXPECT_TRUE(res.data());
+
+  // Box entity
+  auto boxEntity = ecm->EntityByComponents(components::Name("box"));
+  EXPECT_NE(kNullEntity, boxEntity);
+
+  // Check entity has not been moved yet
+  auto poseComp = ecm->Component<components::Pose>(boxEntity);
+  ASSERT_NE(nullptr, poseComp);
+  EXPECT_EQ(math::Pose3d(1, 2, 3, 0, 0, 1), poseComp->Data());
+
+  // Run an iteration and check it was moved
+  server.Run(true, 1, false);
+
+  poseComp = ecm->Component<components::Pose>(boxEntity);
+  ASSERT_NE(nullptr, poseComp);
+  EXPECT_NEAR(123.0, poseComp->Data().Pos().Y(), 0.2);
+
+  // Entity move by ID
+  req.Clear();
+  req.set_id(boxEntity);
+  req.mutable_position()->set_y(321.0);
+
+  EXPECT_TRUE(node.Request(service, req, timeout, res, result));
+  EXPECT_TRUE(result);
+  EXPECT_TRUE(res.data());
+
+  // Check entity has not been moved yet
+  poseComp = ecm->Component<components::Pose>(boxEntity);
+  ASSERT_NE(nullptr, poseComp);
+  EXPECT_NEAR(123.0, poseComp->Data().Pos().Y(), 0.2);
+
+  // Run an iteration and check it was moved
+  server.Run(true, 1, false);
+
+  poseComp = ecm->Component<components::Pose>(boxEntity);
+  ASSERT_NE(nullptr, poseComp);
+  EXPECT_NEAR(321.0, poseComp->Data().Pos().Y(), 0.2);
+
+  // Link entity
+  auto linkEntity = ecm->EntityByComponents(components::Name("box_link"));
+  EXPECT_NE(kNullEntity, linkEntity);
+
+  // Can't move a link
+  req.Clear();
+  req.set_id(linkEntity);
+  req.mutable_position()->set_y(123.0);
+
+  EXPECT_TRUE(node.Request(service, req, timeout, res, result));
+  EXPECT_TRUE(result);
+  EXPECT_TRUE(res.data());
+
+  // Run an iteration and check it was not moved
+  server.Run(true, 1, false);
+
+  poseComp = ecm->Component<components::Pose>(linkEntity);
+  ASSERT_NE(nullptr, poseComp);
+  EXPECT_EQ(math::Pose3d(0.1, 0.1, 0.1, 0, 0, 0), poseComp->Data());
+
+  poseComp = ecm->Component<components::Pose>(boxEntity);
+  ASSERT_NE(nullptr, poseComp);
+  EXPECT_NEAR(321.0, poseComp->Data().Pos().Y(), 0.2);
+
+  // All fields present - ID is used
+  req.Clear();
+  req.set_id(boxEntity);
+  req.set_name("sphere");
+  req.mutable_position()->set_y(456.0);
+
+  EXPECT_TRUE(node.Request(service, req, timeout, res, result));
+  EXPECT_TRUE(result);
+  EXPECT_TRUE(res.data());
+
+  // Run an iteration and check box was moved and sphere wasn't
+  server.Run(true, 1, false);
+
+  auto sphereEntity = ecm->EntityByComponents(components::Name("sphere"));
+  EXPECT_NE(kNullEntity, sphereEntity);
+
+  poseComp = ecm->Component<components::Pose>(boxEntity);
+  ASSERT_NE(nullptr, poseComp);
+  EXPECT_NEAR(456.0, poseComp->Data().Pos().Y(), 0.2);
+
+  poseComp = ecm->Component<components::Pose>(sphereEntity);
+  ASSERT_NE(nullptr, poseComp);
+  EXPECT_NEAR(0.0, poseComp->Data().Pos().Y(), 0.2);
+
+  // Inexistent entity - fails to move
+  req.Clear();
+  req.set_id(9999);
+
+  EXPECT_TRUE(node.Request(service, req, timeout, res, result));
+  EXPECT_TRUE(result);
+  EXPECT_TRUE(res.data());
+
+  server.Run(true, 1, false);
+
+  poseComp = ecm->Component<components::Pose>(boxEntity);
+  ASSERT_NE(nullptr, poseComp);
+  EXPECT_NEAR(456.0, poseComp->Data().Pos().Y(), 0.2);
+
+  poseComp = ecm->Component<components::Pose>(sphereEntity);
+  ASSERT_NE(nullptr, poseComp);
+  EXPECT_NEAR(0.0, poseComp->Data().Pos().Y(), 0.2);
 }
