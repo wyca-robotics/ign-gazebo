@@ -52,6 +52,7 @@
 #include "ignition/gazebo/components/ParentLinkName.hh"
 #include "ignition/gazebo/components/ParentEntity.hh"
 #include "ignition/gazebo/components/Pose.hh"
+#include "ignition/gazebo/components/RgbdCamera.hh"
 #include "ignition/gazebo/components/Scene.hh"
 #include "ignition/gazebo/components/Sensor.hh"
 #include "ignition/gazebo/components/Static.hh"
@@ -442,6 +443,11 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Sensor *_sensor)
     this->dataPtr->ecm->CreateComponent(sensorEntity,
         components::DepthCamera(*_sensor));
   }
+  else if (_sensor->Type() == sdf::SensorType::RGBD_CAMERA)
+  {
+    this->dataPtr->ecm->CreateComponent(sensorEntity,
+        components::RgbdCamera(*_sensor));
+  }
   else if (_sensor->Type() == sdf::SensorType::AIR_PRESSURE)
   {
     this->dataPtr->ecm->CreateComponent(sensorEntity,
@@ -509,6 +515,9 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Sensor *_sensor)
     ignwarn << "Sensor type [" << static_cast<int>(_sensor->Type())
             << "] not supported yet." << std::endl;
   }
+
+  this->dataPtr->eventManager->Emit<events::LoadPlugins>(sensorEntity,
+      _sensor->Element());
 
   return sensorEntity;
 }
