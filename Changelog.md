@@ -2,6 +2,9 @@
 
 ### Ignition Gazebo 2.X.X
 
+1. Improve physics system peformance by skipping static model updates.
+    * [Pull Request 377](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/377)
+
 1. Improve SceneBroadcaster peformance by 1) Limit message generation if
    subscribers to pose topics are not present, 2) Set world stats message
    instead of copying the message, 3) Suppress scenegraph updates when there

@@ -755,6 +755,12 @@ void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
           components::Pose *_pose,
           const components::ParentEntity *_parent)->bool
       {
+        // Skip if the parent is static.
+        const components::Static *staticComp =
+          _ecm.Component<components::Static>(_parent->Data());
+        if (staticComp && staticComp->Data())
+          return true;
+
         auto linkIt = this->entityLinkMap.find(_entity);
         if (linkIt != this->entityLinkMap.end())
         {
