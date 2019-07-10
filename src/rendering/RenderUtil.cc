@@ -55,6 +55,8 @@
 #include "ignition/gazebo/rendering/RenderUtil.hh"
 #include "ignition/gazebo/rendering/SceneManager.hh"
 
+#include "ignition/gazebo/Util.hh"
+
 using namespace ignition;
 using namespace gazebo;
 
@@ -264,20 +266,19 @@ void RenderUtil::Update()
        auto parentNode = this->dataPtr->sceneManager.NodeById(parent);
        if (!parentNode)
        {
-         ignerr << "Failed to create sensor for entity [" << entity
-                << "]. Parent not found." << std::endl;
+         ignerr << "Failed to create sensor with name[" << dataSdf.Name()
+                << "] for entity [" << entity
+                << "]. Parent not found with ID[" << parent << "]."
+                << std::endl;
          continue;
        }
-
-       std::string scopedName = parentNode->Name() + "::" + dataSdf.Name();
-       dataSdf.SetName(scopedName);
 
        std::string sensorName =
            this->dataPtr->createSensorCb(dataSdf, parentNode->Name());
        // Add to the system's scene manager
        if (!this->dataPtr->sceneManager.AddSensor(entity, sensorName, parent))
        {
-         ignerr << "Failed to create sensor [" << scopedName << "]"
+         ignerr << "Failed to create sensor [" << sensorName << "]"
                 << std::endl;
        }
     }
@@ -319,6 +320,28 @@ void RenderUtil::Update()
 void RenderUtilPrivate::CreateRenderingEntities(
     const EntityComponentManager &_ecm)
 {
+  auto addNewSensor = [&_ecm, this](Entity _entity, const sdf::Sensor &_sdfData,
+                                    Entity _parent,
+                                    const std::string &_topicSuffix)
+  {
+    sdf::Sensor sdfDataCopy(_sdfData);
+    std::string sensorScopedName =
+        removeParentScope(scopedName(_entity, _ecm, "::", false), "::");
+    sdfDataCopy.SetName(sensorScopedName);
+    // check topic
+    if (sdfDataCopy.Topic().empty())
+    {
+      sdfDataCopy.SetTopic(scopedName(_entity, _ecm) + _topicSuffix);
+    }
+    this->newSensors.push_back(
+        std::make_tuple(_entity, std::move(sdfDataCopy), _parent));
+  };
+
+  const std::string cameraSuffix{"/image"};
+  const std::string depthCameraSuffix{"/depth_image"};
+  const std::string rgbdCameraSuffix{""};
+  const std::string gpuLidarSuffix{"/scan"};
+
   // Treat all pre-existent entities as new at startup
   // TODO(anyone) refactor Each and EachNew below to reduce duplicate code
   if (!this->initialized)
@@ -416,9 +439,8 @@ void RenderUtilPrivate::CreateRenderingEntities(
             const components::Camera *_camera,
             const components::ParentEntity *_parent)->bool
           {
-            this->newSensors.push_back(
-                std::make_tuple(_entity, _camera->Data(),
-                _parent->Data()));
+            addNewSensor(_entity, _camera->Data(), _parent->Data(),
+                         cameraSuffix);
             return true;
           });
 
@@ -428,9 +450,8 @@ void RenderUtilPrivate::CreateRenderingEntities(
             const components::DepthCamera *_depthCamera,
             const components::ParentEntity *_parent)->bool
           {
-            this->newSensors.push_back(
-                std::make_tuple(_entity, _depthCamera->Data(),
-                _parent->Data()));
+            addNewSensor(_entity, _depthCamera->Data(), _parent->Data(),
+                         depthCameraSuffix);
             return true;
           });
 
@@ -440,9 +461,8 @@ void RenderUtilPrivate::CreateRenderingEntities(
             const components::RgbdCamera *_rgbdCamera,
             const components::ParentEntity *_parent)->bool
           {
-            this->newSensors.push_back(
-                std::make_tuple(_entity, _rgbdCamera->Data(),
-                _parent->Data()));
+            addNewSensor(_entity, _rgbdCamera->Data(), _parent->Data(),
+                         rgbdCameraSuffix);
             return true;
           });
 
@@ -452,9 +472,8 @@ void RenderUtilPrivate::CreateRenderingEntities(
             const components::GpuLidar *_gpuLidar,
             const components::ParentEntity *_parent)->bool
           {
-            this->newSensors.push_back(
-                std::make_tuple(_entity, _gpuLidar->Data(),
-                 _parent->Data()));
+            addNewSensor(_entity, _gpuLidar->Data(), _parent->Data(),
+                         gpuLidarSuffix);
             return true;
           });
     }
@@ -554,9 +573,8 @@ void RenderUtilPrivate::CreateRenderingEntities(
             const components::Camera *_camera,
             const components::ParentEntity *_parent)->bool
           {
-            this->newSensors.push_back(
-                std::make_tuple(_entity, _camera->Data(),
-                _parent->Data()));
+            addNewSensor(_entity, _camera->Data(), _parent->Data(),
+                         cameraSuffix);
             return true;
           });
 
@@ -566,9 +584,8 @@ void RenderUtilPrivate::CreateRenderingEntities(
             const components::DepthCamera *_depthCamera,
             const components::ParentEntity *_parent)->bool
           {
-            this->newSensors.push_back(
-                std::make_tuple(_entity, _depthCamera->Data(),
-                _parent->Data()));
+            addNewSensor(_entity, _depthCamera->Data(), _parent->Data(),
+                         depthCameraSuffix);
             return true;
           });
 
@@ -578,9 +595,8 @@ void RenderUtilPrivate::CreateRenderingEntities(
             const components::RgbdCamera *_rgbdCamera,
             const components::ParentEntity *_parent)->bool
           {
-            this->newSensors.push_back(
-                std::make_tuple(_entity, _rgbdCamera->Data(),
-                _parent->Data()));
+            addNewSensor(_entity, _rgbdCamera->Data(), _parent->Data(),
+                         rgbdCameraSuffix);
             return true;
           });
 
@@ -590,9 +606,8 @@ void RenderUtilPrivate::CreateRenderingEntities(
             const components::GpuLidar *_gpuLidar,
             const components::ParentEntity *_parent)->bool
           {
-            this->newSensors.push_back(
-                std::make_tuple(_entity, _gpuLidar->Data(),
-                 _parent->Data()));
+            addNewSensor(_entity, _gpuLidar->Data(), _parent->Data(),
+                         gpuLidarSuffix);
             return true;
           });
     }
@@ -775,7 +790,6 @@ void RenderUtil::Init()
     this->dataPtr->scene->SetBackgroundColor(this->dataPtr->backgroundColor);
   }
   this->dataPtr->sceneManager.SetScene(this->dataPtr->scene);
-  this->dataPtr->initialized = true;
 }
 
 /////////////////////////////////////////////////

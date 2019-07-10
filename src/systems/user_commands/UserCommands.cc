@@ -194,7 +194,8 @@ void UserCommands::Configure(const Entity &_entity,
   this->dataPtr->iface->creator =
       std::make_unique<SdfEntityCreator>(_ecm, _eventManager);
 
-  auto worldName = _ecm.Component<components::Name>(_entity)->Data();
+  const components::Name *constCmp = _ecm.Component<components::Name>(_entity);
+  const std::string &worldName = constCmp->Data();
 
   // Create service
   std::string createService{"/world/" + worldName + "/create"};
@@ -222,14 +223,21 @@ void UserCommands::Configure(const Entity &_entity,
 void UserCommands::PreUpdate(const UpdateInfo &/*_info*/,
     EntityComponentManager &)
 {
-  std::lock_guard<std::mutex> lock(this->dataPtr->pendingMutex);
-  if (this->dataPtr->pendingCmds.empty())
-    return;
+  // make a copy the cmds so execution does not block receiving other
+  // incoming cmds
+  std::vector<std::unique_ptr<UserCommandBase>> cmds;
+  {
+    std::lock_guard<std::mutex> lock(this->dataPtr->pendingMutex);
+    if (this->dataPtr->pendingCmds.empty())
+      return;
+    cmds = std::move(this->dataPtr->pendingCmds);
+    this->dataPtr->pendingCmds.clear();
+  }
 
   // TODO(louise) Record current world state for undo
 
   // Execute pending commands
-  for (auto &cmd : this->dataPtr->pendingCmds)
+  for (auto &cmd : cmds)
   {
     // Execute
     if (!cmd->Execute())
@@ -241,8 +249,6 @@ void UserCommands::PreUpdate(const UpdateInfo &/*_info*/,
   }
 
   // TODO(louise) Clear redo list
-
-  this->dataPtr->pendingCmds.clear();
 }
 
 //////////////////////////////////////////////////

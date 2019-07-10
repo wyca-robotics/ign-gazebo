@@ -2,10 +2,48 @@
 
 ### Ignition Gazebo 2.X.X
 
+1. Add sdf parameter to battery to start draining only when robot has started moving
+    * [Pull Request 370](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/370)
+
+1. Improve SceneBroadcaster peformance by 1) Limit message generation if
+   subscribers to pose topics are not present, 2) Set world stats message
+   instead of copying the message, 3) Suppress scenegraph updates when there
+   are no new entities, 4) Make better use of const functions, 5) Prevent
+   creation of msgs::SerializedStep every PostUpdate.
+    * [Pull Request 371](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/371)
+    * [Pull Request 372](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/372)
+    * [Pull Request 373](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/373)
+    * [Pull Request 374](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/374)
+    * [Pull Request 375](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/375)
+
+### Ignition Gazebo 2.2.0
+
+1. The DiffDrive system publishes odometry information.
+    * [Pull Request 368](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/368)
+
+1. Allow attaching plugins to sensors from a server config.
+    * [Pull Request 366](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/366)
+
+1. Remove world name from frame_ids
+    * [Pull Request 364](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/364)
+
+1. Fix deadlock when spawning robots
+    * [Pull Request 365](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/365)
+
+1. Set default topics for rendering sensors
+    * [Pull Request 363](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/363)
+
+1. Support custom random seed from the command line.
+    * [Pull Request 362](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/362)
+
 ### Ignition Gazebo 2.1.0
+
+1. RenderUtil fix bad merge: check for existing entities in GzScene3D on initialization.
+    * [Pull Request 360](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/360)
 
 1. Allow sensors to load plugins.
     * [Pull Request 356](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/356)
+    * [Pull Request 366](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/366)
 
 1. Parse and load submesh geometry in visuals.
     * [Pull Request 353](https://bitbucket.org/ignitionrobotics/ign-gazebo/pull-requests/353)
