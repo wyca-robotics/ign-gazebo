@@ -34,6 +34,7 @@
 #include "ignition/gazebo/components/DepthCamera.hh"
 #include "ignition/gazebo/components/GpuLidar.hh"
 #include "ignition/gazebo/components/RgbdCamera.hh"
+#include "ignition/gazebo/Events.hh"
 #include "ignition/gazebo/EntityComponentManager.hh"
 
 #include "ignition/gazebo/rendering/RenderUtil.hh"
@@ -63,6 +64,19 @@ class ignition::gazebo::systems::SensorsPrivate
   /// \brief rendering scene to be managed by the scene manager and used to
   /// generate sensor data
   public: rendering::ScenePtr scene;
+
+  public: std::atomic<bool> running { false };
+
+  public: std::thread renderThread;
+
+  public: std::mutex renderMutex;
+  public: std::condition_variable renderCv;
+
+  public: bool postUpdateAvailable { false };
+
+  public: UpdateInfo updateInfo;
+  public: EntityComponentManager const * ecm { nullptr };
+  public: ignition::common::ConnectionPtr stopConn;
 };
 
 //////////////////////////////////////////////////
@@ -71,14 +85,129 @@ Sensors::Sensors() : System(), dataPtr(std::make_unique<SensorsPrivate>())
 }
 
 //////////////////////////////////////////////////
-Sensors::~Sensors() = default;
+Sensors::~Sensors()
+{
+  this->Stop();
+}
+
+//////////////////////////////////////////////////
+void Sensors::Stop()
+{
+  igndbg << "Sensors::Stop" << std::endl;
+  std::unique_lock<std::mutex> lock(this->dataPtr->renderMutex);
+  this->dataPtr->running = false;
+  lock.unlock();
+  this->dataPtr->renderCv.notify_all();
+
+  if (this->dataPtr->renderThread.joinable())
+  {
+    this->dataPtr->renderThread.join();
+  }
+}
+
+//////////////////////////////////////////////////
+void Sensors::RunLoop()
+{
+  igndbg << "Sensors::RunLoop started" << std::endl;
+  while(!this->dataPtr->initialized && this->dataPtr->running)
+  {
+    igndbg << "Waiting for init" << std::endl;
+    std::unique_lock<std::mutex> lock(this->dataPtr->renderMutex);
+    this->dataPtr->renderCv.wait(lock);
+
+    // Only initialize if there are rendering sensors
+    if (!this->dataPtr->initialized &&
+        (this->dataPtr->ecm->HasComponentType(components::Camera::typeId) ||
+         this->dataPtr->ecm->HasComponentType(components::DepthCamera::typeId) ||
+         this->dataPtr->ecm->HasComponentType(components::GpuLidar::typeId) ||
+         this->dataPtr->ecm->HasComponentType(components::RgbdCamera::typeId)))
+    {
+      igndbg << "Initializing render context" << std::endl;
+      this->dataPtr->renderUtil.Init();
+      this->dataPtr->scene = this->dataPtr->renderUtil.Scene();
+      this->dataPtr->initialized = true;
+    }
+
+    this->dataPtr->postUpdateAvailable = false;
+    this->dataPtr->renderCv.notify_one();
+  }
+
+  igndbg << "Rendering Thread initialized" << std::endl;
+
+  while (this->dataPtr->running)
+  {
+
+    std::unique_lock<std::mutex> lock(this->dataPtr->renderMutex);
+    this->dataPtr->renderCv.wait(lock, [this](){
+        return !this->dataPtr->running || this->dataPtr->postUpdateAvailable;
+    });
+
+    IGN_PROFILE("Sensors::RenderLoop");
+
+    if (!this->dataPtr->running)
+    {
+      break;
+    }
+
+    if (!this->dataPtr->postUpdateAvailable)
+    {
+      continue;
+    }
+
+    {
+      this->dataPtr->renderUtil.UpdateFromECM(this->dataPtr->updateInfo,
+                                              *this->dataPtr->ecm);
+      // update scene graph
+      this->dataPtr->renderUtil.Update();
+
+      // udate rendering sensors
+      auto time = math::durationToSecNsec(this->dataPtr->updateInfo.simTime);
+      auto t = common::Time(time.first, time.second);
+
+      // enable sensors if they need to be updated
+      std::vector<sensors::RenderingSensor *> activeSensors;
+
+      for (auto id : this->dataPtr->sensorIds)
+      {
+        sensors::Sensor *s = this->dataPtr->sensorManager.Sensor(id);
+        sensors::RenderingSensor *rs = dynamic_cast<sensors::RenderingSensor *>(s);
+        if (rs && rs->NextUpdateTime() <= t)
+        {
+          activeSensors.push_back(rs);
+        }
+      }
+
+      if (!activeSensors.empty())
+      {
+        common::Time tn = common::Time::SystemTime();
+
+        // Update the scene graph manually to improve performance
+        // We only need to do this once per frame It is important to call
+        // sensors::RenderingSensor::SetManualSceneUpdate and set it to true
+        // so we don't waste cycles doing one scene graph update per sensor
+        this->dataPtr->scene->PreRender();
+
+        // publish data
+        this->dataPtr->sensorManager.RunOnce(t);
+
+        common::Time dt = common::Time::SystemTime() - tn;
+        // igndbg << "sensor update time: " << dt.Double() << std::endl;
+      }
+      this->dataPtr->postUpdateAvailable = false;
+    }
+    lock.unlock();
+    this->dataPtr->renderCv.notify_one();
+  }
+  igndbg << "Terminating render loop" << std::endl;
+}
 
 //////////////////////////////////////////////////
 void Sensors::Configure(const Entity &/*_id*/,
     const std::shared_ptr<const sdf::Element> &_sdf,
     EntityComponentManager &/*_ecm*/,
-    EventManager &/*_eventMgr*/)
+    EventManager &_eventMgr)
 {
+  igndbg << "Configuring Sensors system" << std::endl;
   // Setup rendering
   std::string engineName =
       _sdf->Get<std::string>("render_engine", "ogre2").first;
@@ -87,6 +216,11 @@ void Sensors::Configure(const Entity &/*_id*/,
   this->dataPtr->renderUtil.SetEnableSensors(true,
       std::bind(&Sensors::CreateSensor, this,
       std::placeholders::_1, std::placeholders::_2));
+
+  this->dataPtr->stopConn = _eventMgr.Connect<events::Stop>(std::bind(&Sensors::Stop, this));
+
+  this->dataPtr->running = true;
+  this->dataPtr->renderThread = std::thread(&Sensors::RunLoop, this);
 }
 
 //////////////////////////////////////////////////
@@ -95,59 +229,23 @@ void Sensors::PostUpdate(const UpdateInfo &_info,
 {
   IGN_PROFILE("Sensors::PostUpdate");
 
-  // Only initialize if there are rendering sensors
-  if (!this->dataPtr->initialized &&
-      (_ecm.HasComponentType(components::Camera::typeId) ||
-       _ecm.HasComponentType(components::DepthCamera::typeId) ||
-       _ecm.HasComponentType(components::GpuLidar::typeId) ||
-       _ecm.HasComponentType(components::RgbdCamera::typeId)))
-  {
-    this->dataPtr->renderUtil.Init();
-    this->dataPtr->scene = this->dataPtr->renderUtil.Scene();
-    this->dataPtr->initialized = true;
-  }
-
   if (!this->dataPtr->initialized)
-    return;
-
-  this->dataPtr->renderUtil.UpdateFromECM(_info, _ecm);
-
-  // update scene graph
-  this->dataPtr->renderUtil.Update();
-
-  // udate rendering sensors
-  auto time = math::durationToSecNsec(_info.simTime);
-  auto t = common::Time(time.first, time.second);
-
-  // enable sensors if they need to be updated
-  std::vector<sensors::RenderingSensor *> activeSensors;
-
-  for (auto id : this->dataPtr->sensorIds)
   {
-    sensors::Sensor *s = this->dataPtr->sensorManager.Sensor(id);
-    sensors::RenderingSensor *rs = dynamic_cast<sensors::RenderingSensor *>(s);
-    if (rs && rs->NextUpdateTime() <= t)
-    {
-      activeSensors.push_back(rs);
-    }
+    igndbg << "Sensors not initialized" << std::endl;
   }
 
-  if (activeSensors.empty())
-    return;
+  std::unique_lock<std::mutex> lock(this->dataPtr->renderMutex);
+  this->dataPtr->renderCv.wait(lock, [this]{
+      return !this->dataPtr->running || !this->dataPtr->postUpdateAvailable;
+  });
 
-  common::Time tn = common::Time::SystemTime();
-
-  // Update the scene graph manually to improve performance
-  // We only need to do this once per frame It is important to call
-  // sensors::RenderingSensor::SetManualSceneUpdate and set it to true
-  // so we don't waste cycles doing one scene graph update per sensor
-  this->dataPtr->scene->PreRender();
-
-  // publish data
-  this->dataPtr->sensorManager.RunOnce(t);
-
-  common::Time dt = common::Time::SystemTime() - tn;
-  // igndbg << "sensor update time: " << dt.Double() << std::endl;
+  if (this->dataPtr->running)
+  {
+    this->dataPtr->updateInfo = _info;
+    this->dataPtr->ecm = &_ecm;
+    this->dataPtr->postUpdateAvailable = true;
+    this->dataPtr->renderCv.notify_one();
+  }
 }
 
 //////////////////////////////////////////////////
