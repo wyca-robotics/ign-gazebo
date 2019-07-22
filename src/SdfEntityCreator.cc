@@ -180,6 +180,15 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Model *_model)
       components::Name(_model->Name()));
   this->dataPtr->ecm->CreateComponent(modelEntity,
       components::Static(_model->Static()));
+  if (_model->Static())
+  {
+    this->dataPtr->ecm->CreateComponent(modelEntity,
+      components::IsStatic());
+  } else {
+    this->dataPtr->ecm->CreateComponent(modelEntity,
+      components::IsDynamic());
+  }
+
   this->dataPtr->ecm->CreateComponent(
       modelEntity, components::WindMode(_model->EnableWind()));
 
