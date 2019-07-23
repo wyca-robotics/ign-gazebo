@@ -393,8 +393,11 @@ void SimulationRunner::UpdateSystems()
 
   {
     IGN_PROFILE("PostUpdate");
-    this->postUpdateStartBarrier->wait();
-    this->postUpdateStopBarrier->wait();
+    if(this->postUpdateStartBarrier && this->postUpdateStopBarrier)
+    {
+      this->postUpdateStartBarrier->wait();
+      this->postUpdateStopBarrier->wait();
+    }
   }
 }
 
