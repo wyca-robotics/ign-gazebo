@@ -68,15 +68,17 @@ class ignition::gazebo::systems::SensorsPrivate
   public: std::atomic<bool> running { false };
 
   public: std::thread renderThread;
-
   public: std::mutex renderMutex;
   public: std::condition_variable renderCv;
 
-  public: bool postUpdateAvailable { false };
-
-  public: UpdateInfo updateInfo;
-  public: EntityComponentManager const * ecm { nullptr };
+  public: bool doInit { false };
+  public: bool updateAvailable { false };
   public: ignition::common::ConnectionPtr stopConn;
+  public: ignition::common::Time updateTime;
+  public: std::vector<sensors::RenderingSensor *> activeSensors;
+
+  public: std::mutex sensorMaskMutex;
+  public: std::map<sensors::SensorId, ignition::common::Time> sensorMask;
 };
 
 //////////////////////////////////////////////////
@@ -115,20 +117,16 @@ void Sensors::RunLoop()
     std::unique_lock<std::mutex> lock(this->dataPtr->renderMutex);
     this->dataPtr->renderCv.wait(lock);
 
-    // Only initialize if there are rendering sensors
-    if (!this->dataPtr->initialized &&
-        (this->dataPtr->ecm->HasComponentType(components::Camera::typeId) ||
-         this->dataPtr->ecm->HasComponentType(components::DepthCamera::typeId) ||
-         this->dataPtr->ecm->HasComponentType(components::GpuLidar::typeId) ||
-         this->dataPtr->ecm->HasComponentType(components::RgbdCamera::typeId)))
+    if(this->dataPtr->doInit)
     {
+      // Only initialize if there are rendering sensors
       igndbg << "Initializing render context" << std::endl;
       this->dataPtr->renderUtil.Init();
       this->dataPtr->scene = this->dataPtr->renderUtil.Scene();
       this->dataPtr->initialized = true;
     }
 
-    this->dataPtr->postUpdateAvailable = false;
+    this->dataPtr->updateAvailable = false;
     this->dataPtr->renderCv.notify_one();
   }
 
@@ -139,62 +137,53 @@ void Sensors::RunLoop()
 
     std::unique_lock<std::mutex> lock(this->dataPtr->renderMutex);
     this->dataPtr->renderCv.wait(lock, [this](){
-        return !this->dataPtr->running || this->dataPtr->postUpdateAvailable;
+        return !this->dataPtr->running || this->dataPtr->updateAvailable;
     });
-
-    IGN_PROFILE("Sensors::RenderLoop");
 
     if (!this->dataPtr->running)
     {
       break;
     }
 
-    if (!this->dataPtr->postUpdateAvailable)
-    {
-      continue;
-    }
+    IGN_PROFILE("Sensors::RenderLoop");
 
     {
-      this->dataPtr->renderUtil.UpdateFromECM(this->dataPtr->updateInfo,
-                                              *this->dataPtr->ecm);
-      // update scene graph
+      IGN_PROFILE("Update");
       this->dataPtr->renderUtil.Update();
-
-      // udate rendering sensors
-      auto time = math::durationToSecNsec(this->dataPtr->updateInfo.simTime);
-      auto t = common::Time(time.first, time.second);
-
-      // enable sensors if they need to be updated
-      std::vector<sensors::RenderingSensor *> activeSensors;
-
-      for (auto id : this->dataPtr->sensorIds)
-      {
-        sensors::Sensor *s = this->dataPtr->sensorManager.Sensor(id);
-        sensors::RenderingSensor *rs = dynamic_cast<sensors::RenderingSensor *>(s);
-        if (rs && rs->NextUpdateTime() <= t)
-        {
-          activeSensors.push_back(rs);
-        }
-      }
-
-      if (!activeSensors.empty())
-      {
-        common::Time tn = common::Time::SystemTime();
-
-        // Update the scene graph manually to improve performance
-        // We only need to do this once per frame It is important to call
-        // sensors::RenderingSensor::SetManualSceneUpdate and set it to true
-        // so we don't waste cycles doing one scene graph update per sensor
-        this->dataPtr->scene->PreRender();
-
-        // publish data
-        this->dataPtr->sensorManager.RunOnce(t);
-
-        common::Time dt = common::Time::SystemTime() - tn;
-        // igndbg << "sensor update time: " << dt.Double() << std::endl;
-      }
-      this->dataPtr->postUpdateAvailable = false;
     }
+
+    if (!this->dataPtr->activeSensors.empty())
+    {
+      // Update the scene graph manually to improve performance
+      // We only need to do this once per frame It is important to call
+      // sensors::RenderingSensor::SetManualSceneUpdate and set it to true
+      // so we don't waste cycles doing one scene graph update per sensor
+
+      this->dataPtr->sensorMaskMutex.lock();
+      for(const auto & sensor : this->dataPtr->activeSensors)
+      {
+        ignition::common::Time delta(0.9 / sensor->UpdateRate());
+        this->dataPtr->sensorMask[sensor->Id()] = this->dataPtr->updateTime + delta;
+        //igndbg << "Masking: " << sensor->Id() << " until " << this->dataPtr->sensorMask[sensor->Id()] << std::endl;
+      }
+      this->dataPtr->sensorMaskMutex.unlock();
+
+      {
+        IGN_PROFILE("PreRender");
+        this->dataPtr->scene->PreRender();
+      }
+
+      {
+        // publish data
+        IGN_PROFILE("RunOnce");
+        this->dataPtr->sensorManager.RunOnce(this->dataPtr->updateTime);
+      }
+
+      this->dataPtr->activeSensors.clear();
+    }
+
+    this->dataPtr->updateAvailable = false;
+
     lock.unlock();
     this->dataPtr->renderCv.notify_one();
   }
@@ -229,22 +218,77 @@ void Sensors::PostUpdate(const UpdateInfo &_info,
 {
   IGN_PROFILE("Sensors::PostUpdate");
 
-  if (!this->dataPtr->initialized)
+  if (!this->dataPtr->initialized &&
+      (_ecm.HasComponentType(components::Camera::typeId) ||
+       _ecm.HasComponentType(components::DepthCamera::typeId) ||
+       _ecm.HasComponentType(components::GpuLidar::typeId) ||
+       _ecm.HasComponentType(components::RgbdCamera::typeId)))
   {
-    igndbg << "Sensors not initialized" << std::endl;
+    igndbg << "Initialization needed" << std::endl;
+    std::unique_lock<std::mutex> lock(this->dataPtr->renderMutex);
+    this->dataPtr->renderCv.wait(lock, [this] {
+        return !this->dataPtr->running || !this->dataPtr->updateAvailable; });
+    this->dataPtr->doInit = true;
+    lock.unlock();
+    this->dataPtr->renderCv.notify_one();
   }
 
-  std::unique_lock<std::mutex> lock(this->dataPtr->renderMutex);
-  this->dataPtr->renderCv.wait(lock, [this]{
-      return !this->dataPtr->running || !this->dataPtr->postUpdateAvailable;
-  });
 
-  if (this->dataPtr->running)
+  if (this->dataPtr->running && this->dataPtr->initialized)
   {
-    this->dataPtr->updateInfo = _info;
-    this->dataPtr->ecm = &_ecm;
-    this->dataPtr->postUpdateAvailable = true;
-    this->dataPtr->renderCv.notify_one();
+    this->dataPtr->renderUtil.UpdateFromECM(_info, _ecm);
+
+    auto time = math::durationToSecNsec(_info.simTime);
+    auto t = common::Time(time.first, time.second);
+
+    std::vector<sensors::RenderingSensor *> activeSensors;
+
+    this->dataPtr->sensorMaskMutex.lock();
+    for (auto id : this->dataPtr->sensorIds)
+    {
+      sensors::Sensor *s = this->dataPtr->sensorManager.Sensor(id);
+      sensors::RenderingSensor *rs = dynamic_cast<sensors::RenderingSensor *>(s);
+
+      auto it = this->dataPtr->sensorMask.find(id);
+      if (it != this->dataPtr->sensorMask.end())
+
+      {
+        if (it->second <= t)
+        {
+          //igndbg << "Unmasking : " << id << " at " << t << std::endl;
+          this->dataPtr->sensorMask.erase(it);
+        }
+        else
+        {
+          continue;
+        }
+      }
+
+      if (rs && rs->NextUpdateTime() <= t)
+      {
+        activeSensors.push_back(rs);
+      }
+    }
+    this->dataPtr->sensorMaskMutex.unlock();
+
+    if (activeSensors.size() || this->dataPtr->renderUtil.PendingSensors() > 0)
+    {
+      //igndbg << "Update needed: " << activeSensors.size() << " " << this->dataPtr->renderUtil.PendingSensors() <<
+      //  t << std::endl;
+      std::unique_lock<std::mutex> lock(this->dataPtr->renderMutex);
+      this->dataPtr->renderCv.wait(lock, [this] {
+        return !this->dataPtr->running || !this->dataPtr->updateAvailable; });
+
+      if (!this->dataPtr->running)
+      {
+        return;
+      }
+
+      this->dataPtr->activeSensors = std::move(activeSensors);
+      this->dataPtr->updateTime = t;
+      this->dataPtr->updateAvailable = true;
+      this->dataPtr->renderCv.notify_one();
+    }
   }
 }
 

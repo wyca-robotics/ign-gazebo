@@ -184,6 +184,21 @@ void RenderUtil::UpdateFromECM(const UpdateInfo &_info,
   this->dataPtr->RemoveRenderingEntities(_ecm);
 }
 
+int RenderUtil::PendingSensors()
+{
+  if (!this->dataPtr->initialized)
+    return -1;
+
+  if (!this->dataPtr->scene)
+    return -1;
+
+  this->dataPtr->updateMutex.lock();
+  int nSensors = this->dataPtr->newSensors.size();
+  this->dataPtr->updateMutex.unlock();
+
+  return nSensors;
+}
+
 //////////////////////////////////////////////////
 void RenderUtil::Update()
 {
