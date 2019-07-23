@@ -33,13 +33,6 @@ namespace components
   /// moveable).
   using Static = Component<bool, class StaticTag>;
   IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.Static", Static)
-
-  using IsStatic = Component<NoData, class IsStaticTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.IsStatic", IsStatic)
-
-  using IsDynamic = Component<NoData, class IsDynamicTag>;
-  IGN_GAZEBO_REGISTER_COMPONENT("ign_gazebo_components.IsDynamic", IsDynamic)
-
 }
 }
 }

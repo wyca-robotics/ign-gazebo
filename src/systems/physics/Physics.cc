@@ -784,13 +784,18 @@ void PhysicsPrivate::Step(const std::chrono::steady_clock::duration &_dt)
 void PhysicsPrivate::UpdateSim(EntityComponentManager &_ecm) const
 {
   IGN_PROFILE("PhysicsPrivate::UpdateSim");
-  _ecm.Each<components::Link, components::Pose, components::IsDynamic, components::ParentEntity>(
-      [&](const Entity &_entity,
-          components::Link * /*_link*/,
+  _ecm.Each<components::Link, components::Pose, components::ParentEntity>(
+      [&](const Entity &_entity, components::Link * /*_link*/,
           components::Pose *_pose,
-          components::IsDynamic * /*_isStatic*/,
           const components::ParentEntity *_parent)->bool
       {
+        // If parent is static, don't process pose changes as periodic
+        const auto *staticComp =
+          _ecm.Component<components::Static>(_parent->Data());
+
+        if (staticComp && staticComp->Data())
+          return true;
+
         auto linkIt = this->entityLinkMap.find(_entity);
         if (linkIt != this->entityLinkMap.end())
         {

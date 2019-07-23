@@ -308,35 +308,32 @@ void SceneBroadcasterPrivate::PoseUpdate(const UpdateInfo &_info,
   bool poseConnections = this->posePub.HasConnections();
 
   // Models
-  if (poseConnections) {
-    _manager.Each<components::Model, components::Name, components::Pose>(
-      [&](const Entity &_entity, const components::Model *,
-          const components::Name *_nameComp,
-          const components::Pose *_poseComp) -> bool
-      {
-        // Add to pose msg
-        auto pose = poseMsg.add_pose();
-        msgs::Set(pose, _poseComp->Data());
-        pose->set_name(_nameComp->Data());
-        pose->set_id(_entity);
-        return true;
-      });
-  }
-
-  if (dyPoseConnections) {
-    _manager.Each<components::Model, components::Name, components::Pose, components::IsDynamic>(
+  _manager.Each<components::Model, components::Name, components::Pose,
+                components::Static>(
       [&](const Entity &_entity, const components::Model *,
           const components::Name *_nameComp,
           const components::Pose *_poseComp,
-          const components::IsDynamic *_dynComp) -> bool
+          const components::Static *_staticComp) -> bool
       {
-        auto dyPose = dyPoseMsg.add_pose();
-        msgs::Set(dyPose, _poseComp->Data());
-        dyPose->set_name(_nameComp->Data());
-        dyPose->set_id(_entity);
+        if (poseConnections)
+        {
+          // Add to pose msg
+          auto pose = poseMsg.add_pose();
+          msgs::Set(pose, _poseComp->Data());
+          pose->set_name(_nameComp->Data());
+          pose->set_id(_entity);
+        }
+
+        if (dyPoseConnections && !_staticComp->Data())
+        {
+          // Add to dynamic pose msg
+          auto dyPose = dyPoseMsg.add_pose();
+          msgs::Set(dyPose, _poseComp->Data());
+          dyPose->set_name(_nameComp->Data());
+          dyPose->set_id(_entity);
+        }
         return true;
       });
-  }
 
   // Links
   _manager.Each<components::Link, components::Name, components::Pose,
