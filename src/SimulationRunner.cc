@@ -326,6 +326,7 @@ void SimulationRunner::ProcessSystemQueue()
 
   for (const auto &system : this->pendingSystems)
   {
+    igndbg << "AddSystemToRunner" << std::endl;
     this->AddSystemToRunner(system);
   }
   this->pendingSystems.clear();
@@ -574,7 +575,7 @@ bool SimulationRunner::Run(const uint64_t _iterations)
     // and actual sleep time.
     this->sleepOffset =
       std::chrono::duration_cast<std::chrono::nanoseconds>(
-          (actualSleep - sleepTime) * 0.01 + this->sleepOffset * 0.99);
+          (actualSleep - sleepTime) * 0.15 + this->sleepOffset * 0.85);
 
     // Update time information. This will update the iteration count, RTF,
     // and other values.
@@ -669,6 +670,7 @@ void SimulationRunner::LoadPlugins(const Entity _entity,
       }
       if (system)
       {
+        igndbg << "Configuring: " << pluginElem->Get<std::string>("name") << std::endl;
         auto systemConfig = system.value()->QueryInterface<ISystemConfigure>();
         if (systemConfig != nullptr)
         {
@@ -676,6 +678,9 @@ void SimulationRunner::LoadPlugins(const Entity _entity,
               this->entityCompMgr,
               this->eventMgr);
         }
+        this->AddSystem(system.value());
+        igndbg << "Loaded system [" << pluginElem->Get<std::string>("name")
+               << "] for entity [" << _entity << "]" << std::endl;
       }
     }
 
