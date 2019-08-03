@@ -659,14 +659,14 @@ void SimulationRunner::Step(const UpdateInfo &_info)
 void SimulationRunner::LoadPlugins(const Entity _entity,
     const sdf::ElementPtr &_sdf)
 {
-  sdf::ElementPtr pluginElem = _sdf->GetElement("plugin");
+  sdf::ElementPtr pluginElem;
+  if (_sdf->HasElement("plugin"))
+  {
+    pluginElem = _sdf->GetElement("plugin");
+  }
+
   while (pluginElem)
   {
-    // No error message for the 'else' case of the following 'if' statement
-    // because SDF create a default <plugin> element even if it's not
-    // specified. An error message would result in spamming
-    // the console. \todo(nkoenig) Fix SDF should so that elements are not
-    // automatically added.
     if (pluginElem->Get<std::string>("filename") != "__default__" &&
         pluginElem->Get<std::string>("name") != "__default__")
     {
@@ -688,6 +688,22 @@ void SimulationRunner::LoadPlugins(const Entity _entity,
         igndbg << "Loaded system [" << pluginElem->Get<std::string>("name")
                << "] for entity [" << _entity << "]" << std::endl;
       }
+      else
+      {
+        igndbg << "Unable to load plugin "
+               << pluginElem->Get<std::string>("name")
+               << " from file "
+               << pluginElem->Get<std::string>("filename")
+               << " as system; it may be a different type of plugin."
+               << std::endl;
+      }
+    }
+    else
+    {
+      ignwarn << "Plugin attributes must be set: "
+              << "filename[" << pluginElem->Get<std::string>("filename")
+              << "], name[" << pluginElem->Get<std::string>("name")
+              << "]" << std::endl;
     }
 
     pluginElem = pluginElem->GetNextElement("plugin");
