@@ -22,9 +22,12 @@
 #include <ignition/math/Quaternion.hh>
 #include <ignition/plugin/Register.hh>
 #include <ignition/transport/Node.hh>
+#include <ignition/math/PID.hh>
 
 #include "ignition/gazebo/components/CanonicalLink.hh"
+#include "ignition/gazebo/components/JointForceCmd.hh"
 #include "ignition/gazebo/components/JointPosition.hh"
+#include "ignition/gazebo/components/JointVelocity.hh"
 #include "ignition/gazebo/components/JointVelocityCmd.hh"
 #include "ignition/gazebo/Link.hh"
 #include "ignition/gazebo/Model.hh"
@@ -53,15 +56,25 @@ class ignition::gazebo::systems::DiffDrivePrivate
 
   /// \brief Entity of the left joint
   public: std::vector<Entity> leftJoints;
+  public: std::vector<math::PID> leftJointPIDs;
 
   /// \brief Entity of the right joint
   public: std::vector<Entity> rightJoints;
+  public: std::vector<math::PID> rightJointPIDs;
 
   /// \brief Name of left joint
   public: std::vector<std::string> leftJointNames;
 
   /// \brief Name of right joint
   public: std::vector<std::string> rightJointNames;
+
+  public: double leftPGain{100};
+  public: double leftIGain{0};
+  public: double leftDGain{0};
+
+  public: double rightPGain{100};
+  public: double rightIGain{0};
+  public: double rightDGain{0};
 
   /// \brief Calculated speed of left joint
   public: double leftJointSpeed{0};
@@ -138,6 +151,20 @@ void DiffDrive::Configure(const Entity &_entity,
   this->dataPtr->wheelRadius = _sdf->Get<double>("wheel_radius",
       this->dataPtr->wheelRadius).first;
 
+  this->dataPtr->leftPGain =
+      _sdf->Get<double>("left_p_gain", this->dataPtr->leftPGain).first;
+  this->dataPtr->leftIGain =
+      _sdf->Get<double>("left_i_gain", this->dataPtr->leftIGain).first;
+  this->dataPtr->leftDGain =
+      _sdf->Get<double>("left_d_gain", this->dataPtr->leftDGain).first;
+
+  this->dataPtr->rightPGain =
+      _sdf->Get<double>("right_p_gain", this->dataPtr->rightPGain).first;
+  this->dataPtr->rightIGain =
+      _sdf->Get<double>("right_i_gain", this->dataPtr->rightIGain).first;
+  this->dataPtr->rightDGain =
+      _sdf->Get<double>("right_d_gain", this->dataPtr->rightDGain).first;
+
   // Setup odometry.
   this->dataPtr->odom.SetWheelParams(this->dataPtr->wheelSeparation,
       this->dataPtr->wheelRadius, this->dataPtr->wheelRadius);
@@ -173,14 +200,34 @@ void DiffDrive::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
     {
       Entity joint = this->dataPtr->model.JointByName(_ecm, name);
       if (joint != kNullEntity)
+      {
         this->dataPtr->leftJoints.push_back(joint);
+        this->dataPtr->leftJointPIDs.emplace_back(
+            this->dataPtr->leftPGain, this->dataPtr->leftIGain,
+            this->dataPtr->leftDGain, 1, -1, 100, -100);
+        this->dataPtr->leftJointPIDs.back().SetCmd(0);
+        if (_ecm.Component<components::JointVelocity>(joint) == nullptr)
+        {
+          _ecm.CreateComponent(joint, components::JointVelocity({0}));
+        }
+      }
     }
 
     for (const std::string &name : this->dataPtr->rightJointNames)
     {
       Entity joint = this->dataPtr->model.JointByName(_ecm, name);
       if (joint != kNullEntity)
+      {
         this->dataPtr->rightJoints.push_back(joint);
+        this->dataPtr->rightJointPIDs.emplace_back(
+            this->dataPtr->rightPGain, this->dataPtr->rightIGain,
+            this->dataPtr->rightDGain, 1, -1, 100, -100);
+        this->dataPtr->rightJointPIDs.back().SetCmd(0);
+        if (_ecm.Component<components::JointVelocity>(joint) == nullptr)
+        {
+          _ecm.CreateComponent(joint, components::JointVelocity({0}));
+        }
+      }
     }
   }
 
@@ -191,35 +238,58 @@ void DiffDrive::PreUpdate(const ignition::gazebo::UpdateInfo &_info,
   if (_info.paused)
     return;
 
-  for (Entity joint : this->dataPtr->leftJoints)
+  for (std::size_t i = 0; i < this->dataPtr->leftJoints.size(); ++i)
   {
+    const Entity joint = this->dataPtr->leftJoints[i];
+    std::vector<double> jointForce = {this->dataPtr->leftJointSpeed};
+    auto curVel = _ecm.Component<components::JointVelocity>(joint);
+    if (curVel != nullptr)
+    {
+      const double error = (curVel->Data()[0] - this->dataPtr->leftJointSpeed) /
+                           this->dataPtr->leftJoints.size();
+      // const double error = (curVel->Data()[0] - this->dataPtr->leftJointSpeed);
+      jointForce[0] = this->dataPtr->leftJointPIDs[i].Update(error, _info.dt);
+      std::cout << "Left err: " << error << " force: " << jointForce[0] << std::endl;
+    }
+
     // Update wheel velocity
-    auto vel = _ecm.Component<components::JointVelocityCmd>(joint);
+    auto vel = _ecm.Component<components::JointForceCmd>(joint);
 
     if (vel == nullptr)
     {
-      _ecm.CreateComponent(
-          joint, components::JointVelocityCmd({this->dataPtr->leftJointSpeed}));
+      _ecm.CreateComponent(joint, components::JointForceCmd(jointForce));
     }
     else
     {
-      *vel = components::JointVelocityCmd({this->dataPtr->leftJointSpeed});
+      *vel = components::JointForceCmd(jointForce);
     }
   }
 
-  for (Entity joint : this->dataPtr->rightJoints)
+  for (std::size_t i = 0; i < this->dataPtr->rightJoints.size(); ++i)
   {
+    const Entity joint = this->dataPtr->rightJoints[i];
+    std::vector<double> jointForce = {this->dataPtr->rightJointSpeed};
+    auto curVel = _ecm.Component<components::JointVelocity>(joint);
+    if (curVel != nullptr)
+    {
+      const double error =
+          (curVel->Data()[0] - this->dataPtr->rightJointSpeed) /
+          this->dataPtr->rightJoints.size();
+      // const double error = (curVel->Data()[0] - this->dataPtr->rightJointSpeed);
+      jointForce[0] = this->dataPtr->rightJointPIDs[i].Update(error, _info.dt);
+      std::cout << "Right err: " << error << " force: " << jointForce[0] << std::endl;
+    }
+
     // Update wheel velocity
-    auto vel = _ecm.Component<components::JointVelocityCmd>(joint);
+    auto vel = _ecm.Component<components::JointForceCmd>(joint);
 
     if (vel == nullptr)
     {
-      _ecm.CreateComponent(joint,
-          components::JointVelocityCmd({this->dataPtr->rightJointSpeed}));
+      _ecm.CreateComponent(joint, components::JointForceCmd(jointForce));
     }
     else
     {
-      *vel = components::JointVelocityCmd({this->dataPtr->rightJointSpeed});
+      *vel = components::JointForceCmd(jointForce);
     }
   }
 
