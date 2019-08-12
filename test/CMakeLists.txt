@@ -38,6 +38,8 @@ set(VALID_DRI_DISPLAY FALSE)
 set(CHECKER_ERROR "(no glxinfo or pyopengl)")
 
 message(STATUS "ENV{DISPLAY} '$ENV{DISPLAY}'")
+execute_process(COMMAND xauth list)
+execute_process(COMMAND xauth info)
 if((DEFINED ENV{DISPLAY}) AND NOT ("$ENV{DISPLAY}" STREQUAL ""))
   find_program(XWININFO xwininfo)
   if (XWININFO)
