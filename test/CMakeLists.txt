@@ -37,13 +37,13 @@ set(VALID_DISPLAY FALSE)
 set(VALID_DRI_DISPLAY FALSE)
 set(CHECKER_ERROR "(no glxinfo or pyopengl)")
 
+message(STATUS "ENV{DISPLAY} '$ENV{DISPLAY}'")
 if((DEFINED ENV{DISPLAY}) AND NOT ("$ENV{DISPLAY}" STREQUAL ""))
   find_program(XWININFO xwininfo)
   if (XWININFO)
     execute_process(
       COMMAND xwininfo -root
       RESULT_VARIABLE DISPLAY_FAIL_RESULT
-      ERROR_QUIET OUTPUT_QUIET
     )
   else()
     message(STATUS "Could not find 'xwininfo', which is needed for FindDRI. Please install the package 'x11-utils'")
