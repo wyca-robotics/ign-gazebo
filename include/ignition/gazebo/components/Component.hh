@@ -17,10 +17,13 @@
 #ifndef IGNITION_GAZEBO_COMPONENTS_COMPONENT_HH_
 #define IGNITION_GAZEBO_COMPONENTS_COMPONENT_HH_
 
+#include <google/protobuf/message_lite.h>
+
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <sstream>
+#include <type_traits>
 #include <utility>
 
 #include <ignition/common/Console.hh>
@@ -119,6 +122,14 @@ namespace serializers
         {
           _out << *_data;
         }
+        else if constexpr (std::is_base_of_v<google::protobuf::MessageLite,
+                                             typename DataType::element_type>)
+        {
+          // Handle for ignition::msg types by checking if type is derived
+          // from protobuf::MessageLite. protobuf::MessageLite is the base class
+          // for protobuf::Message and for all generated message types.
+          _data->SerializeToOstream(&_out);
+        }
         else
         {
           static bool warned{false};
@@ -135,6 +146,11 @@ namespace serializers
       else if constexpr (traits::IsOutStreamable<std::ostream, DataType>::value)
       {
         _out << _data;
+      }
+      else if constexpr (std::is_base_of_v<google::protobuf::MessageLite,
+                                           DataType>)
+      {
+        _data.SerializeToOstream(&_out);
       }
       else
       {
@@ -164,6 +180,14 @@ namespace serializers
         {
           _in >> *_data;
         }
+        else if constexpr (std::is_base_of_v<google::protobuf::MessageLite,
+                                             typename DataType::element_type>)
+        {
+          // Handle for ignition::msg types by checking if type is derived
+          // from protobuf::MessageLite. protobuf::MessageLite is the base class
+          // for protobuf::Message and for all generated message types.
+          _data->ParseFromIstream(&_in);
+        }
         else
         {
           static bool warned{false};
@@ -180,6 +204,11 @@ namespace serializers
       else if constexpr (traits::IsInStreamable<std::istream, DataType>::value)
       {
         _in >> _data;
+      }
+      else if constexpr (std::is_base_of_v<google::protobuf::MessageLite,
+                                           DataType>)
+      {
+        _data.ParseFromIstream(&_in);
       }
       else
       {

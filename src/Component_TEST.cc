@@ -16,6 +16,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <ignition/msgs/int32.pb.h>
 
 #include <memory>
 
@@ -321,6 +322,23 @@ TEST_F(ComponentTest, OStream)
     EXPECT_EQ("Mass: 0", ostr.str());
   }
 
+  // Component with a ignition::msgs type that gets serialized by the default
+  // serializer
+  {
+    using Custom = components::Component<msgs::Int32, class CustomTag>;
+
+    msgs::Int32 data;
+    data.set_data(331);
+    Custom comp(data);
+
+    std::ostringstream ostr;
+    comp.Serialize(ostr);
+
+    msgs::Int32 dataExpected;
+    dataExpected.ParseFromString(ostr.str());
+    EXPECT_EQ(331, dataExpected.data());
+  }
+
   // Component without Serialize function
   {
     NoSerialize comp;
@@ -453,6 +471,22 @@ TEST_F(ComponentTest, IStream)
     std::istringstream istr("not used");
     comp.Deserialize(istr);
     EXPECT_DOUBLE_EQ(200, comp.Data()->MassMatrix().Mass());
+  }
+
+  // Component with a ignition::msgs type that gets deserialized by the default
+  // deserializer
+  {
+    using Custom = components::Component<msgs::Int32, class CustomTag>;
+
+    msgs::Int32 data;
+    data.set_data(482);
+
+    std::istringstream istr(data.SerializeAsString());
+
+    Custom comp;
+    comp.Deserialize(istr);
+
+    EXPECT_EQ(482, comp.Data().data());
   }
 
   // Component without Deserialize function
