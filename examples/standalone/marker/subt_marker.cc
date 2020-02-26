@@ -250,11 +250,11 @@ int main(int _argc, char **_argv)
   */
 
   // displayPoses();
-  spawnMarker(colors[1],
+  spawnMarker(colors[2],
       ignition::math::Vector3d( -89.05, -1.138369, -7.08),
       ignition::msgs::Marker::SPHERE);
 
-  spawnMarker(colors[0],
+  spawnMarker(colors[1],
       ignition::math::Vector3d(-88.9868, -1.18523, -7.133),
       ignition::msgs::Marker::BOX);
 }
