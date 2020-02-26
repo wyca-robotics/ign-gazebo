@@ -100,7 +100,7 @@ void spawnMarker(ignition::math::Color &_color,
   markerMsg.mutable_material()->mutable_emissive()->set_a(_color.A());
 
   ignition::msgs::Set(markerMsg.mutable_scale(),
-      ignition::math::Vector3d(0.1, 0.1, 0.1));
+      ignition::math::Vector3d(0.05, 0.05, 0.05));
 
   // The rest of this function adds different shapes and/or modifies shapes.
   // Read the terminal statements to figure out what each node.Request
@@ -251,10 +251,10 @@ int main(int _argc, char **_argv)
 
   // displayPoses();
   spawnMarker(colors[1],
-      ignition::math::Vector3d( -89.05, -1.0, -7.08),
+      ignition::math::Vector3d( -89.05, -1.138369, -7.08),
       ignition::msgs::Marker::SPHERE);
 
-  spawnSquareMarker(colors[0],
-      ignition::math::Vector3d(-88.9868, -1.18523, -7.133)
+  spawnMarker(colors[0],
+      ignition::math::Vector3d(-88.9868, -1.18523, -7.133),
       ignition::msgs::Marker::BOX);
 }
