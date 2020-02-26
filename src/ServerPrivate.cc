@@ -289,5 +289,6 @@ bool ServerPrivate::WorldsService(ignition::msgs::StringMsg_V &_res)
 //////////////////////////////////////////////////
 std::string ServerPrivate::FetchResource(const std::string &_uri)
 {
+  std::cout << "ServerPrivate::FetchResource[" << _uri << "]\n";
   return fuel_tools::fetchResourceWithClient(_uri, *this->fuelClient.get());
 }

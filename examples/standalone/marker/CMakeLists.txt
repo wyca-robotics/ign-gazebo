@@ -16,4 +16,13 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     ignition-msgs${IGN_MSGS_VER}
     ignition-common${IGN_COMMON_VER}::ignition-common${IGN_COMMON_VER}
     )
+
+  add_executable(subt_marker subt_marker.cc)
+  target_link_libraries(subt_marker
+    ignition-transport${IGN_TRANSPORT_VER}::core
+    ignition-transport${IGN_TRANSPORT_VER}::log
+    ignition-msgs${IGN_MSGS_VER}
+    ignition-common${IGN_COMMON_VER}::ignition-common${IGN_COMMON_VER}
+    )
+
 endif()

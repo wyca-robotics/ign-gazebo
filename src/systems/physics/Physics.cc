@@ -485,7 +485,15 @@ void PhysicsPrivate::CreatePhysicsEntities(const EntityComponentManager &_ecm)
           }
 
           auto &meshManager = *ignition::common::MeshManager::Instance();
+
+
+          // I think we want a general purpose path resolver, probably in ign-common. SDF should contain just SDF information, as specified in SDF files. It shouldn't worry about how to resolve URI data. Similarly, ign-fuel-tools should just handle resource downloading, uploading, etc.
+
+
+          std::cout << "------------------\n";
           auto fullPath = asFullPath(meshSdf->Uri(), meshSdf->FilePath());
+          std::cout << "MeshSDF[" << meshSdf->Uri() << "] Full[" << fullPath << "] FIlePath[" << meshSdf->FilePath() << "]\n";
+          std::cout << "==================\n";
           auto *mesh = meshManager.Load(fullPath);
           if (nullptr == mesh)
           {

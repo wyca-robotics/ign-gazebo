@@ -14,6 +14,14 @@
  * limitations under the License.
  *
 */
+#ifndef __APPLE__
+  #if __GNUC__ < 8
+    #include <experimental/filesystem>
+  #else
+    #include <filesystem>
+  #endif
+#endif
+
 #include "ignition/gazebo/Server.hh"
 
 #include <ignition/common/SystemPaths.hh>
@@ -129,6 +137,22 @@ Server::Server(const ServerConfig &_config)
     // a black screen (search for "Async resource download" in
     // 'src/gui_main.cc'.
     errors = this->dataPtr->sdfRoot.Load(filePath);
+
+    std::cout << "** All models\n";
+
+    for (uint64_t worldIndex = 0;
+         worldIndex < this->dataPtr->sdfRoot.WorldCount(); ++worldIndex)
+    {
+      const sdf::World *world = this->dataPtr->sdfRoot.WorldByIndex(worldIndex);
+      for (uint64_t modelIndex = 0;
+          modelIndex < world->ModelCount(); ++modelIndex)
+      {
+        const sdf::Model *model = world->ModelByIndex(modelIndex);
+        std::filesystem::path path(model->Element()->FilePath());
+        std::cout << "model://" << model->Name() << " mapsto" <<  path.parent_path() << std::endl;
+      }
+      std::cout << "******************\n";
+    }
   }
   else
   {

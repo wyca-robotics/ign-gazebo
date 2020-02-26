@@ -132,6 +132,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::World *_world)
 {
   IGN_PROFILE("SdfEntityCreator::CreateEntities(sdf::World)");
 
+  std::cout << "SdfEntityCreator::CreateEntities(const sdf::World *_world)\n";
   // World entity
   Entity worldEntity = this->dataPtr->ecm->CreateEntity();
 
@@ -196,6 +197,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Model *_model)
 {
   IGN_PROFILE("SdfEntityCreator::CreateEntities(sdf::Model)");
 
+  std::cout << "SdfEntityCreator::CreateEntities(const sdf::World *_model)\n";
   // Entity
   Entity modelEntity = this->dataPtr->ecm->CreateEntity();
 
@@ -265,6 +267,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Actor *_actor)
 {
   IGN_PROFILE("SdfEntityCreator::CreateEntities(sdf::Actor)");
 
+  std::cout << "SdfEntityCreator::CreateEntities(const sdf::World *_actor)\n";
   // Entity
   Entity actorEntity = this->dataPtr->ecm->CreateEntity();
 
@@ -283,6 +286,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Light *_light)
 {
   IGN_PROFILE("SdfEntityCreator::CreateEntities(sdf::Light)");
 
+  std::cout << "SdfEntityCreator::CreateEntities(const sdf::World *_light)\n";
   // Entity
   Entity lightEntity = this->dataPtr->ecm->CreateEntity();
 
@@ -300,6 +304,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Light *_light)
 Entity SdfEntityCreator::CreateEntities(const sdf::Link *_link)
 {
   IGN_PROFILE("SdfEntityCreator::CreateEntities(sdf::Link)");
+  std::cout << "SdfEntityCreator::CreateEntities(const sdf::World *_link)\n";
 
   // Entity
   Entity linkEntity = this->dataPtr->ecm->CreateEntity();
@@ -368,6 +373,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Joint *_joint)
 {
   IGN_PROFILE("SdfEntityCreator::CreateEntities(sdf::Joint)");
 
+  std::cout << "SdfEntityCreator::CreateEntities(const sdf::World *_joint)\n";
   // Entity
   Entity jointEntity = this->dataPtr->ecm->CreateEntity();
 
@@ -408,6 +414,7 @@ Entity SdfEntityCreator::CreateEntities(const sdf::Visual *_visual)
 {
   IGN_PROFILE("SdfEntityCreator::CreateEntities(sdf::Visual)");
 
+  std::cout << "SdfEntityCreator::CreateEntities(const sdf::World *_visual)\n";
   // Entity
   Entity visualEntity = this->dataPtr->ecm->CreateEntity();
 
