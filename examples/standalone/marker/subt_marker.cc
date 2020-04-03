@@ -43,7 +43,7 @@ std::vector<std::string> teams =
   "sodium-24-robotics",
   "CYNET-ai",
   "robotika",
-  "Sophisticated_Engineering_UG"
+  "Sophisticated_Engineering_UG",
   "Kankanwadi",
   "Scientific_Systems_Company"
 };
@@ -144,6 +144,10 @@ class Processor
     markerMsg.set_ns("default");
     markerMsg.set_action(ignition::msgs::Marker::DELETE_ALL);
     markerNode->Request("/marker", markerMsg);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    delete this->markerNode;
+    this->markerNode = nullptr;
   }
 
   //////////////////////////////////////////////////
@@ -385,13 +389,20 @@ int main(int _argc, char **_argv)
   for (const std::string &team : teams)
   {
     std::string teamPath = path + "/" + team + "/" + index;
-    std::cout << "# Processing: " << teamPath << std::endl;
 
-    Processor p(teamPath);
+    std::ifstream test((teamPath + "/score.yml").c_str());
+    if (test.good())
+    {
+      std::cout << "# Processing: " << teamPath << std::endl;
 
-    char pass;
-    std::cout << "Next\n";
-    std::cin >> pass;
+      Processor p(teamPath);
+
+      char pass;
+      std::cout << "Next\n";
+      std::cin >> pass;
+    }
+    else
+      std::cout << "Skipping[" << teamPath << "]\n";
   }
   return 0;
 /*
