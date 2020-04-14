@@ -380,9 +380,92 @@ class Processor
   private: std::vector<PoseData> poses;
 };
 
+void spawnMarker(ignition::transport::Node *_markerNode,
+    ignition::math::Color _color,
+    const ignition::math::Vector3d _pos,
+    ignition::msgs::Marker::Type _type,
+    const ignition::math::Vector3d _scale)
+{
+  // Create the marker message
+  ignition::msgs::Marker markerMsg;
+  ignition::msgs::Material matMsg;
+  markerMsg.set_ns("default");
+  markerMsg.set_id(0);
+  markerMsg.set_action(ignition::msgs::Marker::ADD_MODIFY);
+  markerMsg.set_type(_type);
+  markerMsg.set_visibility(ignition::msgs::Marker::GUI);
+
+  // Set color
+  markerMsg.mutable_material()->mutable_ambient()->set_r(_color.R());
+  markerMsg.mutable_material()->mutable_ambient()->set_g(_color.G());
+  markerMsg.mutable_material()->mutable_ambient()->set_b(_color.B());
+  markerMsg.mutable_material()->mutable_ambient()->set_a(_color.A());
+  markerMsg.mutable_material()->mutable_diffuse()->set_r(_color.R());
+  markerMsg.mutable_material()->mutable_diffuse()->set_g(_color.G());
+  markerMsg.mutable_material()->mutable_diffuse()->set_b(_color.B());
+  markerMsg.mutable_material()->mutable_diffuse()->set_a(_color.A());
+  markerMsg.mutable_material()->mutable_emissive()->set_r(_color.R());
+  markerMsg.mutable_material()->mutable_emissive()->set_g(_color.G());
+  markerMsg.mutable_material()->mutable_emissive()->set_b(_color.B());
+  markerMsg.mutable_material()->mutable_emissive()->set_a(_color.A());
+
+  ignition::msgs::Set(markerMsg.mutable_scale(), _scale);
+
+  // The rest of this function adds different shapes and/or modifies shapes.
+  // Read the terminal statements to figure out what each node.Request
+  // call accomplishes.
+  ignition::msgs::Set(markerMsg.mutable_pose(),
+      ignition::math::Pose3d(_pos.X(), _pos.Y(), _pos.Z(), 0, 0, 0));
+  _markerNode->Request("/marker", markerMsg);
+}
+
 /////////////////////////////////////////////////
 int main(int _argc, char **_argv)
 {
+  ignition::transport::Node node;
+
+  ignition::transport::NodeOptions opts;
+  opts.SetPartition("PATH_PLAYBACK");
+  ignition::transport::Node *markerNode;
+  markerNode = new ignition::transport::Node(opts);
+  ignition::math::Vector3d backpackOffset(0, -0.12766, 0.25668);
+  ignition::math::Vector3d phoneOffset(0, -0.004, 0.08);
+  ignition::math::Vector3d randyOffset(-0.0713049, 0.0219663, 0.392173);
+  ignition::math::Vector3d ventOffset(0, 0, 0.138369);
+  ignition::math::Vector3d drillOffset(0, 0.05907257080078409, 0.15886300122737884);
+  ignition::math::Vector3d extinguisherOffset(-0.03557000160217294, -0.035099029541015625, 0.34790001130104065);
+
+  /*ignition::math::Pose3d backpack1Pose(-28.05, 39, 4.19, 0, 0, 0);
+  ignition::math::Matrix3d mat(backpack1Pose.Rot());
+  ignition::math::Vector3d finalPos = backpack1Pose.Pos() + mat * backpackOffset;
+  */
+  /*ignition::math::Pose3d phone1Pose(23.95, -20, 0.92, -1.570796, 0, 0);
+  ignition::math::Matrix3d mat(phone1Pose.Rot());
+  ignition::math::Vector3d finalPos = phone1Pose.Pos() + mat * phoneOffset;
+  */
+  /*ignition::math::Pose3d randy1Pose(67.95, -13, 0.92, 0, 0, -1.22173);
+  ignition::math::Matrix3d mat(randy1Pose.Rot());
+  ignition::math::Vector3d finalPos = randy1Pose.Pos() + mat * randyOffset;
+  */
+  /*ignition::math::Pose3d vent1Pose(81.55, -27.5, -7.08, 0, -1.570796, 0);
+  ignition::math::Matrix3d mat(vent1Pose.Rot());
+  ignition::math::Vector3d finalPos = vent1Pose.Pos() + mat * ventOffset;
+  */
+  /*ignition::math::Pose3d drill1Pose(106, 98.8, 0.004, 0, 0, -0.349066);
+  ignition::math::Matrix3d mat(drill1Pose.Rot());
+  ignition::math::Vector3d finalPos = drill1Pose.Pos() + mat * drillOffset;
+  */
+  ignition::math::Pose3d extinguisher1Pose(2.1, 37.0, 0.004, 0, 0, 0);
+  ignition::math::Matrix3d mat(extinguisher1Pose.Rot());
+  ignition::math::Vector3d finalPos = extinguisher1Pose.Pos() + mat * extinguisherOffset;
+
+  spawnMarker(markerNode,
+      ignition::math::Color(1, 0, 0, 1),
+      finalPos,
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(.01, .01, .01));
+  return 0;
+/*
   std::string path = _argv[1];
   std::string index = _argv[2];
 
@@ -405,75 +488,5 @@ int main(int _argc, char **_argv)
       std::cout << "Skipping[" << teamPath << "]\n";
   }
   return 0;
-/*
-  std::unique_lock<std::mutex> lock(mutex);
-  std::thread playbackThread(playback, path);
-
-  cv.wait(lock);
-  ignition::transport::Node node;
-
-  ignition::transport::NodeOptions opts;
-  opts.SetPartition("PATH_PLAYBACK");
-  markerNode = new ignition::transport::Node(opts);
-
-  getArtifactPoses();
-
-  bool subscribed = false;
-  for (int i = 0; i < 5 && !subscribed; ++i)
-  {
-    std::vector<std::string> topics;
-    node.TopicList(topics);
-
-    // Subscribe to the first /dynamic_pose/info topic
-    for (auto const &topic : topics)
-    {
-      if (topic.find("/dynamic_pose/info") != std::string::npos)
-      {
-        // Subscribe to a topic by registering a callback.
-        if (!node.Subscribe(topic, cb))
-        {
-          std::cerr << "Error subscribing to topic ["
-            << topic << "]" << std::endl;
-          return -1;
-        }
-        subscribed = true;
-        break;
-      }
-    }
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-  playbackThread.join();
-
-
-  displayPoses();
-  displayArtifacts();
-
-  std::ifstream in(path + "/subt.log");
-  std::string line;
-  std::string key = "reported_pos[";
-  while (std::getline(in, line))
-  {
-    int idx = line.find(key);
-    if (idx != std::string::npos)
-    {
-      int endIdx = line.rfind("]");
-      std::string pos = line.substr(idx + key.size(),
-          endIdx - (idx + key.size()));
-
-      ignition::math::Vector3d reportedPos;
-      std::stringstream stream;
-      stream << pos;
-      stream >> reportedPos;
-      spawnMarker(colors[0], reportedPos, ignition::msgs::Marker::SPHERE,
-          ignition::math::Vector3d(8, 8, 8));
-    }
-  }
-
-  ignition::common::Time::Sleep(ignition::common::Time(4));
-
-  ignition::msgs::Marker markerMsg;
-  markerMsg.set_ns("default");
-  markerMsg.set_action(ignition::msgs::Marker::DELETE_ALL);
-  markerNode->Request("/marker", markerMsg);
   */
 }
