@@ -428,12 +428,13 @@ int main(int _argc, char **_argv)
   opts.SetPartition("PATH_PLAYBACK");
   ignition::transport::Node *markerNode;
   markerNode = new ignition::transport::Node(opts);
-  ignition::math::Vector3d backpackOffset(0, -0.12766, 0.25668);
+  /*ignition::math::Vector3d backpackOffset(0, -0.12766, 0.25668);
   ignition::math::Vector3d phoneOffset(0, -0.004, 0.08);
   ignition::math::Vector3d randyOffset(-0.0713049, 0.0219663, 0.392173);
   ignition::math::Vector3d ventOffset(0, 0, 0.138369);
   ignition::math::Vector3d drillOffset(0, 0.05907257080078409, 0.15886300122737884);
   ignition::math::Vector3d extinguisherOffset(-0.03557000160217294, -0.035099029541015625, 0.34790001130104065);
+  */
 
   /*ignition::math::Pose3d backpack1Pose(-28.05, 39, 4.19, 0, 0, 0);
   ignition::math::Matrix3d mat(backpack1Pose.Rot());
@@ -454,16 +455,98 @@ int main(int _argc, char **_argv)
   /*ignition::math::Pose3d drill1Pose(106, 98.8, 0.004, 0, 0, -0.349066);
   ignition::math::Matrix3d mat(drill1Pose.Rot());
   ignition::math::Vector3d finalPos = drill1Pose.Pos() + mat * drillOffset;
-  */
   ignition::math::Pose3d extinguisher1Pose(2.1, 37.0, 0.004, 0, 0, 0);
   ignition::math::Matrix3d mat(extinguisher1Pose.Rot());
   ignition::math::Vector3d finalPos = extinguisher1Pose.Pos() + mat * extinguisherOffset;
+  */
 
   spawnMarker(markerNode,
       ignition::math::Color(1, 0, 0, 1),
-      finalPos,
+      ignition::math::Vector3d(149.8, -158.17, 20.75),
       ignition::msgs::Marker::SPHERE,
-      ignition::math::Vector3d(.01, .01, .01));
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(1, 0, 0, 1),
+      ignition::math::Vector3d(-1.79, -180.47, 55.61),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(1, 0, 0, 1),
+      ignition::math::Vector3d(188.25, -46.80, 10.25),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(1, 0, 0, 1),
+      ignition::math::Vector3d(271.80, -218.32, 30.35),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+
+  // Phone
+  spawnMarker(markerNode,
+      ignition::math::Color(0, 1, 0, 1),
+      ignition::math::Vector3d(115.33, -155.49, 20.22),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(0, 1, 0, 1),
+      ignition::math::Vector3d(72.09, -112.69, 30.08),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(0, 1, 0, 1),
+      ignition::math::Vector3d(286.74, 48.57, 12),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(0, 1, 0, 1),
+      ignition::math::Vector3d(148.99, -125.66, 21.49),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+
+  // Backpack
+  spawnMarker(markerNode,
+      ignition::math::Color(0, 0, 1, 1),
+      ignition::math::Vector3d(44.12, -30.30, 1.07),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(0, 0, 1, 1),
+      ignition::math::Vector3d(103.65, 0, 0.18),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(0, 0, 1, 1),
+      ignition::math::Vector3d(357.88, 5.47, 20.32),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(0, 0, 1, 1),
+      ignition::math::Vector3d(48.86, -346.54, 40.19),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+
+  // Randy
+  spawnMarker(markerNode,
+      ignition::math::Color(1, 0, 1, 1),
+      ignition::math::Vector3d(38.2, 75.96, 0.1),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(1, 0, 1, 1),
+      ignition::math::Vector3d(144.17, -26.87, 29.60),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(1, 0, 1, 1),
+      ignition::math::Vector3d(66.60, -187.81, 31.13),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+  spawnMarker(markerNode,
+      ignition::math::Color(1, 0, 1, 1),
+      ignition::math::Vector3d(297.88, 97.04, 0.16),
+      ignition::msgs::Marker::SPHERE,
+      ignition::math::Vector3d(1, 1, 1));
+
   return 0;
 /*
   std::string path = _argv[1];
