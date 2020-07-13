@@ -365,15 +365,6 @@ cc_binary(
     linkopts = ["-Wl,-soname,libignition-gazebo4.so", "-ltinyxml2"],
     linkshared = True,
     visibility = [],
-    copts = [
-        "-Iexternal/qt/QtCore",
-        "-Iexternal/qt/QtGui",
-        "-Iexternal/qt/QtQml",
-        "-Iexternal/qt/QtQuick",
-        "-Iexternal/qt/QtQuickControls2",
-        "-Iexternal/qt/QtWidgets",
-        "-Iexternal/qt",
-    ],
     deps = [
         ":igngazebo_proto_cc",
         "//ign_common",
@@ -387,7 +378,6 @@ cc_binary(
         "//ign_common/events:events",
         "//ign_msgs",
         "//sdformat",
-        "@qt//:headers",
     ],
 )
 
@@ -403,7 +393,7 @@ cc_library(
 
 cc_binary(
     name = "libignition-gazebo4-%s.so" % system.replace("_", "-"),
-    srcs = glob([  
+    srcs = glob([
         "src/systems/%s/*.cc" % system,
         "src/systems/%s/*.hh" % system,
     ],
@@ -442,7 +432,7 @@ cc_binary(
 [
 cc_library(
     name = system,
-    srcs = [  
+    srcs = [
         "libignition-gazebo4-%s.so" % system.replace("_", "-")
     ],
     hdrs = glob([
@@ -464,13 +454,13 @@ cc_library(
         "//ign_sensors",
         "//ign_rendering",
         "//ign_plugin/core:ign_plugin",
-        "//ign_plugin/loader:loader",
-        "//ign_plugin/register:register",
-        "//ign_common/profiler:profiler",
-        "//ign_common/events:events",
-        "//ign_common/graphics:graphics",
+        "//ign_plugin/loader",
+        "//ign_plugin/register",
+        "//ign_common/profiler",
+        "//ign_common/events",
+        "//ign_common/graphics",
         "//ign_msgs",
-        "//ign_math/eigen3:eigen3",
+        "//ign_math/eigen3",
         "//sdformat",
     ],
 ) for system in systems]
@@ -486,21 +476,21 @@ cc_library(
         "//sdformat",
         "//ign_common",
         "//ign_physics",
-        "//ign_physics/mesh:mesh",
-        "//ign_physics/sdf:sdf",
+        "//ign_physics/mesh",
+        "//ign_physics/sdf",
         "//ign_gui",
         "//ign_fuel_tools",
         "//ign_transport",
-        "//ign_transport/log:log",
+        "//ign_transport/log",
         "//ign_sensors",
         "//ign_rendering",
         "//ign_plugin/core:ign_plugin",
-        "//ign_plugin/loader:loader",
-        "//ign_plugin/register:register",
-        "//ign_common/profiler:profiler",
-        "//ign_common/events:events",
-        "//ign_common/graphics:graphics",
-        "//ign_math/eigen3:eigen3",
+        "//ign_plugin/loader",
+        "//ign_plugin/register",
+        "//ign_common/profiler",
+        "//ign_common/events",
+        "//ign_common/graphics",
+        "//ign_math/eigen3",
         "@gtest//:gtest",
         "@gtest//:gtest_main",
     ],
