@@ -269,6 +269,18 @@ void ServerPrivate::AddRecordPlugin(const ServerConfig &_config)
               }
             }
 
+            // If resource flag specified on command line, replace in SDF
+            if (_config.LogRecordResources())
+            {
+              sdf::ElementPtr resourceElem = std::make_shared<sdf::Element>();
+              resourceElem->SetName("record_resources");
+              pluginElem->AddElementDescription(resourceElem);
+              resourceElem = pluginElem->GetElement("record_resources");
+              resourceElem->AddValue("bool", "false", false, "");
+              resourceElem->Set<bool>(_config.LogRecordResources()
+                ? true : false);
+            }
+
             // If compress flag specified on command line, replace in SDF
             if (!_config.LogRecordCompressPath().empty())
             {
@@ -322,6 +334,14 @@ void ServerPrivate::AddRecordPlugin(const ServerConfig &_config)
     pathElem->Set<std::string>(_config.LogRecordPath());
   }
 
+  // Set whether to record resources
+  sdf::ElementPtr resourceElem = std::make_shared<sdf::Element>();
+  resourceElem->SetName("record_resources");
+  recordElem->AddElementDescription(resourceElem);
+  resourceElem = recordElem->GetElement("record_resources");
+  resourceElem->AddValue("bool", "false", false, "");
+  resourceElem->Set<bool>(_config.LogRecordResources() ? true : false);
+
   // Set whether to compress
   sdf::ElementPtr compressElem = std::make_shared<sdf::Element>();
   compressElem->SetName("compress");
@@ -353,9 +373,10 @@ void ServerPrivate::CreateEntities()
       std::lock_guard<std::mutex> lock(this->worldsMutex);
       this->worldNames.push_back(world->Name());
     }
-
-    this->simRunners.push_back(std::make_unique<SimulationRunner>(
-        world, this->systemLoader, this->config));
+    auto runner = std::make_unique<SimulationRunner>(
+        world, this->systemLoader, this->config);
+    runner->SetFuelUriMap(this->fuelUriMap);
+    this->simRunners.push_back(std::move(runner));
   }
 }
 
@@ -384,8 +405,18 @@ bool ServerPrivate::WorldsService(ignition::msgs::StringMsg_V &_res)
 //////////////////////////////////////////////////
 std::string ServerPrivate::FetchResource(const std::string &_uri)
 {
-  std::cout << "ServerPrivate::FetchResource[" << _uri << "]\n";
-  return fuel_tools::fetchResourceWithClient(_uri, *this->fuelClient.get());
+  auto path =
+      fuel_tools::fetchResourceWithClient(_uri, *this->fuelClient.get());
+
+  if (!path.empty())
+  {
+    for (auto &runner : this->simRunners)
+    {
+      runner->AddToFuelUriMap(path, _uri);
+    }
+    fuelUriMap[path] = _uri;
+  }
+  return path;
 }
 
 //////////////////////////////////////////////////

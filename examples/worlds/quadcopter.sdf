@@ -13,7 +13,7 @@
 -->
 <sdf version="1.6">
   <world name="quadcopter">
-    <physics name="4ms" type="ode">
+    <physics name="4ms" type="ignored">
       <max_step_size>0.004</max_step_size>
       <real_time_factor>1.0</real_time_factor>
     </physics>
@@ -144,7 +144,7 @@
 
     <include>
       <uri>
-        https://fuel.ignitionrobotics.org/1.0/openrobotics/models/X3 UAV/4
+        https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/X3 UAV/4
       </uri>
       <plugin
         filename="libignition-gazebo-multicopter-motor-model-system.so"

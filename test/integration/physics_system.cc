@@ -34,6 +34,7 @@
 #include "ignition/gazebo/SystemLoader.hh"
 #include "ignition/gazebo/test_config.hh"  // NOLINT(build/include)
 
+#include "ignition/gazebo/components/AxisAlignedBox.hh"
 #include "ignition/gazebo/components/CanonicalLink.hh"
 #include "ignition/gazebo/components/Collision.hh"
 #include "ignition/gazebo/components/Geometry.hh"
@@ -54,7 +55,7 @@
 #include "ignition/gazebo/components/Visual.hh"
 #include "ignition/gazebo/components/World.hh"
 
-#include "plugins/MockSystem.hh"
+#include "../helpers/Relay.hh"
 
 using namespace ignition;
 using namespace gazebo;
@@ -64,49 +65,12 @@ class PhysicsSystemFixture : public ::testing::Test
 {
   protected: void SetUp() override
   {
+    common::Console::SetVerbosity(4);
     // Augment the system plugin path.  In SetUp to avoid test order issues.
     setenv("IGN_GAZEBO_SYSTEM_PLUGIN_PATH",
       (std::string(PROJECT_BINARY_PATH) + "/lib").c_str(), 1);
   }
 };
-
-class Relay
-{
-  public: Relay()
-  {
-    auto plugin = sm.LoadPlugin("libMockSystem.so",
-                                "ignition::gazebo::MockSystem",
-                                nullptr);
-    EXPECT_TRUE(plugin.has_value());
-    this->systemPtr = plugin.value();
-    this->mockSystem = static_cast<gazebo::MockSystem *>(
-        systemPtr->QueryInterface<gazebo::System>());
-  }
-
-  public: Relay & OnPreUpdate(gazebo::MockSystem::CallbackType _cb)
-  {
-    this->mockSystem->preUpdateCallback = std::move(_cb);
-    return *this;
-  }
-
-  public: Relay & OnUpdate(gazebo::MockSystem::CallbackType _cb)
-  {
-    this->mockSystem->updateCallback = std::move(_cb);
-    return *this;
-  }
-
-  public: Relay & OnPostUpdate(gazebo::MockSystem::CallbackTypeConst _cb)
-  {
-    this->mockSystem->postUpdateCallback = std::move(_cb);
-    return *this;
-  }
-
-  public: ignition::gazebo::SystemPluginPtr systemPtr;
-
-  private: gazebo::SystemLoader sm;
-  private: gazebo::MockSystem *mockSystem;
-};
-
 
 /////////////////////////////////////////////////
 TEST_F(PhysicsSystemFixture, CreatePhysicsWorld)
@@ -151,7 +115,7 @@ TEST_F(PhysicsSystemFixture, FallingObject)
   std::vector<ignition::math::Pose3d> spherePoses;
 
   // Create a system that records the poses of the sphere
-  Relay testSystem;
+  test::Relay testSystem;
 
   testSystem.OnPostUpdate(
     [modelName, &spherePoses](const gazebo::UpdateInfo &,
@@ -228,7 +192,7 @@ TEST_F(PhysicsSystemFixture, CanonicalLink)
   ASSERT_EQ(3u, expectedLinPoses.size());
 
   // Create a system that records the poses of the links after physics
-  Relay testSystem;
+  test::Relay testSystem;
 
   std::unordered_map<std::string, ignition::math::Pose3d> postUpLinkPoses;
   testSystem.OnPostUpdate(
@@ -291,7 +255,7 @@ TEST_F(PhysicsSystemFixture, NonDefaultCanonicalLink)
   const std::string modelName{"nondefault_canonical"};
 
   // Create a system that records the pose of the model.
-  Relay testSystem;
+  test::Relay testSystem;
 
   std::vector<ignition::math::Pose3d> modelPoses;
   testSystem.OnPostUpdate(
@@ -346,7 +310,7 @@ TEST_F(PhysicsSystemFixture, RevoluteJoint)
   const std::string modelName{"revolute_demo"};
   const std::string rotatingLinkName{"link2"};
 
-  Relay testSystem;
+  test::Relay testSystem;
 
   std::vector<double> armDistances;
 
@@ -416,7 +380,7 @@ TEST_F(PhysicsSystemFixture, CreateRuntime)
   // create `Relay` systems in the first place. Consider keeping the ECM in a
   // shared pointer owned by the SimulationRunner.
   EntityComponentManager *ecm{nullptr};
-  Relay testSystem;
+  test::Relay testSystem;
   testSystem.OnPreUpdate([&](const gazebo::UpdateInfo &,
                              gazebo::EntityComponentManager &_ecm)
       {
@@ -503,7 +467,7 @@ TEST_F(PhysicsSystemFixture, SetFrictionCoefficient)
   std::map<std::string, std::vector<ignition::math::Pose3d>> poses;
 
   // Create a system that records the poses of the 3 boxes
-  Relay testSystem;
+  test::Relay testSystem;
   double dt = 0.0;
 
   testSystem.OnPostUpdate(
@@ -585,7 +549,7 @@ TEST_F(PhysicsSystemFixture, MultiAxisJointPosition)
 
   server.SetUpdatePeriod(0ns);
 
-  Relay testSystem;
+  test::Relay testSystem;
   // Create JointPosition components if they don't already exist
   testSystem.OnPreUpdate(
       [&](const gazebo::UpdateInfo &, gazebo::EntityComponentManager &_ecm)
@@ -672,7 +636,7 @@ TEST_F(PhysicsSystemFixture, ResetPositionComponent)
 
   const std::string rotatingJointName{"j2"};
 
-  Relay testSystem;
+  test::Relay testSystem;
 
   double pos0 = 0.42;
 
@@ -767,7 +731,7 @@ TEST_F(PhysicsSystemFixture, ResetVelocityComponent)
 
   const std::string rotatingJointName{"j2"};
 
-  Relay testSystem;
+  test::Relay testSystem;
 
   double vel0 = 3.0;
 
@@ -841,4 +805,73 @@ TEST_F(PhysicsSystemFixture, ResetVelocityComponent)
 
   // Second velocity should be different, but close
   EXPECT_NEAR(vel0, velocities[1], 0.05);
+}
+
+/////////////////////////////////////////////////
+TEST_F(PhysicsSystemFixture, GetBoundingBox)
+{
+  ignition::gazebo::ServerConfig serverConfig;
+
+  const auto sdfFile = std::string(PROJECT_SOURCE_PATH) +
+    "/test/worlds/contact.sdf";
+  serverConfig.SetSdfFile(sdfFile);
+
+  gazebo::Server server(serverConfig);
+
+  server.SetUpdatePeriod(1ns);
+
+  // a map of model name to its axis aligned box
+  std::map<std::string, ignition::math::AxisAlignedBox> bbox;
+
+  // Create a system that records the bounding box of a model
+  test::Relay testSystem;
+
+  testSystem.OnPreUpdate(
+    [&](const gazebo::UpdateInfo &,
+    gazebo::EntityComponentManager &_ecm)
+    {
+      _ecm.Each<components::Model, components::Name, components::Static>(
+        [&](const ignition::gazebo::Entity &_entity, const components::Model *,
+        const components::Name *_name, const components::Static *)->bool
+        {
+          // create axis aligned box to be filled by physics
+          if (_name->Data() == "box1")
+          {
+            auto bboxComp = _ecm.Component<components::AxisAlignedBox>(_entity);
+            // the test only runs for 1 iteration so the component should be
+            // null in the first iteration.
+            EXPECT_EQ(bboxComp, nullptr);
+            _ecm.CreateComponent(_entity, components::AxisAlignedBox());
+            return true;
+          }
+          return true;
+        });
+    });
+
+  testSystem.OnPostUpdate(
+    [&](const gazebo::UpdateInfo &,
+    const gazebo::EntityComponentManager &_ecm)
+    {
+      // store models that have axis aligned box computed
+      _ecm.Each<components::Model, components::Name, components::Static,
+        components::AxisAlignedBox>(
+        [&](const ignition::gazebo::Entity &, const components::Model *,
+        const components::Name *_name, const components::Static *,
+        const components::AxisAlignedBox *_aabb)->bool
+        {
+          bbox[_name->Data()] = _aabb->Data();
+          return true;
+        });
+    });
+
+  server.AddSystem(testSystem.systemPtr);
+  const size_t iters = 1;
+  server.Run(true, iters, false);
+
+  EXPECT_EQ(1u, bbox.size());
+  EXPECT_EQ("box1", bbox.begin()->first);
+  EXPECT_EQ(ignition::math::AxisAlignedBox(
+      ignition::math::Vector3d(-1.25, -2, 0),
+      ignition::math::Vector3d(-0.25, 2, 1)),
+      bbox.begin()->second);
 }

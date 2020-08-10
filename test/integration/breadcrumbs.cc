@@ -20,6 +20,9 @@
 #include <ignition/msgs/empty.pb.h>
 #include <ignition/msgs/twist.pb.h>
 
+#include <sdf/Root.hh>
+#include <sdf/World.hh>
+
 #include <ignition/common/Console.hh>
 #include <ignition/transport/Node.hh>
 
@@ -30,7 +33,8 @@
 #include "ignition/gazebo/components/Model.hh"
 #include "ignition/gazebo/test_config.hh"
 
-#include "plugins/MockSystem.hh"
+#include "helpers/Relay.hh"
+#include "helpers/UniqueTestDirectoryEnv.hh"
 
 using namespace ignition;
 using namespace gazebo;
@@ -44,46 +48,22 @@ class BreadcrumbsTest : public ::testing::Test
     setenv("IGN_GAZEBO_SYSTEM_PLUGIN_PATH",
            (std::string(PROJECT_BINARY_PATH) + "/lib").c_str(), 1);
   }
-};
-
-class Relay
-{
-  public: Relay()
+  public: void LoadWorld(const std::string &_path, bool _useLevels = false)
   {
-    auto plugin = loader.LoadPlugin("libMockSystem.so",
-                                "ignition::gazebo::MockSystem",
-                                nullptr);
-    EXPECT_TRUE(plugin.has_value());
+    this->serverConfig.SetResourceCache(test::UniqueTestDirectoryEnv::Path());
+    this->serverConfig.SetSdfFile(
+        common::joinPaths(PROJECT_SOURCE_PATH, _path));
+    this->serverConfig.SetUseLevels(_useLevels);
 
-    this->systemPtr = plugin.value();
-
-    this->mockSystem =
-        dynamic_cast<MockSystem *>(systemPtr->QueryInterface<System>());
-    EXPECT_NE(nullptr, this->mockSystem);
+    this->server = std::make_unique<Server>(this->serverConfig);
+    EXPECT_FALSE(this->server->Running());
+    EXPECT_FALSE(*this->server->Running(0));
+    using namespace std::chrono_literals;
+    this->server->SetUpdatePeriod(1ns);
   }
 
-  public: Relay &OnPreUpdate(MockSystem::CallbackType _cb)
-  {
-    this->mockSystem->preUpdateCallback = std::move(_cb);
-    return *this;
-  }
-
-  public: Relay &OnUpdate(MockSystem::CallbackType _cb)
-  {
-    this->mockSystem->updateCallback = std::move(_cb);
-    return *this;
-  }
-
-  public: Relay &OnPostUpdate(MockSystem::CallbackTypeConst _cb)
-  {
-    this->mockSystem->postUpdateCallback = std::move(_cb);
-    return *this;
-  }
-
-  public: SystemPluginPtr systemPtr;
-
-  private: SystemLoader loader;
-  private: MockSystem *mockSystem;
+  public: ServerConfig serverConfig;
+  public: std::unique_ptr<Server> server;
 };
 
 /////////////////////////////////////////////////
@@ -91,19 +71,9 @@ class Relay
 TEST_F(BreadcrumbsTest, DeployAtOffset)
 {
   // Start server
-  ServerConfig serverConfig;
-  const auto sdfFile = std::string(PROJECT_SOURCE_PATH) +
-    "/test/worlds/breadcrumbs.sdf";
-  serverConfig.SetSdfFile(sdfFile);
+  this->LoadWorld("test/worlds/breadcrumbs.sdf");
 
-  Server server(serverConfig);
-  EXPECT_FALSE(server.Running());
-  EXPECT_FALSE(*server.Running(0));
-
-  using namespace std::chrono_literals;
-  server.SetUpdatePeriod(1ns);
-
-  Relay testSystem;
+  test::Relay testSystem;
   transport::Node node;
   auto cmdVel = node.Advertise<msgs::Twist>("/model/vehicle_blue/cmd_vel");
   auto deployB1 =
@@ -157,8 +127,8 @@ TEST_F(BreadcrumbsTest, DeployAtOffset)
     }
   });
 
-  server.AddSystem(testSystem.systemPtr);
-  server.Run(true, iterTestStart + 2001, false);
+  this->server->AddSystem(testSystem.systemPtr);
+  this->server->Run(true, iterTestStart + 2001, false);
 }
 
 /////////////////////////////////////////////////
@@ -166,19 +136,9 @@ TEST_F(BreadcrumbsTest, DeployAtOffset)
 TEST_F(BreadcrumbsTest, MaxDeployments)
 {
   // Start server
-  ServerConfig serverConfig;
-  const auto sdfFile = std::string(PROJECT_SOURCE_PATH) +
-    "/test/worlds/breadcrumbs.sdf";
-  serverConfig.SetSdfFile(sdfFile);
+  this->LoadWorld("test/worlds/breadcrumbs.sdf");
 
-  Server server(serverConfig);
-  EXPECT_FALSE(server.Running());
-  EXPECT_FALSE(*server.Running(0));
-
-  using namespace std::chrono_literals;
-  server.SetUpdatePeriod(1ns);
-
-  Relay testSystem;
+  test::Relay testSystem;
   transport::Node node;
   auto cmdVel = node.Advertise<msgs::Twist>("/model/vehicle_blue/cmd_vel");
   auto deployB1 =
@@ -221,8 +181,8 @@ TEST_F(BreadcrumbsTest, MaxDeployments)
     }
   });
 
-  server.AddSystem(testSystem.systemPtr);
-  server.Run(true, iterTestStart + 5001, false);
+  this->server->AddSystem(testSystem.systemPtr);
+  this->server->Run(true, iterTestStart + 5001, false);
 }
 
 /////////////////////////////////////////////////
@@ -231,19 +191,9 @@ TEST_F(BreadcrumbsTest, MaxDeployments)
 TEST_F(BreadcrumbsTest, FuelDeploy)
 {
   // Start server
-  ServerConfig serverConfig;
-  const auto sdfFile = std::string(PROJECT_SOURCE_PATH) +
-    "/test/worlds/breadcrumbs.sdf";
-  serverConfig.SetSdfFile(sdfFile);
+  this->LoadWorld("test/worlds/breadcrumbs.sdf");
 
-  Server server(serverConfig);
-  EXPECT_FALSE(server.Running());
-  EXPECT_FALSE(*server.Running(0));
-
-  using namespace std::chrono_literals;
-  server.SetUpdatePeriod(1ns);
-
-  Relay testSystem;
+  test::Relay testSystem;
   transport::Node node;
   auto cmdVel = node.Advertise<msgs::Twist>("/model/vehicle_blue/cmd_vel");
   auto deploy = node.Advertise<msgs::Empty>("/fuel_deploy");
@@ -285,8 +235,8 @@ TEST_F(BreadcrumbsTest, FuelDeploy)
     }
   });
 
-  server.AddSystem(testSystem.systemPtr);
-  server.Run(true, nIters, false);
+  this->server->AddSystem(testSystem.systemPtr);
+  this->server->Run(true, nIters, false);
 }
 
 /////////////////////////////////////////////////
@@ -294,20 +244,9 @@ TEST_F(BreadcrumbsTest, FuelDeploy)
 TEST_F(BreadcrumbsTest, Performer)
 {
   // Start server
-  ServerConfig serverConfig;
-  const auto sdfFile = std::string(PROJECT_SOURCE_PATH) +
-    "/test/worlds/breadcrumbs.sdf";
-  serverConfig.SetSdfFile(sdfFile);
-  serverConfig.SetUseLevels(true);
+  this->LoadWorld("test/worlds/breadcrumbs.sdf");
 
-  Server server(serverConfig);
-  EXPECT_FALSE(server.Running());
-  EXPECT_FALSE(*server.Running(0));
-
-  using namespace std::chrono_literals;
-  server.SetUpdatePeriod(1ns);
-
-  Relay testSystem;
+  test::Relay testSystem;
   transport::Node node;
   auto cmdVel = node.Advertise<msgs::Twist>("/model/vehicle_blue/cmd_vel");
   auto deploy = node.Advertise<msgs::Empty>(
@@ -363,14 +302,14 @@ TEST_F(BreadcrumbsTest, Performer)
             return true;
           });
       ASSERT_TRUE(initialPose.has_value());
-      std::cout << "Init: " << initialPose->Pos() << " Final: "
+      igndbg << "Init: " << initialPose->Pos() << " Final: "
                 << finalPose.Pos() << std::endl;
       EXPECT_NEAR(initialPose->Pos().Z(), finalPose.Pos().Z(), 1e-3);
     }
   });
 
-  server.AddSystem(testSystem.systemPtr);
-  server.Run(true, nIters, false);
+  this->server->AddSystem(testSystem.systemPtr);
+  this->server->Run(true, nIters, false);
 }
 
 /////////////////////////////////////////////////
@@ -379,20 +318,9 @@ TEST_F(BreadcrumbsTest, Performer)
 TEST_F(BreadcrumbsTest, PerformerSetVolume)
 {
   // Start server
-  ServerConfig serverConfig;
-  const auto sdfFile = std::string(PROJECT_SOURCE_PATH) +
-    "/test/worlds/breadcrumbs.sdf";
-  serverConfig.SetSdfFile(sdfFile);
-  serverConfig.SetUseLevels(true);
+  this->LoadWorld("test/worlds/breadcrumbs.sdf", true);
 
-  Server server(serverConfig);
-  EXPECT_FALSE(server.Running());
-  EXPECT_FALSE(*server.Running(0));
-
-  using namespace std::chrono_literals;
-  server.SetUpdatePeriod(1ns);
-
-  Relay testSystem;
+  test::Relay testSystem;
   transport::Node node;
   auto deploy = node.Advertise<msgs::Empty>(
       "/model/vehicle_blue/breadcrumbs/B1_perf_large_volume/deploy");
@@ -436,6 +364,128 @@ TEST_F(BreadcrumbsTest, PerformerSetVolume)
     }
   });
 
-  server.AddSystem(testSystem.systemPtr);
-  server.Run(true, nIters, false);
+  this->server->AddSystem(testSystem.systemPtr);
+  this->server->Run(true, nIters, false);
+}
+
+/////////////////////////////////////////////////
+// The test verifies breadcrumbs physics is disabled using disable_physics_time
+TEST_F(BreadcrumbsTest, DeployDisablePhysics)
+{
+  // Start server
+  this->LoadWorld("test/worlds/breadcrumbs.sdf");
+
+  test::Relay testSystem;
+  transport::Node node;
+  auto cmdVel = node.Advertise<msgs::Twist>("/model/vehicle_blue/cmd_vel");
+  auto deployB2 =
+      node.Advertise<msgs::Empty>("/model/vehicle_blue/breadcrumbs/B2/deploy");
+
+  std::size_t iterTestStart = 1000;
+  testSystem.OnPostUpdate([&](const gazebo::UpdateInfo &_info,
+                              const gazebo::EntityComponentManager &_ecm)
+  {
+    // Start moving the vehicle
+    // After 1000 iterations, stop the vehicle, spawn a breadcrumb
+    // Check the pose of the breadcrumb
+    if (_info.iterations == iterTestStart)
+    {
+      msgs::Twist msg;
+      msg.mutable_linear()->set_x(0.5);
+      cmdVel.Publish(msg);
+    }
+    else if (_info.iterations == iterTestStart + 1000)
+    {
+      // Stop vehicle
+      cmdVel.Publish(msgs::Twist());
+    }
+    else if (_info.iterations == iterTestStart + 1200)
+    {
+      // Deploy
+      deployB2.Publish(msgs::Empty());
+    }
+    else if (_info.iterations == iterTestStart + 2000)
+    {
+      // Check pose
+      Entity vehicleBlue = _ecm.EntityByComponents(
+          components::Model(), components::Name("vehicle_blue"));
+      ASSERT_NE(vehicleBlue, kNullEntity);
+
+      auto poseVehicle = _ecm.Component<components::Pose>(vehicleBlue);
+      ASSERT_NE(poseVehicle , nullptr);
+
+      EXPECT_GT(poseVehicle->Data().Pos().X(), 0.4);
+
+      // The first breadcrumb
+      Entity b2 = _ecm.EntityByComponents(components::Model(),
+                                          components::Name("B2_0"));
+      ASSERT_NE(b2, kNullEntity);
+      auto poseB2 = _ecm.Component<components::Pose>(b2);
+
+      ASSERT_NE(poseB2, nullptr);
+
+      // check pose of breadcrumb
+      auto poseDiff = poseVehicle->Data().Inverse() * poseB2->Data();
+      EXPECT_NEAR(-2.2, poseDiff.Pos().X(), 1e-2);
+      EXPECT_NEAR(0.0, poseDiff.Pos().Y(), 1e-2);
+
+      // Verify that the breadcrumb stopped falling after 0.5s.
+      sdf::Root root;
+      root.Load(this->serverConfig.SdfFile());
+      const sdf::World *world = root.WorldByIndex(0);
+      double gz = world->Gravity().Z();
+      double z0 = 2.0;
+      double t = 0.5;
+      double z = z0 + gz/2*t*t;
+      EXPECT_NEAR(z, poseDiff.Pos().Z(), 1e-2);
+    }
+  });
+
+  this->server->AddSystem(testSystem.systemPtr);
+  this->server->Run(true, iterTestStart + 2001, false);
+}
+
+/////////////////////////////////////////////////
+// The test verifies that if allow_renaming is true, the Breadcrumb system
+// renames spawned models if a model with the same name exists.
+TEST_F(BreadcrumbsTest, AllowRenaming)
+{
+  // Start server
+  this->LoadWorld("test/worlds/breadcrumbs.sdf");
+
+  transport::Node node;
+  auto deployB1 =
+      node.Advertise<msgs::Empty>("/model/vehicle_blue/breadcrumbs/B1/deploy");
+  auto noRenameDeploy =
+      node.Advertise<msgs::Empty>("/no_rename_deploy");
+  auto renameDeploy =
+      node.Advertise<msgs::Empty>("/rename_deploy");
+
+  this->server->Run(true, 1, false);
+  deployB1.Publish(msgs::Empty());
+  this->server->Run(true, 100, false);
+  EXPECT_TRUE(this->server->HasEntity("B1_0"));
+
+  // Deploying via "/no_rename_deploy" will try to spawn B1_0, but since the
+  // model already exists, the spawn should fail.
+  auto curEntityCount = this->server->EntityCount().value();
+  noRenameDeploy.Publish(msgs::Empty());
+  this->server->Run(true, 100, false);
+  EXPECT_EQ(curEntityCount, this->server->EntityCount().value());
+
+  // Deploying via "/rename_deploy" will try to spawn B1_0, but since the
+  // model already exists, it will spawn B1_0_1 instead.
+  renameDeploy.Publish(msgs::Empty());
+  this->server->Run(true, 100, false);
+  EXPECT_TRUE(this->server->HasEntity("B1_0_1"));
+}
+
+/////////////////////////////////////////////////
+/// Main
+int main(int _argc, char **_argv)
+{
+  ::testing::InitGoogleTest(&_argc, _argv);
+  ::testing::AddGlobalTestEnvironment(
+      new test::UniqueTestDirectoryEnv("breadcrumbs_test_cache"));
+  return RUN_ALL_TESTS();
 }
