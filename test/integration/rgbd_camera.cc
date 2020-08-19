@@ -48,6 +48,7 @@ class RgbdCameraTest : public ::testing::Test
 
 std::mutex mutex;
 msgs::Image depthMsg;
+unsigned int callbackCount = 0;
 float *depthBuffer = nullptr;
 
 /////////////////////////////////////////////////
@@ -60,6 +61,7 @@ void depthCb(const msgs::Image &_msg)
   if (!depthBuffer)
     depthBuffer = new float[depthSamples];
   memcpy(depthBuffer, _msg.data().c_str(), depthBufferSize);
+  callbackCount++;
   mutex.unlock();
 }
 
@@ -76,6 +78,7 @@ TEST_F(RgbdCameraTest, IGN_UTILS_TEST_DISABLED_ON_MAC(RgbdCameraBox))
   Server server(serverConfig);
   EXPECT_FALSE(server.Running());
   EXPECT_FALSE(*server.Running(0));
+  EXPECT_EQ(0u, callbackCount);
 
   // subscribe to the depth image topic
   transport::Node node;
@@ -83,16 +86,16 @@ TEST_F(RgbdCameraTest, IGN_UTILS_TEST_DISABLED_ON_MAC(RgbdCameraBox))
 
   // Run server and verify that we are receiving a message
   // from the depth camera
-  size_t iters100 = 100u;
-  server.Run(true, iters100, false);
+  server.Run(true, 500, false);
 
   ignition::common::Time waitTime = ignition::common::Time(0.001);
   int i = 0;
-  while (nullptr == depthBuffer && i < 500)
+  while (callbackCount < 6 && i < 500)
   {
     ignition::common::Time::Sleep(waitTime);
     i++;
   }
+  EXPECT_EQ(6u, callbackCount);
   ASSERT_NE(depthBuffer, nullptr);
 
   // Take into account box of 1 m on each side and 0.05 cm sensor offset

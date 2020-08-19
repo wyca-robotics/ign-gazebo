@@ -48,6 +48,7 @@ class DepthCameraTest : public ::testing::Test
 
 std::mutex mutex;
 msgs::Image depthMsg;
+unsigned int callbackCount = 0;
 float * depthBuffer = nullptr;
 
 /////////////////////////////////////////////////
@@ -60,6 +61,7 @@ void depthCb(const msgs::Image &_msg)
   if (!depthBuffer)
     depthBuffer = new float[depthSamples];
   memcpy(depthBuffer, _msg.data().c_str(), depthBufferSize);
+  callbackCount++;
   mutex.unlock();
 }
 
@@ -76,6 +78,7 @@ TEST_F(DepthCameraTest, IGN_UTILS_TEST_DISABLED_ON_MAC(DepthCameraBox))
   Server server(serverConfig);
   EXPECT_FALSE(server.Running());
   EXPECT_FALSE(*server.Running(0));
+  EXPECT_EQ(0u, callbackCount);
 
   // subscribe to the depth camera topic
   transport::Node node;
@@ -83,17 +86,17 @@ TEST_F(DepthCameraTest, IGN_UTILS_TEST_DISABLED_ON_MAC(DepthCameraBox))
 
   // Run server and verify that we are receiving a message
   // from the depth camera
-  size_t iters100 = 100u;
-  server.Run(true, iters100, false);
+  server.Run(true, 500, false);
 
-  ignition::common::Time waitTime = ignition::common::Time(0.001);
+  ignition::common::Time waitTime = ignition::common::Time(0.01);
   int i = 0;
-  while (i < 300)
+  while (callbackCount < 6 && i < 300)
   {
     ignition::common::Time::Sleep(waitTime);
     i++;
   }
-  EXPECT_NE(depthBuffer, nullptr);
+  EXPECT_EQ(6u, callbackCount);
+  ASSERT_NE(depthBuffer, nullptr);
 
   // Take into account box of 1 m on each side and 0.05 cm sensor offset
   double expectedRangeAtMidPointBox1 = 2.45;
